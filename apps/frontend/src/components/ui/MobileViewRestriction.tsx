@@ -5,8 +5,7 @@ import { motion } from 'framer-motion';
 export const MobileViewRestriction: React.FC = () => {
   return (
     <div 
-      className="fixed inset-0 z-[9999] bg-zinc-950 lg:hidden"
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      className="fixed inset-0 z-[9999] bg-zinc-950 flex items-center justify-center lg:hidden"
     >
       <div style={{ width: '100%', maxWidth: '400px', padding: '0 16px' }}>
         <motion.div
