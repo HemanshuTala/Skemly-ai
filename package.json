@@ -1,0 +1,30 @@
+{
+  "name": "skemly",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=@skemly/backend\" \"npm run dev --workspace=@skemly/frontend\"",
+    "dev:frontend": "npm run dev --workspace=@skemly/frontend",
+    "dev:backend": "npm run dev --workspace=@skemly/backend",
+    "build": "npm run build --workspace=@skemly/frontend && npm run build --workspace=@skemly/backend",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:dev": "docker compose up --build",
+    "services": "docker compose up -d mongo redis",
+    "services:down": "docker compose stop mongo redis",
+    "restart:dev": "powershell -ExecutionPolicy Bypass -File ./restart-dev.ps1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "groq-sdk": "^0.9.1"
+  }
+}
