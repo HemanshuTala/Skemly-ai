@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_WS_URL || 'http://13.60.224.91:5000';
+const SOCKET_URL = '/';
 
 class SocketClient {
   private socket: Socket | null = null;

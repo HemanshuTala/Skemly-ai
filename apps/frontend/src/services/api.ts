@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL =  'http://ec2-13-60-224-91.eu-north-1.compute.amazonaws.com:5000/api';
+const API_BASE_URL = '/api';
 
 // Create axios instance
 export const api = axios.create({

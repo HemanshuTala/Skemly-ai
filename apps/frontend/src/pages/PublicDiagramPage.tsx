@@ -3,12 +3,12 @@ import { useParams, Link } from 'react-router-dom'
 import { Loader2, Lock, RefreshCw, Wifi, WifiOff, Eye, ExternalLink } from 'lucide-react'
 import { DiagramCanvas } from '@/components/editor/DiagramCanvas'
 import api from '@/lib/api'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
+import { Button } from '../components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '../components/ui/tooltip'
 import { io, type Socket } from 'socket.io-client'
 
-const SOCKET_URL = import.meta.env.VITE_WS_URL || 'http://ec2-13-60-224-91.eu-north-1.compute.amazonaws.com:5000'
+const SOCKET_URL = '/'
 const SESSION_KEY = (token: string) => `public_pw_${token}`
 
 type PublicDiagram = {
