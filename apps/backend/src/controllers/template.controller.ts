@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { Template } from '../models/template.model';
 import { ApiError } from '../middleware/errorHandler';
-import { diagramService } from '../services/diagram.service';
 import { workspaceService } from '../services/workspace.service';
+import { diagramService } from '../services/diagram.service';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 /**
  * §4.8 Template controller logic
@@ -28,11 +29,11 @@ export const listTemplates = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const createTemplate = async (req: any, res: Response, next: NextFunction) => {
+export const createTemplate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { name, description, category, diagramType, syntax, nodes, edges, workspaceId } = req.body;
     if (workspaceId) {
-      await workspaceService.assertWorkspaceEditor(workspaceId, req.userId);
+      await workspaceService.assertWorkspaceEditor(workspaceId, req.userId!);
     }
     const template = new Template({
       name,
@@ -44,7 +45,7 @@ export const createTemplate = async (req: any, res: Response, next: NextFunction
       edges,
       isBuiltIn: false,
       workspaceId,
-      createdBy: req.userId,
+      createdBy: req.userId!,
     });
     await template.save();
     res.status(201).json({ success: true, data: template });
@@ -64,7 +65,7 @@ export const getTemplate = async (req: Request, res: Response, next: NextFunctio
     }
 };
 
-export const useTemplate = async (req: any, res: Response, next: NextFunction) => {
+export const useTemplate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { workspaceId, projectId, title } = req.body;
@@ -75,9 +76,9 @@ export const useTemplate = async (req: any, res: Response, next: NextFunction) =
     const template = await Template.findById(id);
     if (!template) throw new ApiError(404, 'NOT_FOUND', 'Template not found');
 
-    await workspaceService.assertWorkspaceAccess(workspaceId, req.userId);
+    await workspaceService.assertWorkspaceAccess(workspaceId, req.userId!);
 
-    const diagram = await diagramService.createDiagram(req.userId, workspaceId, {
+    const diagram = await diagramService.createDiagram(req.userId!, workspaceId, {
       title: title || `New ${template.name}`,
       type: template.diagramType as any,
       projectId: projectId || undefined,
@@ -93,10 +94,10 @@ export const useTemplate = async (req: any, res: Response, next: NextFunction) =
   }
 };
 
-export const deleteTemplate = async (req: any, res: Response, next: NextFunction) => {
+export const deleteTemplate = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        const template = await Template.findOneAndDelete({ _id: id, createdBy: req.userId });
+        const template = await Template.findOneAndDelete({ _id: id, createdBy: req.userId! });
         if (!template) throw new ApiError(403, 'FORBIDDEN', 'Access denied');
         res.json({ success: true, message: 'Template deleted' });
     } catch (err) {

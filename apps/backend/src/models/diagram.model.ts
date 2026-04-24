@@ -97,6 +97,16 @@ export interface IDiagram extends Document {
   hasCycleWarning: boolean;   // §16.1 circular reference detected
   syntaxError: string | null; // last syntax parse error message – §16.1
 
+  // Additional properties
+  description?: string;
+  notes?: string;
+  paperColor?: string;
+  showGrid?: boolean;
+  showRuler?: boolean;
+  archived?: boolean;
+  folder?: string;
+  tags?: string[];
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -172,8 +182,8 @@ const DiagramSchema = new Schema<IDiagram>(
     },
 
     syntax: { type: String, default: '' },
-    nodes: { type: [Schema.Types.Mixed], default: [] },
-    edges: { type: [Schema.Types.Mixed], default: [] },
+    nodes: [NodeSchema],
+    edges: [EdgeSchema],
     viewport: {
       x: { type: Number, default: 0 },
       y: { type: Number, default: 0 },
@@ -212,6 +222,16 @@ const DiagramSchema = new Schema<IDiagram>(
     nodeCount: { type: Number, default: 0, min: 0 },
     hasCycleWarning: { type: Boolean, default: false },
     syntaxError: { type: String, default: null },
+
+    // Additional properties
+    description: { type: String, default: null },
+    notes: { type: String, default: null },
+    paperColor: { type: String, default: null },
+    showGrid: { type: Boolean, default: true },
+    showRuler: { type: Boolean, default: false },
+    archived: { type: Boolean, default: false },
+    folder: { type: String, default: null },
+    tags: { type: [String], default: [] },
   },
   { timestamps: true }
 );
@@ -229,19 +249,20 @@ DiagramSchema.index({ title: 'text', 'nodes.data.label': 'text' });
 
 // ─── Pre-save: sync nodeCount ─────────────────────────────────────────────────
 DiagramSchema.pre('save', function (next) {
-  this.nodeCount = this.nodes.length;
+  const doc = this as IDiagram;
+  doc.nodeCount = doc.nodes.length;
   // Cap AI conversation to 10 turns
-  if (this.aiConversation.length > 10) {
-    this.aiConversation = this.aiConversation.slice(-10);
+  if (doc.aiConversation.length > 10) {
+    doc.aiConversation = doc.aiConversation.slice(-10);
   }
   // Set autoDeleteAt when trashed (30-day purge – §WS-09)
-  if (this.isTrashed && !this.autoDeleteAt) {
-    this.autoDeleteAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  if (doc.isTrashed && !doc.autoDeleteAt) {
+    doc.autoDeleteAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   }
-  if (!this.isTrashed) {
-    this.autoDeleteAt = undefined as never;
-    this.trashedAt = null;
-    this.trashedBy = null;
+  if (!doc.isTrashed) {
+    doc.autoDeleteAt = undefined as never;
+    doc.trashedAt = null;
+    doc.trashedBy = null;
   }
   next();
 });

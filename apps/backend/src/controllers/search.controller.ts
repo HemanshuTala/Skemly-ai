@@ -3,15 +3,20 @@ import { Diagram } from '../models/diagram.model';
 import { Note } from '../models/note.model';
 import { workspaceService } from '../services/workspace.service';
 import { ApiError } from '../middleware/errorHandler';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 /**
  * §WS-06 Full-text search controller
  */
-export const search = async (req: any, res: Response, next: NextFunction) => {
+export const search = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { q, workspaceId, type = 'all', page = 1, limit = 20 } = req.query;
     
-    if (!q || q.trim().length === 0) {
+    const qStr = String(q);
+    const workspaceIdStr = String(workspaceId);
+    const typeStr = String(type);
+    
+    if (!q || qStr.trim().length === 0) {
       throw new ApiError(400, 'VALIDATION_ERROR', 'Search query is required');
     }
     
@@ -20,7 +25,7 @@ export const search = async (req: any, res: Response, next: NextFunction) => {
     }
     
     // Check workspace access
-    const hasAccess = await workspaceService.checkAccess(workspaceId, req.userId);
+    const hasAccess = await workspaceService.checkAccess(workspaceIdStr, req.userId!);
     if (!hasAccess) {
       throw new ApiError(403, 'FORBIDDEN', 'Access denied to workspace');
     }
@@ -32,11 +37,11 @@ export const search = async (req: any, res: Response, next: NextFunction) => {
     };
     
     // Search diagrams
-    if (type === 'all' || type === 'diagrams') {
+    if (typeStr === 'all' || typeStr === 'diagrams') {
       const diagrams = await Diagram.find({
-        workspaceId,
+        workspaceId: workspaceIdStr,
         isTrashed: false,
-        $text: { $search: q },
+        $text: { $search: qStr },
       })
         .select('title type createdBy createdAt updatedAt')
         .populate('createdBy', 'name email avatar')
@@ -48,10 +53,10 @@ export const search = async (req: any, res: Response, next: NextFunction) => {
     }
     
     // Search notes
-    if (type === 'all' || type === 'notes') {
+    if (typeStr === 'all' || typeStr === 'notes') {
       const notes = await Note.find({
-        workspaceId,
-        $text: { $search: q },
+        workspaceId: workspaceIdStr,
+        $text: { $search: qStr },
       })
         .select('diagramId contentText createdBy createdAt')
         .populate('diagramId', 'title type')
@@ -63,18 +68,18 @@ export const search = async (req: any, res: Response, next: NextFunction) => {
       results.notes = notes;
     }
     
-    const totalDiagrams = type === 'all' || type === 'diagrams'
+    const totalDiagrams = typeStr === 'all' || typeStr === 'diagrams'
       ? await Diagram.countDocuments({
-          workspaceId,
+          workspaceId: workspaceIdStr,
           isTrashed: false,
-          $text: { $search: q },
+          $text: { $search: qStr },
         })
       : 0;
     
-    const totalNotes = type === 'all' || type === 'notes'
+    const totalNotes = typeStr === 'all' || typeStr === 'notes'
       ? await Note.countDocuments({
-          workspaceId,
-          $text: { $search: q },
+          workspaceId: workspaceIdStr,
+          $text: { $search: qStr },
         })
       : 0;
     

@@ -31,6 +31,7 @@ export interface IAIUsage {
   explain: IAIUsageEntry;
   improve: IAIUsageEntry;
   autofix: IAIUsageEntry;
+  [key: string]: IAIUsageEntry;
 }
 
 export interface IUserPreferences {
@@ -62,6 +63,7 @@ export interface IUser extends Document {
 
   // OAuth
   oauthProviders: IOAuthProvider[];
+  oauth?: Record<string, { id: string }>;
 
   // Profile
   name: string;
@@ -281,7 +283,7 @@ const UserSchema = new Schema<IUser>(
     timestamps: true,
     // Exclude sensitive fields from toJSON by default
     toJSON: {
-      transform: (_doc, ret) => {
+      transform: (_doc, ret: any) => {
         delete ret.password;
         delete ret.twoFactorSecret;
         delete ret.twoFactorBackupCodes;
@@ -335,7 +337,8 @@ UserSchema.methods.resetLoginAttempts = async function (): Promise<void> {
 };
 
 UserSchema.methods.canUseAI = function (feature: keyof IAIUsage): boolean {
-  const limit = PLAN_LIMITS[this.plan as 'free' | 'starter' | 'basic' | 'pro' | 'team'][`ai${feature.charAt(0).toUpperCase()}${feature.slice(1)}` as keyof typeof PLAN_LIMITS['free']];
+  const featureStr = String(feature);
+  const limit = PLAN_LIMITS[this.plan as 'free' | 'starter' | 'basic' | 'pro' | 'team'][`ai${featureStr.charAt(0).toUpperCase()}${featureStr.slice(1)}` as keyof typeof PLAN_LIMITS['free']];
   if (limit === Infinity) return true;
   const usage = this.aiUsage[feature];
   // reset counter if month has rolled over
@@ -348,7 +351,8 @@ UserSchema.methods.canUseAI = function (feature: keyof IAIUsage): boolean {
 };
 
 UserSchema.methods.getRemainingAI = function (feature: keyof IAIUsage): number {
-  const key = `ai${feature.charAt(0).toUpperCase()}${feature.slice(1)}` as keyof typeof PLAN_LIMITS['free'];
+  const featureStr = String(feature);
+  const key = `ai${featureStr.charAt(0).toUpperCase()}${featureStr.slice(1)}` as keyof typeof PLAN_LIMITS['free'];
   const limit = PLAN_LIMITS[this.plan as 'free' | 'starter' | 'basic' | 'pro' | 'team'][key];
   if (limit === Infinity) return Infinity;
   const usage = this.aiUsage[feature];

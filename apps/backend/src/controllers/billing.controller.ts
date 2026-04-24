@@ -1,14 +1,15 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { User } from '../models/user.model';
 import { billingService } from '../services/billing.service';
 import { ApiError } from '../middleware/errorHandler';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 /**
  * §13 Billing & Subscription Controller
  * Razorpay integration for subscription management
  */
 
-export const getPlans = async (req: Request, res: Response, next: NextFunction) => {
+export const getPlans = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const plans = [
       {
@@ -66,9 +67,9 @@ export const getPlans = async (req: Request, res: Response, next: NextFunction) 
   }
 };
 
-export const getSubscription = async (req: any, res: Response, next: NextFunction) => {
+export const getSubscription = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.userId!);
     if (!user) {
       throw new ApiError(404, 'NOT_FOUND', 'User not found');
     }
@@ -89,17 +90,17 @@ export const getSubscription = async (req: any, res: Response, next: NextFunctio
   }
 };
 
-export const subscribe = async (req: any, res: Response, next: NextFunction) => {
+export const subscribe = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { planId } = req.body;
-    console.log('[Billing] Subscribe request for user:', req.userId, 'plan:', planId);
+    console.log('[Billing] Subscribe request for user:', req.userId!, 'plan:', planId);
     
     // Valid paid plans: starter (₹20), basic (₹40)
     if (!['starter', 'basic'].includes(planId)) {
       throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid plan ID');
     }
 
-    const subscription = await billingService.createSubscription(req.userId, planId);
+    const subscription = await billingService.createSubscription(req.userId!, planId);
     console.log('[Billing] Subscription created:', subscription.subscriptionId);
     
     res.json({
@@ -112,9 +113,9 @@ export const subscribe = async (req: any, res: Response, next: NextFunction) => 
   }
 };
 
-export const cancelSubscription = async (req: any, res: Response, next: NextFunction) => {
+export const cancelSubscription = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    await billingService.cancelSubscription(req.userId);
+    await billingService.cancelSubscription(req.userId!);
     
     res.json({
       success: true,
@@ -125,7 +126,7 @@ export const cancelSubscription = async (req: any, res: Response, next: NextFunc
   }
 };
 
-export const getPortalLink = async (req: any, res: Response, next: NextFunction) => {
+export const getPortalLink = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     // Razorpay doesn't have a built-in customer portal
     // Return subscription management URL from frontend
@@ -140,7 +141,7 @@ export const getPortalLink = async (req: any, res: Response, next: NextFunction)
   }
 };
 
-export const handleWebhook = async (req: Request, res: Response, next: NextFunction) => {
+export const handleWebhook = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const signature = req.headers['x-razorpay-signature'] as string;
     const payload = req.body;
@@ -157,12 +158,12 @@ export const handleWebhook = async (req: Request, res: Response, next: NextFunct
  * §BILL-05 Verify payment after checkout
  * Called by frontend after successful Razorpay payment to confirm and activate subscription
  */
-export const verifyPayment = async (req: any, res: Response, next: NextFunction) => {
+export const verifyPayment = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { razorpayPaymentId, razorpaySubscriptionId, razorpaySignature } = req.body;
     
     console.log('[Billing] Verify payment request:', {
-      userId: req.userId,
+      userId: req.userId!,
       razorpayPaymentId,
       razorpaySubscriptionId,
       hasSignature: !!razorpaySignature
@@ -173,7 +174,7 @@ export const verifyPayment = async (req: any, res: Response, next: NextFunction)
     }
 
     const result = await billingService.verifyAndActivateSubscription(
-      req.userId,
+      req.userId!,
       razorpayPaymentId,
       razorpaySubscriptionId,
       razorpaySignature

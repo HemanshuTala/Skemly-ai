@@ -1125,6 +1125,19 @@ class ExportService {
 
     return getSignedUrl(this.s3Client, command, { expiresIn: 15 * 60 });
   }
+
+  async regeneratePresignedUrl(jobId: string): Promise<string> {
+    const job = await ExportJob.findById(jobId);
+    if (!job) throw new ApiError(404, 'NOT_FOUND', 'Export job not found');
+    if (!job.fileKey || !this.s3Client) throw new ApiError(500, 'EXPORT_ERROR', 'Cannot regenerate URL');
+
+    const newUrl = await this.getPresignedUrl(job.fileKey);
+    job.fileUrl = newUrl;
+    job.expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await job.save();
+
+    return newUrl;
+  }
 }
 
 export const exportService = new ExportService();

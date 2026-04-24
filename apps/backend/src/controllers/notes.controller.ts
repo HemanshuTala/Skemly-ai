@@ -3,23 +3,24 @@ import { Note, NoteVersion } from '../models/note.model';
 import { Diagram } from '../models/diagram.model';
 import { ApiError } from '../middleware/errorHandler';
 import { workspaceService } from '../services/workspace.service';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 /**
  * §4.3 Notes controller — tied to diagram workspace membership
  */
-export const getNotes = async (req: any, res: Response, next: NextFunction) => {
+export const getNotes = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { diagramId } = req.params;
     const diagram = await Diagram.findById(diagramId);
     if (!diagram) throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
-    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId!);
 
     let note = await Note.findOne({ diagramId });
     if (!note) {
       const newNote = new Note({
         diagramId,
         workspaceId: diagram.workspaceId,
-        createdBy: req.userId,
+        createdBy: req.userId!,
       });
       await newNote.save();
       return res.json({ success: true, data: newNote });
@@ -30,14 +31,14 @@ export const getNotes = async (req: any, res: Response, next: NextFunction) => {
   }
 };
 
-export const updateNotes = async (req: any, res: Response, next: NextFunction) => {
+export const updateNotes = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { diagramId } = req.params;
     const { content, contentText } = req.body;
 
     const diagram = await Diagram.findById(diagramId);
     if (!diagram) throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
-    await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId!);
 
     let note = await Note.findOne({ diagramId });
     if (!note) {
@@ -46,8 +47,8 @@ export const updateNotes = async (req: any, res: Response, next: NextFunction) =
         workspaceId: diagram.workspaceId,
         content: content ?? {},
         contentText: contentText ?? '',
-        createdBy: req.userId,
-        lastEditedBy: req.userId,
+        createdBy: req.userId!,
+        lastEditedBy: req.userId!,
         version: 1,
       });
       return res.json({ success: true, data: note });
@@ -55,7 +56,7 @@ export const updateNotes = async (req: any, res: Response, next: NextFunction) =
 
     if (content !== undefined) note.content = content;
     if (contentText !== undefined) note.contentText = contentText;
-    note.lastEditedBy = req.userId as any;
+    note.lastEditedBy = req.userId! as any;
     note.version += 1;
     await note.save();
 
@@ -64,7 +65,7 @@ export const updateNotes = async (req: any, res: Response, next: NextFunction) =
         noteId: note._id,
         version: note.version,
         content: note.content,
-        savedBy: req.userId,
+        savedBy: req.userId!,
       });
     }
 
@@ -74,12 +75,12 @@ export const updateNotes = async (req: any, res: Response, next: NextFunction) =
   }
 };
 
-export const getNoteVersions = async (req: any, res: Response, next: NextFunction) => {
+export const getNoteVersions = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { diagramId } = req.params;
     const diagram = await Diagram.findById(diagramId);
     if (!diagram) throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
-    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId!);
 
     const note = await Note.findOne({ diagramId });
     if (!note) throw new ApiError(404, 'NOT_FOUND', 'Note not found');
@@ -91,12 +92,12 @@ export const getNoteVersions = async (req: any, res: Response, next: NextFunctio
   }
 };
 
-export const publishNotes = async (req: any, res: Response, next: NextFunction) => {
+export const publishNotes = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { diagramId } = req.params;
     const diagram = await Diagram.findById(diagramId);
     if (!diagram) throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
-    await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId!);
 
     await Note.findOneAndUpdate({ diagramId }, { isPublic: true });
     res.json({ success: true, message: 'Notes published' });
@@ -105,12 +106,12 @@ export const publishNotes = async (req: any, res: Response, next: NextFunction) 
   }
 };
 
-export const unpublishNotes = async (req: any, res: Response, next: NextFunction) => {
+export const unpublishNotes = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { diagramId } = req.params;
     const diagram = await Diagram.findById(diagramId);
     if (!diagram) throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
-    await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId!);
 
     await Note.findOneAndUpdate({ diagramId }, { isPublic: false });
     res.json({ success: true, message: 'Notes unpublished' });

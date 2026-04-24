@@ -191,7 +191,7 @@ class AuthService {
     await user.resetLoginAttempts();
     user.lastLoginAt = new Date();
 
-    const accessToken = this.generateAccessToken(user._id as string);
+    const accessToken = this.generateAccessToken(user._id.toString());
     const refreshToken = this.generateRefreshToken();
     const tokenHash = this.hashToken(refreshToken);
 
@@ -239,7 +239,7 @@ class AuthService {
     session.lastUsedAt = new Date();
     await user.save();
 
-    const accessToken = this.generateAccessToken(user._id as string);
+    const accessToken = this.generateAccessToken(user._id.toString());
     return { accessToken, newRefreshToken };
   }
 

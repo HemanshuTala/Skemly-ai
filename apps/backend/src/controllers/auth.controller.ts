@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
+import { User } from '../models/user.model';
 import { authService } from '../services/auth.service';
 import { ApiError } from '../middleware/errorHandler';
-import { User } from '../models/user.model';
+import { AuthRequest } from '../middleware/auth.middleware';
 import logger from '../utils/logger';
 
 /**
@@ -112,9 +113,9 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const getMe = async (req: any, res: Response, next: NextFunction) => {
+export const getMe = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.userId!);
     if (!user) throw new ApiError(404, 'NOT_FOUND', 'User not found');
     res.json({ success: true, data: user });
   } catch (err) {
@@ -122,9 +123,9 @@ export const getMe = async (req: any, res: Response, next: NextFunction) => {
   }
 };
 
-export const updateMe = async (req: any, res: Response, next: NextFunction) => {
+export const updateMe = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const user = await User.findByIdAndUpdate(req.userId, req.body, { new: true });
+      const user = await User.findByIdAndUpdate(req.userId!, req.body, { new: true });
       res.json({ success: true, data: user });
     } catch (err) {
       next(err);
@@ -157,10 +158,10 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const revokeSession = async (req: any, res: Response, next: NextFunction) => {
+export const revokeSession = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { sessionId } = req.params;
-    await User.findByIdAndUpdate(req.userId, {
+    await User.findByIdAndUpdate(req.userId!, {
       $pull: { activeSessions: { _id: sessionId } }
     });
     res.json({ success: true, message: 'Session revoked' });
@@ -176,13 +177,13 @@ export const googleAuth = async (req: Request, res: Response, next: NextFunction
   // Handled by passport middleware
 };
 
-export const googleCallback = async (req: any, res: Response, next: NextFunction) => {
+export const googleCallback = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       throw new ApiError(401, 'OAUTH_FAILED', 'OAuth authentication failed');
     }
 
-    const user = req.user;
+    const user = req.user as any;
     const accessToken = authService.generateAccessToken(user._id.toString());
     const refreshToken = authService.generateRefreshToken();
     const tokenHash = authService.hashToken(refreshToken);
@@ -217,13 +218,13 @@ export const githubAuth = async (req: Request, res: Response, next: NextFunction
   // Handled by passport middleware
 };
 
-export const githubCallback = async (req: any, res: Response, next: NextFunction) => {
+export const githubCallback = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       throw new ApiError(401, 'OAUTH_FAILED', 'OAuth authentication failed');
     }
 
-    const user = req.user;
+    const user = req.user as any;
     const accessToken = authService.generateAccessToken(user._id.toString());
     const refreshToken = authService.generateRefreshToken();
     const tokenHash = authService.hashToken(refreshToken);

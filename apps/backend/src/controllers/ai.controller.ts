@@ -1,9 +1,10 @@
-import { Request, Response, NextFunction } from 'express';
-import { aiService } from '../services/ai.service';
+import { Response, NextFunction } from 'express';
 import { Diagram } from '../models/diagram.model';
 import { User } from '../models/user.model';
-import { ApiError } from '../middleware/errorHandler';
+import { aiService } from '../services/ai.service';
 import { workspaceService } from '../services/workspace.service';
+import { ApiError } from '../middleware/errorHandler';
+import { AuthRequest } from '../middleware/auth.middleware';
 import logger from '../utils/logger';
 
 /**
@@ -14,7 +15,7 @@ import logger from '../utils/logger';
 /**
  * §AI-01 Generate diagram from prompt
  */
-export const generateDiagram = async (req: any, res: Response, next: NextFunction) => {
+export const generateDiagram = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { prompt, diagramType = 'flowchart', diagramId } = req.body;
 
@@ -30,13 +31,13 @@ export const generateDiagram = async (req: any, res: Response, next: NextFunctio
       if (!diagram) {
         throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
       }
-      await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId);
+      await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId!);
       existingSyntax = diagram.syntax;
     }
 
     // Generate diagram
     const { syntax, conversationTurn } = await aiService.generateDiagram(
-      req.userId,
+      req.userId!,
       prompt,
       diagramType,
       existingSyntax
@@ -55,7 +56,7 @@ export const generateDiagram = async (req: any, res: Response, next: NextFunctio
       }
 
       diagram.syntax = syntax;
-      diagram.lastEditedBy = req.userId;
+      diagram.lastEditedBy = req.userId!;
       diagram.version += 1;
       await diagram.save();
     }
@@ -76,7 +77,7 @@ export const generateDiagram = async (req: any, res: Response, next: NextFunctio
 /**
  * §AI-01 Stream diagram generation (SSE)
  */
-export const streamGenerateDiagram = async (req: any, res: Response, next: NextFunction) => {
+export const streamGenerateDiagram = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { prompt, diagramType = 'flowchart', diagramId } = req.body;
 
@@ -88,7 +89,7 @@ export const streamGenerateDiagram = async (req: any, res: Response, next: NextF
       if (!diagram) {
         throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
       }
-      await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId);
+      await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId!);
       existingSyntax = diagram.syntax;
     }
 
@@ -101,7 +102,7 @@ export const streamGenerateDiagram = async (req: any, res: Response, next: NextF
 
     try {
       for await (const chunk of aiService.streamDiagramGeneration(
-        req.userId,
+        req.userId!,
         prompt,
         diagramType,
         existingSyntax
@@ -124,7 +125,7 @@ export const streamGenerateDiagram = async (req: any, res: Response, next: NextF
 /**
  * §AI-06 Explain diagram
  */
-export const explainDiagram = async (req: any, res: Response, next: NextFunction) => {
+export const explainDiagram = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { diagramId, nodeId } = req.body;
 
@@ -132,9 +133,9 @@ export const explainDiagram = async (req: any, res: Response, next: NextFunction
     if (!diagram) {
       throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
     }
-    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId!);
 
-    const explanation = await aiService.explainDiagram(req.userId, diagram, nodeId);
+    const explanation = await aiService.explainDiagram(req.userId!, diagram, nodeId);
 
     res.json({
       success: true,
@@ -148,7 +149,7 @@ export const explainDiagram = async (req: any, res: Response, next: NextFunction
 /**
  * §AI-08 Get improvement suggestions
  */
-export const improveDiagram = async (req: any, res: Response, next: NextFunction) => {
+export const improveDiagram = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { diagramId } = req.body;
 
@@ -156,9 +157,9 @@ export const improveDiagram = async (req: any, res: Response, next: NextFunction
     if (!diagram) {
       throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
     }
-    await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId!);
 
-    const result = await aiService.improveDiagram(req.userId, diagram);
+    const result = await aiService.improveDiagram(req.userId!, diagram);
 
     res.json({
       success: true,
@@ -172,7 +173,7 @@ export const improveDiagram = async (req: any, res: Response, next: NextFunction
 /**
  * §AI-10 Auto-fix syntax errors
  */
-export const autofixSyntax = async (req: any, res: Response, next: NextFunction) => {
+export const autofixSyntax = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { syntax, errorMessage } = req.body;
 
@@ -180,7 +181,7 @@ export const autofixSyntax = async (req: any, res: Response, next: NextFunction)
       throw new ApiError(400, 'VALIDATION_ERROR', 'Syntax and error message are required');
     }
 
-    const result = await aiService.autofixSyntax(req.userId, syntax, errorMessage);
+    const result = await aiService.autofixSyntax(req.userId!, syntax, errorMessage);
 
     res.json({
       success: true,
@@ -194,7 +195,7 @@ export const autofixSyntax = async (req: any, res: Response, next: NextFunction)
 /**
  * §AI-CODE Convert code to diagram
  */
-export const codeToDiagram = async (req: any, res: Response, next: NextFunction) => {
+export const codeToDiagram = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { code, language = 'javascript', diagramType = 'flowchart' } = req.body;
 
@@ -206,7 +207,7 @@ export const codeToDiagram = async (req: any, res: Response, next: NextFunction)
       throw new ApiError(400, 'VALIDATION_ERROR', 'Code too long. Maximum 10000 characters.');
     }
 
-    const result = await aiService.codeToDiagram(req.userId, code, language, diagramType);
+    const result = await aiService.codeToDiagram(req.userId!, code, language, diagramType);
 
     res.json({
       success: true,
@@ -221,9 +222,9 @@ export const codeToDiagram = async (req: any, res: Response, next: NextFunction)
 /**
  * Get AI usage statistics
  */
-export const getAIUsage = async (req: any, res: Response, next: NextFunction) => {
+export const getAIUsage = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.userId!);
     
     if (!user) {
       throw new ApiError(404, 'NOT_FOUND', 'User not found');

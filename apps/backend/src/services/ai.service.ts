@@ -1,7 +1,13 @@
+import crypto from 'crypto';
 import Groq from 'groq-sdk';
-import { IDiagram } from '../models/diagram.model';
-import { User } from '../models/user.model';
+import { Diagram, IDiagram } from '../models/diagram.model';
+import { DiagramVersion } from '../models/diagram-version.model';
+import { Note } from '../models/note.model';
+import { Workspace } from '../models/workspace.model';
+import { User, PLAN_LIMITS, IAIUsage } from '../models/user.model';
+import { AuditLog } from '../models/audit-log.model';
 import { ApiError } from '../middleware/errorHandler';
+import { workspaceService } from './workspace.service';
 import logger from '../utils/logger';
 
 /**
@@ -356,7 +362,8 @@ Generate ONLY the diagram syntax, nothing else.`;
     if (!user) return;
 
     const now   = new Date();
-    const usage = user.aiUsage[feature];
+    const featureStr = String(feature);
+    const usage = user.aiUsage[featureStr as keyof IAIUsage];
 
     if (usage.resetAt.getMonth() !== now.getMonth() || usage.resetAt.getFullYear() !== now.getFullYear()) {
       usage.count   = 0;

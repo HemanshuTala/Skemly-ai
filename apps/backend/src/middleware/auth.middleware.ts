@@ -4,7 +4,6 @@ import { ApiError } from './errorHandler';
 import { IUser } from '../models/user.model';
 
 export interface AuthRequest extends Request {
-  user?: IUser;
   userId?: string;
 }
 

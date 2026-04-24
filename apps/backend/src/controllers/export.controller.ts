@@ -1,15 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { ExportJob } from '../models/export-job.model';
 import { Diagram } from '../models/diagram.model';
 import { exportService } from '../services/export.service';
 import { ApiError } from '../middleware/errorHandler';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 /**
  * §4.7 Export System Controller
  * Server-side rendering with Puppeteer + BullMQ job queue + S3 storage
  */
 
-export const exportPNG = async (req: any, res: Response, next: NextFunction) => {
+export const exportPNG = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { diagramId, scale = 1 } = req.body;
     
@@ -21,7 +22,7 @@ export const exportPNG = async (req: any, res: Response, next: NextFunction) => 
       throw new ApiError(400, 'VALIDATION_ERROR', 'scale must be 1, 2, or 4');
     }
 
-    const job = await exportService.exportPNG(req.userId, diagramId, scale);
+    const job = await exportService.exportPNG(req.userId!, diagramId, scale);
     
     res.json({
       success: true,
@@ -36,7 +37,7 @@ export const exportPNG = async (req: any, res: Response, next: NextFunction) => 
   }
 };
 
-export const exportSVG = async (req: any, res: Response, next: NextFunction) => {
+export const exportSVG = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { diagramId } = req.body;
     
@@ -44,7 +45,7 @@ export const exportSVG = async (req: any, res: Response, next: NextFunction) => 
       throw new ApiError(400, 'VALIDATION_ERROR', 'diagramId is required');
     }
 
-    const job = await exportService.exportSVG(req.userId, diagramId);
+    const job = await exportService.exportSVG(req.userId!, diagramId);
     
     res.json({
       success: true,
@@ -59,7 +60,7 @@ export const exportSVG = async (req: any, res: Response, next: NextFunction) => 
   }
 };
 
-export const exportPDF = async (req: any, res: Response, next: NextFunction) => {
+export const exportPDF = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { diagramId } = req.body;
     
@@ -67,7 +68,7 @@ export const exportPDF = async (req: any, res: Response, next: NextFunction) => 
       throw new ApiError(400, 'VALIDATION_ERROR', 'diagramId is required');
     }
 
-    const job = await exportService.exportPDF(req.userId, diagramId);
+    const job = await exportService.exportPDF(req.userId!, diagramId);
     
     res.json({
       success: true,
@@ -82,7 +83,7 @@ export const exportPDF = async (req: any, res: Response, next: NextFunction) => 
   }
 };
 
-export const exportSyntax = async (req: any, res: Response, next: NextFunction) => {
+export const exportSyntax = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { diagramId } = req.body;
     
@@ -100,13 +101,13 @@ export const exportSyntax = async (req: any, res: Response, next: NextFunction) 
   }
 };
 
-export const getExportStatus = async (req: any, res: Response, next: NextFunction) => {
+export const getExportStatus = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { jobId } = req.params;
     
     const job = await ExportJob.findOne({
       _id: jobId,
-      requestedBy: req.userId,
+      requestedBy: req.userId!,
     });
     
     if (!job) {
@@ -132,13 +133,13 @@ export const getExportStatus = async (req: any, res: Response, next: NextFunctio
   }
 };
 
-export const downloadExport = async (req: any, res: Response, next: NextFunction) => {
+export const downloadExport = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const jobId = req.params.fileId;
 
     const job = await ExportJob.findOne({
       _id: jobId,
-      requestedBy: req.userId,
+      requestedBy: req.userId!,
     });
     
     if (!job) {

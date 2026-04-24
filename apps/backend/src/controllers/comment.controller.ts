@@ -1,19 +1,20 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { Comment } from '../models/comment.model';
 import { Notification } from '../models/notification.model';
 import { Diagram } from '../models/diagram.model';
 import { ApiError } from '../middleware/errorHandler';
 import { workspaceService } from '../services/workspace.service';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 /**
  * §4.6 Comment controller logic with @mentions
  */
-export const getComments = async (req: any, res: Response, next: NextFunction) => {
+export const getComments = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const diagram = await Diagram.findById(id);
     if (!diagram) throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
-    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId!);
 
     const comments = await Comment.find({ diagramId: id, parentId: null })
       .populate('authorId', 'name email avatar')
@@ -35,19 +36,19 @@ export const getComments = async (req: any, res: Response, next: NextFunction) =
   }
 };
 
-export const createComment = async (req: any, res: Response, next: NextFunction) => {
+export const createComment = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { content, position, parentId, mentions } = req.body;
 
     const diagram = await Diagram.findById(id);
     if (!diagram) throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
-    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId!);
 
     const comment = new Comment({
       diagramId: id,
       parentId: parentId || null,
-      authorId: req.userId,
+      authorId: req.userId!,
       content,
       position,
       mentions: mentions || [],
@@ -67,7 +68,7 @@ export const createComment = async (req: any, res: Response, next: NextFunction)
       }
     }
 
-    if (diagram.createdBy.toString() !== req.userId && !parentId) {
+    if (diagram.createdBy.toString() !== req.userId! && !parentId) {
       await Notification.create({
         userId: diagram.createdBy,
         type: 'COMMENT_ADD',
@@ -85,19 +86,19 @@ export const createComment = async (req: any, res: Response, next: NextFunction)
   }
 };
 
-export const updateComment = async (req: any, res: Response, next: NextFunction) => {
+export const updateComment = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { commentId } = req.params;
     const existing = await Comment.findById(commentId);
-    if (!existing || existing.authorId.toString() !== req.userId) {
+    if (!existing || existing.authorId.toString() !== req.userId!) {
       throw new ApiError(403, 'FORBIDDEN', 'Access denied');
     }
     const diagram = await Diagram.findById(existing.diagramId);
     if (!diagram) throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
-    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId!);
 
     const comment = await Comment.findOneAndUpdate(
-      { _id: commentId, authorId: req.userId },
+      { _id: commentId, authorId: req.userId! },
       { content: req.body.content },
       { new: true }
     );
@@ -107,15 +108,15 @@ export const updateComment = async (req: any, res: Response, next: NextFunction)
   }
 };
 
-export const deleteComment = async (req: any, res: Response, next: NextFunction) => {
+export const deleteComment = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { commentId } = req.params;
-    const existing = await Comment.findOne({ _id: commentId, authorId: req.userId });
+    const existing = await Comment.findOne({ _id: commentId, authorId: req.userId! });
     if (!existing) throw new ApiError(403, 'FORBIDDEN', 'Access denied');
 
     const diagram = await Diagram.findById(existing.diagramId);
     if (!diagram) throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
-    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId!);
 
     await Comment.deleteOne({ _id: commentId });
     await Comment.deleteMany({ parentId: commentId });
@@ -126,7 +127,7 @@ export const deleteComment = async (req: any, res: Response, next: NextFunction)
   }
 };
 
-export const resolveComment = async (req: any, res: Response, next: NextFunction) => {
+export const resolveComment = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { commentId } = req.params;
     const existing = await Comment.findById(commentId);
@@ -134,11 +135,11 @@ export const resolveComment = async (req: any, res: Response, next: NextFunction
 
     const diagram = await Diagram.findById(existing.diagramId);
     if (!diagram) throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
-    await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId!);
 
     const comment = await Comment.findByIdAndUpdate(
       commentId,
-      { resolved: true, resolvedBy: req.userId, resolvedAt: new Date() },
+      { resolved: true, resolvedBy: req.userId!, resolvedAt: new Date() },
       { new: true }
     );
     res.json({ success: true, data: comment });
@@ -147,14 +148,14 @@ export const resolveComment = async (req: any, res: Response, next: NextFunction
   }
 };
 
-export const replyToComment = async (req: any, res: Response, next: NextFunction) => {
+export const replyToComment = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id, commentId } = req.params;
     const { content, mentions } = req.body;
 
     const diagram = await Diagram.findById(id);
     if (!diagram) throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
-    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId);
+    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId!);
 
     const parentComment = await Comment.findById(commentId);
     if (!parentComment) throw new ApiError(404, 'NOT_FOUND', 'Parent comment not found');
@@ -165,14 +166,14 @@ export const replyToComment = async (req: any, res: Response, next: NextFunction
     const reply = new Comment({
       diagramId: id,
       parentId: commentId,
-      authorId: req.userId,
+      authorId: req.userId!,
       content,
       position: parentComment.position,
       mentions: mentions || [],
     });
     await reply.save();
 
-    if (parentComment.authorId.toString() !== req.userId) {
+    if (parentComment.authorId.toString() !== req.userId!) {
       await Notification.create({
         userId: parentComment.authorId,
         type: 'COMMENT_ADD',

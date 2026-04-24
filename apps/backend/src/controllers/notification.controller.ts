@@ -1,15 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { Notification } from '../models/notification.model';
 import { User } from '../models/user.model';
 import { ApiError } from '../middleware/errorHandler';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 /**
  * §4.10 Notification controller logic
  */
-export const getNotifications = async (req: any, res: Response, next: NextFunction) => {
+export const getNotifications = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { page = 1, limit = 20, unreadOnly } = req.query;
-    const filters: any = { userId: req.userId };
+    const filters: any = { userId: req.userId! };
     
     if (unreadOnly === 'true') {
       filters.read = false;
@@ -22,7 +23,7 @@ export const getNotifications = async (req: any, res: Response, next: NextFuncti
       .limit(Number(limit));
     
     const total = await Notification.countDocuments(filters);
-    const unreadCount = await Notification.countDocuments({ userId: req.userId, read: false });
+    const unreadCount = await Notification.countDocuments({ userId: req.userId!, read: false });
     
     res.json({
       success: true,
@@ -39,11 +40,11 @@ export const getNotifications = async (req: any, res: Response, next: NextFuncti
   }
 };
 
-export const markAsRead = async (req: any, res: Response, next: NextFunction) => {
+export const markAsRead = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const notification = await Notification.findOneAndUpdate(
-      { _id: id, userId: req.userId },
+      { _id: id, userId: req.userId! },
       { read: true },
       { new: true }
     );
@@ -58,10 +59,10 @@ export const markAsRead = async (req: any, res: Response, next: NextFunction) =>
   }
 };
 
-export const markAllAsRead = async (req: any, res: Response, next: NextFunction) => {
+export const markAllAsRead = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await Notification.updateMany(
-      { userId: req.userId, read: false },
+      { userId: req.userId!, read: false },
       { read: true }
     );
     
@@ -71,12 +72,12 @@ export const markAllAsRead = async (req: any, res: Response, next: NextFunction)
   }
 };
 
-export const deleteNotification = async (req: any, res: Response, next: NextFunction) => {
+export const deleteNotification = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const notification = await Notification.findOneAndDelete({
       _id: id,
-      userId: req.userId,
+      userId: req.userId!,
     });
     
     if (!notification) {
@@ -89,12 +90,12 @@ export const deleteNotification = async (req: any, res: Response, next: NextFunc
   }
 };
 
-export const updatePreferences = async (req: any, res: Response, next: NextFunction) => {
+export const updatePreferences = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { notifications } = req.body;
     
     const user = await User.findByIdAndUpdate(
-      req.userId,
+      req.userId!,
       { 'preferences.notifications': notifications },
       { new: true }
     );
