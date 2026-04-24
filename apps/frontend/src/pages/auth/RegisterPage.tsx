@@ -28,7 +28,7 @@ export default function RegisterPage() {
 
   const passwordStrength = password.length >= 8 ? 'strong' : password.length >= 6 ? 'medium' : 'weak'
 
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'
+  const apiBase = import.meta.env.VITE_API_URL || 'http://13.60.224.91:5000/api/v1'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

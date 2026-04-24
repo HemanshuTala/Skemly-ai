@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import { io, type Socket } from 'socket.io-client'
 
-const SOCKET_URL = import.meta.env.VITE_WS_URL || 'http://localhost:5000'
+const SOCKET_URL = import.meta.env.VITE_WS_URL || 'http://13.60.224.91:5000'
 const SESSION_KEY = (token: string) => `public_pw_${token}`
 
 type PublicDiagram = {
