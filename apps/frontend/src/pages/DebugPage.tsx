@@ -22,7 +22,7 @@ export default function DebugPage() {
   const { user, isAuthenticated } = useAuthStore()
   const { currentWorkspace, workspaces, fetchWorkspaces } = useWorkspaceStore()
 
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://13.60.224.91:5000/api/v1'
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://ec2-13-60-224-91.eu-north-1.compute.amazonaws.com:5000/api/v1'
   const healthUrl = useMemo(() => {
     // VITE_API_URL is usually ".../api/v1" so health is at ".../health"
     return apiBaseUrl.replace(/\/api\/v1\/?$/, '') + '/health'
@@ -112,7 +112,7 @@ export default function DebugPage() {
 
   const runOAuthStatus = async () => {
     setStep('oauth', { ok: null, detail: undefined, data: undefined })
-    const apiBase = import.meta.env.VITE_API_URL || 'http://13.60.224.91:5000/api/v1'
+    const apiBase = import.meta.env.VITE_API_URL || 'http://ec2-13-60-224-91.eu-north-1.compute.amazonaws.com:5000/api/v1'
     const statusRes = await fetch(`${apiBase}/auth/providers/status`)
     const json = await statusRes.json().catch(() => ({}))
     const configured =
