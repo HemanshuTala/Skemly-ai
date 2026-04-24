@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, useScroll, useTransform, useInView, AnimatePresence, useSpring, useMotionValue, animate } from 'framer-motion'
 import { ArrowRight, MousePointer2, Cpu, Globe, Database, GitBranch, Shield, LayoutTemplate, Terminal, Sparkles, PenTool, Star, Network, Workflow, Braces, Zap, Check, ArrowUpRight, Layers, Loader2 } from 'lucide-react'
 import SkemlyLogo from '../assets/Skemly.png'
+import docsImage from '../assets/docs.png'
 import { useAuthStore } from '@/stores/authStore'
 import { billingAPI } from '@/services/api.service'
 import toast from 'react-hot-toast'
@@ -589,6 +590,79 @@ export default function LandingPage() {
 
       {/* ── MARQUEE ── */}
       {/* <Marquee /> */}
+
+      {/* ── DOCS SHOWCASE ── */}
+      <section style={{ ...sec(), background: T.bg, borderTop: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}` }}>
+        <div style={wrap}>
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={SP_SOFT} style={{ textAlign: 'center', marginBottom: 40 }}>
+            <div style={lbl}>Documentation</div>
+            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1, ...SP_SOFT }} style={hdg(36)}>Beautiful docs, automatically</motion.h2>
+            <p style={{ fontSize: 16, color: T.textSub, maxWidth: 600, margin: '16px auto 0', lineHeight: 1.6 }}>Generate comprehensive documentation from your diagrams. Export to Notion, Confluence, or share as a public link.</p>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 40, scale: 0.95 }} 
+            whileInView={{ opacity: 1, y: 0, scale: 1 }} 
+            viewport={{ once: true }} 
+            transition={{ delay: 0.2, ...SP_SLOW }}
+            style={{ 
+              position: 'relative',
+              borderRadius: 16, 
+              overflow: 'hidden',
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
+            }}
+          >
+            {/* Browser Chrome */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 8, 
+              padding: '12px 16px', 
+              background: T.surface,
+              borderBottom: `1px solid ${T.border}`
+            }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ef4444' }} />
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#f59e0b' }} />
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#10b981' }} />
+              </div>
+              <div style={{ 
+                flex: 1, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                padding: '4px 16px',
+                background: T.bg,
+                borderRadius: 6,
+                fontSize: 12,
+                color: T.textMuted,
+                fontFamily: 'JetBrains Mono, monospace',
+              }}>
+                skemly.ai/docs
+              </div>
+            </div>
+            
+            {/* Image Container with Loading */}
+            <div style={{ position: 'relative', width: '100%', background: T.bg }}>
+              <motion.img 
+                src={docsImage} 
+                alt="Skemly Documentation"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                style={{ 
+                  width: '100%', 
+                  height: 'auto', 
+                  objectFit: 'contain',
+                  display: 'block'
+                }}
+              />
+            </div>
+          </motion.div>
+        </div>
+      </section>
 
       {/* ── FEATURES ── */}
       <section id="features" style={sec()}>
