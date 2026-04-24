@@ -6,6 +6,7 @@ export interface AIPromptTemplate {
   name: string;
   description: string;
   category: 'flowchart' | 'architecture' | 'data' | 'uml' | 'sequence' | 'mindmap' | 'custom';
+  diagramType?: 'flowchart' | 'architecture' | 'data' | 'uml' | 'sequence' | 'mindmap' | 'custom';
   systemPrompt: string;
   userPromptTemplate: string;
   exampleInput: string;

@@ -8,12 +8,6 @@ interface RazorpayInlineCheckoutOptions {
   onError?: (error: string) => void;
 }
 
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
-
 let checkoutInstance: any = null;
 
 function loadRazorpayScript(): Promise<void> {

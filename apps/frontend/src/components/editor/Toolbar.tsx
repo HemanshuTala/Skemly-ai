@@ -28,6 +28,7 @@ export interface ToolbarProps {
   onTitleChange: (title: string) => void;
   isSaving: boolean;
   lastSaved?: Date;
+  onShare?: () => void;
   onExport: () => void;
   onAIAssist: () => void;
   onComments: () => void;
@@ -41,6 +42,7 @@ export function Toolbar({
   onTitleChange,
   isSaving,
   lastSaved,
+  onShare,
   onExport,
   onAIAssist,
   onComments,

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Mail, Loader2, CheckCircle } from 'lucide-react'
 import { authService } from '@/services/auth.service'
 import toast from 'react-hot-toast'
-import SkemlyLogo from '../../assets/Skemly.png/'
+import SkemlyLogo from '../../assets/Skemly.png'
 
 const T = {
   bg: '#080808',

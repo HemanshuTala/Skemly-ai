@@ -108,12 +108,12 @@ function Typewriter({ lines }: { lines: string[] }) {
   )
 }
 
-function MagneticBtn({ children, style = {}, onClick, variant = 'solid' }) {
-  const ref = useRef(null)
+function MagneticBtn({ children, style = {}, onClick, variant = 'solid' }: { children: React.ReactNode, style?: React.CSSProperties, onClick?: () => void, variant?: 'solid' | 'ghost' }) {
+  const ref = useRef<HTMLButtonElement>(null)
   const mx = useMotionValue(0); const my = useMotionValue(0)
   const sx = useSpring(mx, { stiffness: 180, damping: 16 })
   const sy = useSpring(my, { stiffness: 180, damping: 16 })
-  const onMove = useCallback(e => {
+  const onMove = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     const r = ref.current?.getBoundingClientRect()
     if (!r) return
     mx.set((e.clientX - r.left - r.width/2) * 0.3)
@@ -256,7 +256,7 @@ function ProcessSteps() {
   )
 }
 
-function FeatureCard({ f, i, last }) {
+function FeatureCard({ f, i, last }: { f: { tag: string, title: string, desc: string, icon: React.ComponentType<{ size?: string | number, color?: string }> }, i: number, last?: boolean }) {
   const [hov, setHov] = useState(false)
   return (
     <motion.div initial={{ opacity:0, y:28 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} transition={{ delay:i*0.1, ...SP_SOFT }} onHoverStart={() => setHov(true)} onHoverEnd={() => setHov(false)} style={{ padding:'36px 28px', background: hov ? T.surfaceHi : T.surface, borderRight: !last ? `1px solid ${T.border}` : 'none', transition:'background 0.25s', cursor:'default', position:'relative', overflow:'hidden' }}>
@@ -271,10 +271,10 @@ function FeatureCard({ f, i, last }) {
   )
 }
 
-function TestimonialCard({ t, i }) {
+function TestimonialCard({ t, i }: { t: { text: string, name: string, role: string, initial: string }, i: number }) {
   const [hov, setHov] = useState(false)
   return (
-    <motion.div initial={{ opacity:0, y:24 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} transition={{ delay:i*0.1, ...SP_SOFT }} onHoverStart={() => setHov(true)} onHoverEnd={() => setHov(false)} animate={{ y: hov ? -5 : 0 }} transition={SP_SOFT} style={{ padding:'26px', borderRadius:10, background: hov ? T.surfaceHi : T.surface, border:`1px solid ${ hov ? T.borderHi : T.border}`, cursor:'default', transition:'background 0.2s, border-color 0.2s' }}>
+    <motion.div initial={{ opacity:0, y:24 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} transition={{ delay:i*0.1, ...SP_SOFT }} onHoverStart={() => setHov(true)} onHoverEnd={() => setHov(false)} animate={{ y: hov ? -5 : 0 }} style={{ padding:'26px', borderRadius:10, background: hov ? T.surfaceHi : T.surface, border:`1px solid ${ hov ? T.borderHi : T.border}`, cursor:'default', transition:'background 0.2s, border-color 0.2s' }}>
       <div style={{ display:'flex', gap:2, marginBottom:16 }}>
         {[...Array(5)].map((_,j)=>(
           <motion.div key={j} initial={{ opacity:0, scale:0 }} whileInView={{ opacity:1, scale:1 }} viewport={{ once:true }} transition={{ delay:i*0.1+j*0.07, ...SP_BOUNCY }}>
@@ -311,7 +311,7 @@ function NoiseOverlay() {
 function CursorGlow() {
   const x = useMotionValue(-400)
   const y = useMotionValue(-400)
-  useEffect(() => { const move = e => { x.set(e.clientX); y.set(e.clientY) }; window.addEventListener('mousemove', move); return () => window.removeEventListener('mousemove', move) }, [])
+  useEffect(() => { const move = (e: MouseEvent) => { x.set(e.clientX); y.set(e.clientY) }; window.addEventListener('mousemove', move); return () => window.removeEventListener('mousemove', move) }, [])
   return <motion.div style={{ position:'fixed', top:0, left:0, pointerEvents:'none', zIndex:0, x, y, translateX:'-50%', translateY:'-50%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(201,184,154,0.04) 0%, transparent 70%)' }} />
 }
 
