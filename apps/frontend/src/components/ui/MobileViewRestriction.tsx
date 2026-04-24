@@ -8,7 +8,7 @@ export const MobileViewRestriction: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-xs space-y-8"
+        className="max-w-sm w-full space-y-8 px-4"
       >
         <div className="relative flex justify-center">
           <div className="relative h-24 w-24 rounded-3xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-2xl shadow-primary/10">
@@ -24,11 +24,11 @@ export const MobileViewRestriction: React.FC = () => {
           <div className="absolute -top-4 -right-4 h-20 w-20 rounded-2xl bg-primary/5 blur-2xl" />
         </div>
 
-        <div className="space-y-4">
-          <h1 className="text-2xl font-black tracking-tight text-foreground">
-            Desktop Only Experience
+        <div className="space-y-5">
+          <h1 className="text-3xl font-black tracking-tight text-foreground leading-tight">
+            Desktop Only<br />Experience
           </h1>
-          <p className="text-zinc-400 text-sm leading-relaxed max-w-[280px] mx-auto">
+          <p className="text-muted-foreground text-base leading-relaxed">
             Skemly is a professional diagramming tool designed for large screens. Please switch to a <span className="text-primary font-bold">PC or Tablet</span> for the best experience.
           </p>
         </div>

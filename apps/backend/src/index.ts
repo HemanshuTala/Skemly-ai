@@ -44,10 +44,21 @@ import { initSocketHandlers } from './sockets';
 const app = express();
 const httpServer = http.createServer(app);
 
+// CORS configuration for multiple origins
+const corsOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://skemly-ai-frontend-fbyj74lpq-hemanshutalas-projects.vercel.app',
+  'https://skemly.vercel.app',
+];
+if (process.env.FRONTEND_URL) {
+  corsOrigins.push(process.env.FRONTEND_URL);
+}
+
 // ─── Socket.io ────────────────────────────────────────────────────────────────
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: corsOrigins,
     credentials: true,
   },
 });
@@ -56,8 +67,9 @@ initSocketHandlers(io);
 // ─── Core Middleware ──────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cookieParser());
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: corsOrigins,
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
