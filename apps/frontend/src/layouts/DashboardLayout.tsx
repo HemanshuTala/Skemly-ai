@@ -158,9 +158,11 @@ function Sidebar({
           className="flex items-center gap-2.5"
           onClick={onClose}
         >
-          <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-            <Layers size={14} strokeWidth={2} className="text-[#18181b]" />
-          </div>
+          <img
+            src={skemlyLogo}
+            alt="Skemly"
+            className="w-7 h-7 object-contain flex-shrink-0"
+          />
           <span className="text-[15px] font-semibold text-white tracking-tight">
             Skemly
           </span>
