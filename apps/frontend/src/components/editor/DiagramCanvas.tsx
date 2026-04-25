@@ -28,6 +28,7 @@ import 'reactflow/dist/style.css';
 import { cn } from '@/lib/utils';
 import { Modal } from '../ui/modal';
 import { ResizableShapeNode } from '../nodes/ResizableShapeNode';
+import { ImageNode } from '../nodes/ImageNode';
 import { Button } from '../ui/button';
 import {
   Plus, Maximize2, MousePointer2, Hand, ZoomIn, ZoomOut,
@@ -687,7 +688,7 @@ function FlowchartNode(props: NodeProps) {
   );
 }
 
-const nodeTypes = { diagramNode: FlowchartNode, resizableShape: ResizableShapeNode };
+const nodeTypes = { diagramNode: FlowchartNode, resizableShape: ResizableShapeNode, image: ImageNode };
 
 function QuickAddHandles({
   node,
@@ -1304,8 +1305,75 @@ function DiagramCanvasInner({
     };
 
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [redo, undo]);
+    
+    // Paste handler for images
+    const handlePaste = (e: ClipboardEvent) => {
+      const el = containerRef.current;
+      if (!el || !reactFlowInstance) return;
+      
+      // Check if paste is within canvas
+      const target = e.target as HTMLElement;
+      if (!el.contains(target)) return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (!blob) continue;
+
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            if (!dataUrl) return;
+
+            // Get center of current viewport
+            const { x, y, zoom } = reactFlowInstance.getViewport();
+            const rect = el.getBoundingClientRect();
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            const pos = reactFlowInstance.screenToFlowPosition({
+              x: centerX,
+              y: centerY,
+            });
+
+            const newNode: Node = {
+              id: `img-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+              type: 'image',
+              position: pos,
+              data: {
+                src: dataUrl,
+                alt: 'Pasted image',
+              },
+              style: { width: 200, height: 150 },
+            };
+
+            setNodes((nds) => [...nds, newNode]);
+            onCanvasUserGesture?.();
+          };
+          reader.readAsDataURL(blob);
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    
+    // Listen for delete node events from ImageNode
+    const handleDeleteNode = (e: CustomEvent<{ nodeId: string }>) => {
+      const { nodeId } = e.detail;
+      setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+      onCanvasUserGesture?.();
+    };
+    window.addEventListener('deleteNode', handleDeleteNode as EventListener);
+    
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('paste', handlePaste);
+      window.removeEventListener('deleteNode', handleDeleteNode as EventListener);
+    };
+  }, [redo, undo, reactFlowInstance, setNodes, onCanvasUserGesture]);
 
   const autoLayout = useCallback(() => {
     if (!nodes.length) return;
@@ -2129,6 +2197,25 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       low.startsWith('erdiagram') ||
       low.startsWith('classdiagram')
     ) {
+      return;
+    }
+
+    // Handle image syntax: ![alt](url) or img[url]
+    const imageMatch = line.match(/^!\[(.*?)\]\((.+?)\)$/);
+    if (imageMatch) {
+      const alt = imageMatch[1];
+      const url = imageMatch[2];
+      const imgNode: Node = {
+        id: `img-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+        type: 'image',
+        position: { x: 0, y: 0 },
+        data: {
+          src: url,
+          alt: alt || 'Image',
+        },
+        style: { width: 200, height: 150 },
+      };
+      nodeById.set(imgNode.id, imgNode);
       return;
     }
 

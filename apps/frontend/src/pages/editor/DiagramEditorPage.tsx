@@ -491,6 +491,17 @@ export default function DiagramEditorPage() {
     // Preserve standalone nodes created from drag/drop or manual visual edits.
     nodes.forEach((n) => {
       if (connectedNodeIds.has(n.id)) return
+      
+      // Handle image nodes
+      if (n.type === 'image') {
+        const src = (n.data as any)?.src || ''
+        const alt = (n.data as any)?.alt || 'Image'
+        if (src) {
+          lines.push(`![${alt}](${src})`)
+        }
+        return
+      }
+      
       const info = nodeById.get(n.id)
       if (!info) return
       lines.push(wrap(info.label, info.kind))

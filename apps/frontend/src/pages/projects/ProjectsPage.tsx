@@ -275,12 +275,7 @@ export default function ProjectsPage() {
             <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-white to-[#a1a1aa] bg-clip-text text-transparent">
               {searchQuery ? 'No matching projects' : 'Start your first project'}
             </h3>
-            <p className="text-[#71717a] text-base mb-8 max-w-md leading-relaxed">
-              {searchQuery 
-                ? 'Try adjusting your search terms or clear the filter to see all projects'
-                : 'Create a project to organize your diagrams, collaborate with your team, and bring your ideas to life'
-              }
-            </p>
+
           </motion.div>
 
           {/* CTA Buttons */}
