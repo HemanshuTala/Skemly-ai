@@ -49,29 +49,81 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     if (!line) return;
     
     // Simple node pattern: [Node], {Node}, etc.
+    // Extended: [Label|w:120,h:80,shape:rectangle] for resizable shapes with dimensions
     const nodeMatch = line.match(/^\[(.*)\]$/);
     if (nodeMatch) {
-      const label = nodeMatch[1];
-      const id = label.replace(/\s+/g, '-').toLowerCase();
+      const content = nodeMatch[1];
+      // Check if extended format with pipe separator
+      const pipeIndex = content.indexOf('|');
+      const label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
+      const id = label.replace(/\s+/g, '-').toLowerCase() || `node-${nodes.length}`;
+      
+      // Parse extended attributes if present
+      let width: number | undefined;
+      let height: number | undefined;
+      let shape: string | undefined;
+      
+      if (pipeIndex >= 0) {
+        const attrsStr = content.slice(pipeIndex + 1);
+        const attrs = attrsStr.split(',');
+        attrs.forEach(attr => {
+          const [key, value] = attr.split(':');
+          if (key === 'w' && value) width = parseInt(value, 10);
+          if (key === 'h' && value) height = parseInt(value, 10);
+          if (key === 'shape' && value) shape = value;
+        });
+      }
+      
+      // Check if this is a resizable shape
+      const isResizableShape = shape && ['rectangle', 'circle', 'rounded'].includes(shape);
+      
       const newNode: Node = {
         id,
         position: { x: 100 + nodes.length * 150, y: 100 + nodes.length * 100 },
-        data: { label, kind: 'node' },
+        ...(width && { width }),
+        ...(height && { height }),
+        type: isResizableShape ? 'resizableShape' : 'diagramNode',
+        data: { 
+          label, 
+          kind: 'node',
+          ...(shape && { shape }),
+          style: isResizableShape ? {
+            fillColor: '#ffffff',
+            strokeColor: '#000000',
+            strokeWidth: 2,
+            fontSize: 14,
+            color: '#000000',
+          } : undefined,
+        },
       };
       nodes.push(newNode);
       nodeById.set(id, newNode);
       return;
     }
 
-    // Edge pattern: [From] --> [To]
+    // Edge pattern: [From] --> [To] (handles extended format too)
     const edgeMatch = line.match(/^(.+?)\s*-->\s*(.+)$/);
     if (edgeMatch) {
-      const from = edgeMatch[1].trim();
-      const to = edgeMatch[2].trim();
-      const fromId = from.replace(/\s+/g, '-').toLowerCase();
-      const toId = to.replace(/\s+/g, '-').toLowerCase();
+      const fromRaw = edgeMatch[1].trim();
+      const toRaw = edgeMatch[2].trim();
       
-      // Create or find nodes
+      // Helper to extract label from extended format [Label|w:100,h:80,shape:rect]
+      const extractLabel = (raw: string): string => {
+        const bracketMatch = raw.match(/^\[(.*)\]$/);
+        if (bracketMatch) {
+          const content = bracketMatch[1];
+          const pipeIndex = content.indexOf('|');
+          return pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
+        }
+        return raw;
+      };
+      
+      const fromLabel = extractLabel(fromRaw);
+      const toLabel = extractLabel(toRaw);
+      const fromId = fromLabel.replace(/\s+/g, '-').toLowerCase();
+      const toId = toLabel.replace(/\s+/g, '-').toLowerCase();
+      
+      // Create or find nodes (with basic data if not already defined)
       let fromNode = nodeById.get(fromId);
       let toNode = nodeById.get(toId);
       
@@ -79,7 +131,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
         fromNode = {
           id: fromId,
           position: { x: 100 + nodes.length * 150, y: 100 + nodes.length * 100 },
-          data: { label: from, kind: 'node' },
+          data: { label: fromLabel, kind: 'node' },
         };
         nodes.push(fromNode);
         nodeById.set(fromId, fromNode);
@@ -89,7 +141,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
         toNode = {
           id: toId,
           position: { x: 100 + nodes.length * 150, y: 100 + nodes.length * 150 },
-          data: { label: to, kind: 'node' },
+          data: { label: toLabel, kind: 'node' },
         };
         nodes.push(toNode);
         nodeById.set(toId, toNode);
@@ -466,7 +518,14 @@ export default function DiagramEditorPage() {
       })
     })
 
-    const wrap = (label: string, kind: string) => {
+    const wrap = (info: { label: string; kind: string; width?: number; height?: number; shape?: string; type?: string }) => {
+      const { label, kind, width, height, shape, type } = info;
+      // For resizable shapes, include dimensions and shape in syntax
+      if (type === 'resizableShape' && shape) {
+        const dimPart = (width && height) ? `|w:${width},h:${height}` : '';
+        const shapePart = `|shape:${shape}`;
+        return `[${label}${dimPart}${shapePart}]`;
+      }
       if (kind === 'decision') return `{${label}}`
       if (kind === 'startend') return `(${label})`
       if (kind === 'database') return `[[${label}]]`
@@ -482,8 +541,8 @@ export default function DiagramEditorPage() {
       connectedNodeIds.add(e.source)
       connectedNodeIds.add(e.target)
 
-      const fromRef = wrap(from.label, from.kind)
-      const toRef = wrap(to.label, to.kind)
+      const fromRef = wrap(from)
+      const toRef = wrap(to)
 
       const label = String(e.label ?? '').trim()
       if (label) {
@@ -509,7 +568,7 @@ export default function DiagramEditorPage() {
       
       const info = nodeById.get(n.id)
       if (!info) return
-      lines.push(wrap(info.label, info.kind))
+      lines.push(wrap(info))
     })
 
     return lines.join('\n')
