@@ -36,6 +36,7 @@
     "@tiptap/pm": "^2.1.13",
     "@tiptap/react": "^2.1.13",
     "@tiptap/starter-kit": "^2.1.13",
+    "@vercel/analytics": "^2.0.1",
     "axios": "^1.14.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",

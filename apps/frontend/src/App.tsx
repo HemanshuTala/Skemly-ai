@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Analytics } from "@vercel/analytics/react"
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
@@ -197,6 +198,7 @@ function App() {
             <AnimatedRoutes />
           </SmoothScrollProvider>
         </BrowserRouter>
+        <Analytics />
       </QueryClientProvider>
     </ErrorBoundary>
   )
