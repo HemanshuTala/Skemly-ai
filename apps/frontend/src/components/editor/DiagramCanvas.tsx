@@ -754,7 +754,7 @@ function DiagramCanvasInner({
   onGraphChange,
   onUserGraphChange,
   onCanvasUserGesture,
-  paperColor = '#f8f4ef',
+  paperColor = '#09090b',
   showGrid = true,
   showRuler = false,
   onSelectionChange,

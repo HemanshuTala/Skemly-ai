@@ -173,7 +173,7 @@ export default function DiagramEditorPage() {
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
   const [selectedNodeData, setSelectedNodeData] = useState<Node | null>(null);
   const [selectedEdgeData, setSelectedEdgeData] = useState<Edge | null>(null);
-  const [canvasPaper, setCanvasPaper] = useState('#f8f4ef');
+  const [canvasPaper, setCanvasPaper] = useState('#09090b');
   const [canvasShowGrid, setCanvasShowGrid] = useState(true);
   const [canvasShowRuler, setCanvasShowRuler] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');

@@ -23,7 +23,7 @@ export interface IDiagramEdge {
   type?: string;
   style?: Record<string, unknown>;
   animated?: boolean;
-  markerEnd?: string;
+  markerEnd?: string | { type?: string; color?: string; width?: number; height?: number };
 }
 
 export interface IDiagramViewport {
@@ -144,7 +144,7 @@ const EdgeSchema = new Schema<IDiagramEdge>(
     type: { type: String, default: 'default' },
     style: { type: Schema.Types.Mixed, default: {} },
     animated: { type: Boolean, default: false },
-    markerEnd: String,
+    markerEnd: { type: Schema.Types.Mixed, default: null },
   },
   { _id: false }
 );
