@@ -639,25 +639,40 @@ export default function DiagramEditorPage() {
       height?: number;
       fontFamily?: string;
       color?: string;
+      borderRadius?: number;
+      shape?: 'rectangle' | 'circle' | 'rounded';
     }) => {
       const ids = selectedNodeIds.length > 0 ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : [];
       if (ids.length === 0) return;
       updateVisualGraph((prev) => ({
-        nodes: prev.nodes.map((n) =>
-          ids.includes(n.id)
-            ? {
-                ...n,
-                data: {
-                  ...(n.data as any),
-                  style: (() => {
-                    const base = { ...((n.data as any)?.style || {}), ...patch };
-                    if (patch.fontFamily === 'inherit') delete (base as any).fontFamily;
-                    return base;
-                  })(),
-                },
-              }
-            : n
-        ),
+        nodes: prev.nodes.map((n) => {
+          if (!ids.includes(n.id)) return n;
+          
+          const currentData = n.data as any;
+          const currentStyle = currentData?.style || {};
+          
+          // Build new style object (excluding width, height, shape, borderRadius which go in data)
+          const { width, height, shape, borderRadius, ...stylePatch } = patch;
+          const newStyle = { ...currentStyle, ...stylePatch };
+          if (stylePatch.fontFamily === 'inherit') delete (newStyle as any).fontFamily;
+          
+          // Build new node with updated dimensions and data
+          const updatedNode: Node = {
+            ...n,
+            // Update width/height at node level for ReactFlow
+            ...(width !== undefined && { width: Math.max(50, width) }),
+            ...(height !== undefined && { height: Math.max(30, height) }),
+            data: {
+              ...currentData,
+              style: newStyle,
+              // Store shape and borderRadius in data for resizable shapes
+              ...(shape !== undefined && { shape }),
+              ...(borderRadius !== undefined && { borderRadius }),
+            },
+          };
+          
+          return updatedNode;
+        }),
         edges: prev.edges,
       }));
     },

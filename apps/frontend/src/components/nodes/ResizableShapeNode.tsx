@@ -5,14 +5,18 @@ import '@reactflow/node-resizer/dist/style.css';
 import { cn } from '@/lib/utils';
 
 interface ShapeData {
-  label: string;
+  label?: string;
   shape?: 'rectangle' | 'circle' | 'rounded';
+  borderRadius?: number;
+  width?: number;
+  height?: number;
   style?: {
     fillColor?: string;
     strokeColor?: string;
     strokeWidth?: number;
     fontSize?: number;
     color?: string;
+    borderRadius?: number;
   };
 }
 
@@ -54,16 +58,22 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
       border: `${style.strokeWidth || 2}px solid ${style.strokeColor || '#000000'}`,
     };
 
+    // Get custom border radius from data or style
+    const customRadius = data.borderRadius || style.borderRadius || 4;
+
     switch (shape) {
       case 'circle':
         return { ...baseStyles, borderRadius: '50%' };
       case 'rounded':
-        return { ...baseStyles, borderRadius: '12px' };
+        return { ...baseStyles, borderRadius: `${Math.max(4, customRadius)}px` };
       case 'rectangle':
       default:
-        return { ...baseStyles, borderRadius: '4px' };
+        return { ...baseStyles, borderRadius: `${customRadius}px` };
     }
   };
+
+
+  const shapeStyles = getShapeStyles();
 
   return (
     <div 
@@ -71,7 +81,7 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
         "relative w-full h-full flex items-center justify-center",
         selected && "ring-2 ring-primary"
       )}
-      style={getShapeStyles()}
+      style={shapeStyles}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer 
@@ -99,21 +109,21 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
           onChange={(e) => setLabel(e.target.value)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className="w-full h-full p-2 text-center resize-none outline-none bg-transparent"
+          className="w-full h-full p-2 text-center resize-none outline-none bg-transparent relative z-10"
           style={{ 
             fontSize: style.fontSize || 14, 
             color: style.color || '#000000',
-            fontFamily: 'inherit'
+            fontFamily: 'inherit',
           }}
           autoFocus
         />
       ) : (
         <div 
-          className="w-full h-full p-2 flex items-center justify-center overflow-hidden"
+          className="w-full h-full p-2 flex items-center justify-center overflow-hidden relative z-10"
           style={{ 
             fontSize: style.fontSize || 14, 
             color: style.color || '#000000',
-            fontFamily: 'inherit'
+            fontFamily: 'inherit',
           }}
         >
           <span className="text-center break-words line-clamp-3">{label}</span>

@@ -65,6 +65,8 @@ interface PropertiesPanelProps {
     height?: number;
     fontFamily?: string;
     color?: string;
+    borderRadius?: number;
+    shape?: 'rectangle' | 'circle' | 'rounded';
   }) => void;
   onEdgeStyleChange: (patch: {
     stroke?: string;
@@ -529,7 +531,7 @@ export function PropertiesPanel({
                   {/* Resizable Shape Type Selector */}
                   {selectedNode?.type === 'resizableShape' && (
                     <InspectorSection title="Shape Type" icon={Box}>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-muted/30 border border-border/40">
                           {[
                             { value: 'rectangle', label: 'Rectangle' },
@@ -539,11 +541,7 @@ export function PropertiesPanel({
                             <button
                               key={value}
                               type="button"
-                              onClick={() => {
-                                const nodeData = selectedNode.data as any;
-                                selectedNode.data = { ...nodeData, shape: value };
-                                onNodeStyleChange({}); // Trigger update
-                              }}
+                              onClick={() => onNodeStyleChange({ shape: value as any })}
                               className={cn(
                                 'py-1.5 rounded-lg text-[10px] font-bold transition-all leading-tight',
                                 String((selectedNode.data as any)?.shape || 'rectangle') === value
@@ -711,16 +709,21 @@ export function PropertiesPanel({
                     </div>
                   </InspectorSection>
 
-                  {/* Size */}
-                  <InspectorSection title="Size (px)" icon={LayoutGrid}>
+                  {/* Size & Dimensions */}
+                  <InspectorSection title="Dimensions (px)" icon={LayoutGrid}>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1.5">
                         <span className="text-[10px] font-semibold text-foreground/60">Width</span>
                         <Input
                           type="number"
                           className="h-8 text-[11px]"
-                          value={Number(nodeStyle?.width || 160)}
+                          value={Number(selectedNode?.width || (selectedNode?.data as any)?.width || 160)}
                           onChange={(e) => onNodeStyleChange({ width: Number(e.target.value || 0) })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              (e.currentTarget as HTMLInputElement).blur();
+                            }
+                          }}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -728,11 +731,35 @@ export function PropertiesPanel({
                         <Input
                           type="number"
                           className="h-8 text-[11px]"
-                          value={Number(nodeStyle?.height || 52)}
+                          value={Number(selectedNode?.height || (selectedNode?.data as any)?.height || 52)}
                           onChange={(e) => onNodeStyleChange({ height: Number(e.target.value || 0) })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              (e.currentTarget as HTMLInputElement).blur();
+                            }
+                          }}
                         />
                       </div>
                     </div>
+                    {/* Border Radius for resizable shapes */}
+                    {selectedNode?.type === 'resizableShape' && (
+                      <div className="space-y-1.5 pt-2 border-t border-border/30">
+                        <span className="text-[10px] font-semibold text-foreground/60">Border Radius (px)</span>
+                        <Input
+                          type="number"
+                          className="h-8 text-[11px]"
+                          min={0}
+                          max={100}
+                          value={Number((selectedNode.data as any)?.borderRadius || nodeStyle?.borderRadius || 4)}
+                          onChange={(e) => onNodeStyleChange({ borderRadius: Number(e.target.value || 0) })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              (e.currentTarget as HTMLInputElement).blur();
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
                   </InspectorSection>
 
                   {/* Arrange & Layers */}
