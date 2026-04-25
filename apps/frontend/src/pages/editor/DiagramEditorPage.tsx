@@ -454,11 +454,15 @@ export default function DiagramEditorPage() {
     : null;
 
   const graphToSyntax = useCallback((nodes: Node[], edges: Edge[]): string => {
-    const nodeById = new Map<string, { label: string; kind: string }>()
+    const nodeById = new Map<string, { label: string; kind: string; width?: number; height?: number; shape?: string; type?: string }>()
     nodes.forEach((n) => {
       nodeById.set(n.id, {
         label: String((n.data as any)?.label ?? n.id),
         kind: String((n.data as any)?.kind ?? 'node'),
+        width: n.width ?? undefined,
+        height: n.height ?? undefined,
+        shape: (n.data as any)?.shape,
+        type: n.type,
       })
     })
 

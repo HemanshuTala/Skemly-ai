@@ -335,11 +335,19 @@ export function PropertiesPanel({
   const edgeStyle = (selectedEdge?.style as any) || {};
   const [fontSizeDraft, setFontSizeDraft] = useState('12');
   const [borderWidthDraft, setBorderWidthDraft] = useState('2');
+  // Draft states for dimensions
+  const [widthDraft, setWidthDraft] = useState('160');
+  const [heightDraft, setHeightDraft] = useState('52');
+  const [borderRadiusDraft, setBorderRadiusDraft] = useState('4');
 
   useEffect(() => {
     setFontSizeDraft(String(Number(nodeStyle?.fontSize || 12)));
     setBorderWidthDraft(String(Number(nodeStyle?.strokeWidth || 2)));
-  }, [selectedNode?.id, nodeStyle?.fontSize, nodeStyle?.strokeWidth]);
+    // Sync dimension drafts
+    setWidthDraft(String(Number(selectedNode?.width || (selectedNode?.data as any)?.width || 160)));
+    setHeightDraft(String(Number(selectedNode?.height || (selectedNode?.data as any)?.height || 52)));
+    setBorderRadiusDraft(String(Number((selectedNode?.data as any)?.borderRadius || nodeStyle?.borderRadius || 4)));
+  }, [selectedNode?.id, selectedNode?.width, selectedNode?.height, nodeStyle?.fontSize, nodeStyle?.strokeWidth, nodeStyle?.borderRadius]);
 
   const commitFontSize = () => {
     const parsed = Number(fontSizeDraft);
@@ -361,6 +369,39 @@ export function PropertiesPanel({
     const next = Math.max(1, Math.min(24, Math.round(parsed)));
     setBorderWidthDraft(String(next));
     onNodeStyleChange({ strokeWidth: next });
+  };
+
+  const commitWidth = () => {
+    const parsed = Number(widthDraft);
+    if (!Number.isFinite(parsed)) {
+      setWidthDraft(String(Number(selectedNode?.width || 160)));
+      return;
+    }
+    const next = Math.max(50, parsed);
+    setWidthDraft(String(next));
+    onNodeStyleChange({ width: next });
+  };
+
+  const commitHeight = () => {
+    const parsed = Number(heightDraft);
+    if (!Number.isFinite(parsed)) {
+      setHeightDraft(String(Number(selectedNode?.height || 52)));
+      return;
+    }
+    const next = Math.max(30, parsed);
+    setHeightDraft(String(next));
+    onNodeStyleChange({ height: next });
+  };
+
+  const commitBorderRadius = () => {
+    const parsed = Number(borderRadiusDraft);
+    if (!Number.isFinite(parsed)) {
+      setBorderRadiusDraft(String(Number((selectedNode?.data as any)?.borderRadius || 4)));
+      return;
+    }
+    const next = Math.max(0, Math.min(100, Math.round(parsed)));
+    setBorderRadiusDraft(String(next));
+    onNodeStyleChange({ borderRadius: next });
   };
 
   return (
@@ -726,10 +767,12 @@ export function PropertiesPanel({
                         <Input
                           type="number"
                           className="h-9 text-[12px] font-medium bg-background/60 border-border/60 focus:border-primary/50"
-                          value={Number(selectedNode?.width || (selectedNode?.data as any)?.width || 160)}
-                          onChange={(e) => onNodeStyleChange({ width: Number(e.target.value || 0) })}
+                          value={widthDraft}
+                          onChange={(e) => setWidthDraft(e.target.value)}
+                          onBlur={commitWidth}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
+                              commitWidth();
                               (e.currentTarget as HTMLInputElement).blur();
                             }
                           }}
@@ -743,10 +786,12 @@ export function PropertiesPanel({
                         <Input
                           type="number"
                           className="h-9 text-[12px] font-medium bg-background/60 border-border/60 focus:border-primary/50"
-                          value={Number(selectedNode?.height || (selectedNode?.data as any)?.height || 52)}
-                          onChange={(e) => onNodeStyleChange({ height: Number(e.target.value || 0) })}
+                          value={heightDraft}
+                          onChange={(e) => setHeightDraft(e.target.value)}
+                          onBlur={commitHeight}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
+                              commitHeight();
                               (e.currentTarget as HTMLInputElement).blur();
                             }
                           }}
@@ -765,10 +810,12 @@ export function PropertiesPanel({
                           className="h-9 text-[12px] font-medium bg-background/60 border-border/60 focus:border-primary/50"
                           min={0}
                           max={100}
-                          value={Number((selectedNode.data as any)?.borderRadius || nodeStyle?.borderRadius || 4)}
-                          onChange={(e) => onNodeStyleChange({ borderRadius: Number(e.target.value || 0) })}
+                          value={borderRadiusDraft}
+                          onChange={(e) => setBorderRadiusDraft(e.target.value)}
+                          onBlur={commitBorderRadius}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
+                              commitBorderRadius();
                               (e.currentTarget as HTMLInputElement).blur();
                             }
                           }}

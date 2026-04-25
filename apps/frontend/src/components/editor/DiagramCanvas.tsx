@@ -1660,7 +1660,7 @@ function DiagramCanvasInner({
 
   const confirmRenameNode = useCallback(() => {
     const next = renameNodeLabel.trim();
-    if (!renameNodeId || !next) return;
+    if (!renameNodeId) return;
     onCanvasUserGesture?.();
     setNodes((nds: Node[]) =>
       nds.map((n: Node) =>
