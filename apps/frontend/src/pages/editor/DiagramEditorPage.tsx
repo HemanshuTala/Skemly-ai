@@ -1357,16 +1357,17 @@ export default function DiagramEditorPage() {
                 onCanvasUserGesture={onCanvasUserGesture}
                 onUserGraphChange={(graph) => {
                   latestGraphRef.current = graph;
-                  if (codeAuthoritativeRef.current) {
-                    return;
-                  }
+                  // ALWAYS update localGraph to preserve dimensions/positions from canvas
                   const snapshot = {
                     nodes: graph.nodes.map((n) => ({ ...n })),
                     edges: graph.edges.map((e) => ({ ...e })),
                   };
+                  setLocalGraph(snapshot);
+                  if (codeAuthoritativeRef.current) {
+                    return;
+                  }
                   const nextSyntax = graphToSyntax(snapshot.nodes, snapshot.edges);
                   if (nextSyntax.trim() !== syntaxRef.current.trim()) {
-                    setLocalGraph(snapshot);
                     handleSyntaxChange(nextSyntax, 'visual');
                   }
                 }}
