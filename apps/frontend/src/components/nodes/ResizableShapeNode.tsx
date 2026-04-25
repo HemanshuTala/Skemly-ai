@@ -20,6 +20,8 @@ interface ShapeData {
   };
   /** Callback when dimensions change from resize */
   onDimensionsChange?: (id: string, width: number, height: number) => void;
+  /** Callback when label changes */
+  onLabelChange?: (id: string, label: string) => void;
 }
 
 export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>) {
@@ -52,22 +54,26 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
 
   const handleBlur = useCallback(() => {
     setIsEditing(false);
-    // Update node data through ReactFlow's API
+    // Update node data through callback to parent
     if (data.label !== label) {
-      // This will be handled by the parent component
+      data.onLabelChange?.(id, label);
     }
-  }, [data.label, label]);
+  }, [data.label, label, data, id]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       setIsEditing(false);
+      // Save label on Enter
+      if (data.label !== label) {
+        data.onLabelChange?.(id, label);
+      }
     }
     if (e.key === 'Escape') {
       setIsEditing(false);
       setLabel(data.label || '');
     }
-  }, [data.label]);
+  }, [data.label, label, data, id]);
 
   const getShapeStyles = () => {
     const baseStyles = {

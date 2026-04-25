@@ -1149,14 +1149,35 @@ function DiagramCanvasInner({
   // Handle dimension changes from ResizableShapeNode
   const handleNodeDimensionsChange = useCallback(
     (nodeId: string, width: number, height: number) => {
-      setNodes((prevNodes) =>
-        prevNodes.map((n) =>
+      setNodes((prevNodes) => {
+        const updatedNodes = prevNodes.map((n) =>
           n.id === nodeId ? { ...n, width, height } : n
-        )
-      );
+        );
+        // Force immediate sync to parent to prevent race condition with color changes
+        const updatedGraph = { nodes: updatedNodes, edges };
+        onUserGraphChange?.(updatedGraph);
+        return updatedNodes;
+      });
       onCanvasUserGesture?.();
     },
-    [setNodes, onCanvasUserGesture]
+    [setNodes, onCanvasUserGesture, onUserGraphChange, edges]
+  );
+
+  // Handle label changes from ResizableShapeNode
+  const handleNodeLabelChange = useCallback(
+    (nodeId: string, newLabel: string) => {
+      setNodes((prevNodes) => {
+        const updatedNodes = prevNodes.map((n) =>
+          n.id === nodeId ? { ...n, data: { ...n.data, label: newLabel } } : n
+        );
+        // Force immediate sync
+        const updatedGraph = { nodes: updatedNodes, edges };
+        onUserGraphChange?.(updatedGraph);
+        return updatedNodes;
+      });
+      onCanvasUserGesture?.();
+    },
+    [setNodes, onCanvasUserGesture, onUserGraphChange, edges]
   );
 
   const relayNodesChange = useCallback(
@@ -1549,6 +1570,7 @@ function DiagramCanvasInner({
                   color: '#000000',
                 },
                 onDimensionsChange: handleNodeDimensionsChange,
+                onLabelChange: handleNodeLabelChange,
               },
             };
             setNodes((nds: Node[]) => [...nds, newNode]);
@@ -1604,7 +1626,7 @@ function DiagramCanvasInner({
         console.error('[Canvas] Drop handling failed:', err);
       }
     },
-    [reactFlowInstance, setNodes, setEdges, onCanvasUserGesture, handleNodeDimensionsChange]
+    [reactFlowInstance, setNodes, setEdges, onCanvasUserGesture, handleNodeDimensionsChange, handleNodeLabelChange, onUserGraphChange]
   );
 
   const confirmAddNode = useCallback(() => {
