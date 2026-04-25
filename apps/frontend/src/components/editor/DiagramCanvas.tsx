@@ -1146,6 +1146,19 @@ function DiagramCanvasInner({
     [onEdgesChangeInternal, onEdgesChange, edges]
   );
 
+  // Handle dimension changes from ResizableShapeNode
+  const handleNodeDimensionsChange = useCallback(
+    (nodeId: string, width: number, height: number) => {
+      setNodes((prevNodes) =>
+        prevNodes.map((n) =>
+          n.id === nodeId ? { ...n, width, height } : n
+        )
+      );
+      onCanvasUserGesture?.();
+    },
+    [setNodes, onCanvasUserGesture]
+  );
+
   const relayNodesChange = useCallback(
     (changes: NodeChange[]) => {
       if (
@@ -1534,7 +1547,8 @@ function DiagramCanvasInner({
                   strokeWidth: 2,
                   fontSize: 14,
                   color: '#000000',
-                }
+                },
+                onDimensionsChange: handleNodeDimensionsChange,
               },
             };
             setNodes((nds: Node[]) => [...nds, newNode]);
@@ -1590,7 +1604,7 @@ function DiagramCanvasInner({
         console.error('[Canvas] Drop handling failed:', err);
       }
     },
-    [reactFlowInstance, setNodes, setEdges, onCanvasUserGesture]
+    [reactFlowInstance, setNodes, setEdges, onCanvasUserGesture, handleNodeDimensionsChange]
   );
 
   const confirmAddNode = useCallback(() => {

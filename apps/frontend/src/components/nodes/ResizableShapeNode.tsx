@@ -18,6 +18,8 @@ interface ShapeData {
     color?: string;
     borderRadius?: number;
   };
+  /** Callback when dimensions change from resize */
+  onDimensionsChange?: (id: string, width: number, height: number) => void;
 }
 
 export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>) {
@@ -25,6 +27,7 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
   
   // Handle resize to persist dimensions
   const handleResize = useCallback((_: any, params: { width: number; height: number }) => {
+    // Update ReactFlow internal state
     setNodes((nodes) =>
       nodes.map((n) =>
         n.id === id
@@ -32,7 +35,9 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
           : n
       )
     );
-  }, [id, setNodes]);
+    // Notify parent component (DiagramCanvas) of dimension change
+    data.onDimensionsChange?.(id, params.width, params.height);
+  }, [id, setNodes, data]);
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(data.label || '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
