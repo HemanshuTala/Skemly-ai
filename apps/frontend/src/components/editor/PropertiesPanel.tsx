@@ -217,20 +217,26 @@ function ColorField({
   const displayHex = value?.startsWith('var(') ? safe : value || safe;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
+      {/* Header with label and current color */}
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold text-foreground/70">{label}</span>
-        {sublabel && <span className="text-[9px] text-muted-foreground/30 font-black uppercase tracking-widest">{sublabel}</span>}
-      </div>
-      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold text-foreground/80">{label}</span>
+          {sublabel && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground/60 font-medium">
+              {sublabel}
+            </span>
+          )}
+        </div>
         <ColorPicker
           value={displayHex}
           onChange={onChange}
-          className="w-full"
+          className="w-auto"
         />
       </div>
-      {/* Preset swatches */}
-      <div className="flex flex-wrap gap-1.5">
+      
+      {/* Preset swatches - more compact */}
+      <div className="flex flex-wrap gap-1">
         {presets.map((c) => (
           <button
             key={c}
@@ -238,9 +244,9 @@ function ColorField({
             title={c}
             onClick={() => onChange(c)}
             className={cn(
-              'h-5 w-5 rounded-md border border-border/60 shadow-sm transition-all hover:scale-110 active:scale-90',
+              'h-4 w-4 rounded-sm border border-border/50 transition-all hover:scale-125 active:scale-95',
               safe.toLowerCase() === c.toLowerCase() &&
-              'ring-2 ring-primary ring-offset-1 ring-offset-card scale-110 shadow-md'
+              'ring-1.5 ring-primary ring-offset-1 ring-offset-background scale-110'
             )}
             style={{ backgroundColor: c }}
           />
@@ -710,13 +716,16 @@ export function PropertiesPanel({
                   </InspectorSection>
 
                   {/* Size & Dimensions */}
-                  <InspectorSection title="Dimensions (px)" icon={LayoutGrid}>
-                    <div className="grid grid-cols-2 gap-2">
+                  <InspectorSection title="Dimensions" icon={LayoutGrid}>
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <span className="text-[10px] font-semibold text-foreground/60">Width</span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-foreground/60">Width</span>
+                          <span className="text-[9px] text-muted-foreground/40">px</span>
+                        </div>
                         <Input
                           type="number"
-                          className="h-8 text-[11px]"
+                          className="h-9 text-[12px] font-medium bg-background/60 border-border/60 focus:border-primary/50"
                           value={Number(selectedNode?.width || (selectedNode?.data as any)?.width || 160)}
                           onChange={(e) => onNodeStyleChange({ width: Number(e.target.value || 0) })}
                           onKeyDown={(e) => {
@@ -727,10 +736,13 @@ export function PropertiesPanel({
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <span className="text-[10px] font-semibold text-foreground/60">Height</span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-foreground/60">Height</span>
+                          <span className="text-[9px] text-muted-foreground/40">px</span>
+                        </div>
                         <Input
                           type="number"
-                          className="h-8 text-[11px]"
+                          className="h-9 text-[12px] font-medium bg-background/60 border-border/60 focus:border-primary/50"
                           value={Number(selectedNode?.height || (selectedNode?.data as any)?.height || 52)}
                           onChange={(e) => onNodeStyleChange({ height: Number(e.target.value || 0) })}
                           onKeyDown={(e) => {
@@ -743,11 +755,14 @@ export function PropertiesPanel({
                     </div>
                     {/* Border Radius for resizable shapes */}
                     {selectedNode?.type === 'resizableShape' && (
-                      <div className="space-y-1.5 pt-2 border-t border-border/30">
-                        <span className="text-[10px] font-semibold text-foreground/60">Border Radius (px)</span>
+                      <div className="space-y-1.5 pt-3 border-t border-border/30 mt-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-foreground/60">Border Radius</span>
+                          <span className="text-[9px] text-muted-foreground/40">px</span>
+                        </div>
                         <Input
                           type="number"
-                          className="h-8 text-[11px]"
+                          className="h-9 text-[12px] font-medium bg-background/60 border-border/60 focus:border-primary/50"
                           min={0}
                           max={100}
                           value={Number((selectedNode.data as any)?.borderRadius || nodeStyle?.borderRadius || 4)}

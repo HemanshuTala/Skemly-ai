@@ -444,13 +444,14 @@ export default function DiagramEditorPage() {
     [syntax, handleSyntaxChange]
   );
 
-  // Prefer React Flow's live selection (always in sync with canvas). localGraph can lag behind by a tick.
-  const selectedNode =
-    selectedNodeData ??
-    (selectedNodeId ? localGraph?.nodes?.find((n) => n.id === selectedNodeId) ?? null : null);
-  const selectedEdge =
-    selectedEdgeData ??
-    (selectedEdgeId ? localGraph?.edges?.find((e) => e.id === selectedEdgeId) ?? null : null);
+  // Always use localGraph for selected node/edge to get fresh data (width/height/styles)
+  // selectedNodeData can become stale after resize operations
+  const selectedNode = selectedNodeId
+    ? localGraph?.nodes?.find((n) => n.id === selectedNodeId) ?? selectedNodeData ?? null
+    : null;
+  const selectedEdge = selectedEdgeId
+    ? localGraph?.edges?.find((e) => e.id === selectedEdgeId) ?? selectedEdgeData ?? null
+    : null;
 
   const graphToSyntax = useCallback((nodes: Node[], edges: Edge[]): string => {
     const nodeById = new Map<string, { label: string; kind: string }>()
