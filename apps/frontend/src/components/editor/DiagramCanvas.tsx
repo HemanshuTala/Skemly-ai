@@ -27,6 +27,7 @@ import type { ReactFlowInstance } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { cn } from '@/lib/utils';
 import { Modal } from '../ui/modal';
+import { ResizableShapeNode } from '../nodes/ResizableShapeNode';
 import { Button } from '../ui/button';
 import {
   Plus, Maximize2, MousePointer2, Hand, ZoomIn, ZoomOut,
@@ -686,7 +687,7 @@ function FlowchartNode(props: NodeProps) {
   );
 }
 
-const nodeTypes = { diagramNode: FlowchartNode };
+const nodeTypes = { diagramNode: FlowchartNode, resizableShape: ResizableShapeNode };
 
 function QuickAddHandles({
   node,
@@ -1388,7 +1389,7 @@ function DiagramCanvasInner({
 
       try {
         onCanvasUserGesture?.();
-        const payload = JSON.parse(raw) as { kind?: string; label?: string; snippet?: string; color?: string; icon?: string; id?: string };
+        const payload = JSON.parse(raw) as { kind?: string; label?: string; snippet?: string; color?: string; icon?: string; id?: string; shape?: string; width?: number; height?: number; fillColor?: string; strokeColor?: string };
         console.log('[Canvas] Parsed payload:', payload);
         
         const pos = reactFlowInstance.screenToFlowPosition({
@@ -1443,6 +1444,31 @@ function DiagramCanvasInner({
           const label = String(payload.label || 'Node');
           const id = `n-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
           
+          // Handle resizable shapes
+          if (payload.kind === 'resizableShape') {
+            const shape = payload.shape || 'rectangle';
+            const width = payload.width || 120;
+            const height = payload.height || 80;
+            const newNode: Node = {
+              id,
+              type: 'resizableShape',
+              position: pos,
+              data: {
+                label: label,
+                shape: shape,
+                style: {
+                  fillColor: payload.fillColor || '#ffffff',
+                  strokeColor: payload.strokeColor || '#000000',
+                  strokeWidth: 2,
+                  fontSize: 14,
+                  color: '#000000',
+                }
+              },
+            };
+            setNodes((nds: Node[]) => [...nds, newNode]);
+            return;
+          }
+
           // Determine fill color from palette color or use default
           const getCategoryFillColor = (catColor?: string) => {
             if (!catColor) return '#27272a';

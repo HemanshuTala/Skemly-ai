@@ -161,16 +161,64 @@ import { cn } from '@/lib/utils';
 export type ShapePaletteItem = {
   id: string;
   label: string;
-  nodeKind?: 'node' | 'decision' | 'startend' | 'database' | 'entity' | 'actor' | 'queue' | 'io' | 'document' | 'delay' | 'storage' | 'manual' | 'display' | 'preparation' | 'loop' | 'ui' | 'cloud' | 'security' | 'mobile' | 'analytics' | 'user' | 'notification' | 'payment' | 'communication' | 'file' | 'media' | 'location' | 'time';
+  nodeKind?: 'node' | 'decision' | 'startend' | 'database' | 'entity' | 'actor' | 'queue' | 'io' | 'document' | 'delay' | 'storage' | 'manual' | 'display' | 'preparation' | 'loop' | 'ui' | 'cloud' | 'security' | 'mobile' | 'analytics' | 'user' | 'notification' | 'payment' | 'communication' | 'file' | 'media' | 'location' | 'time' | 'resizableShape';
   defaultNodeLabel?: string;
   snippet: string;
-  category: 'flowchart' | 'erd' | 'connectors' | 'extras' | 'ui' | 'cloud' | 'security' | 'mobile' | 'analytics' | 'communication' | 'media' | 'location';
+  category: 'flowchart' | 'erd' | 'connectors' | 'extras' | 'ui' | 'cloud' | 'security' | 'mobile' | 'analytics' | 'communication' | 'media' | 'location' | 'basicshapes';
+  shape?: 'rectangle' | 'circle' | 'rounded';
+  width?: number;
+  height?: number;
+  fillColor?: string;
+  strokeColor?: string;
   description?: string;
   icon?: string;
   color?: string;
 };
 
 const ITEMS: ShapePaletteItem[] = [
+  // Basic Shapes (Resizable)
+  {
+    id: 'rect',
+    label: 'Rectangle',
+    nodeKind: 'resizableShape',
+    defaultNodeLabel: 'Rectangle',
+    snippet: '',
+    category: 'basicshapes',
+    shape: 'rectangle',
+    width: 120,
+    height: 80,
+    fillColor: '#ffffff',
+    strokeColor: '#000000',
+    description: 'Resizable rectangle with editable text',
+  },
+  {
+    id: 'circle',
+    label: 'Circle',
+    nodeKind: 'resizableShape',
+    defaultNodeLabel: 'Circle',
+    snippet: '',
+    category: 'basicshapes',
+    shape: 'circle',
+    width: 100,
+    height: 100,
+    fillColor: '#ffffff',
+    strokeColor: '#000000',
+    description: 'Resizable circle with editable text',
+  },
+  {
+    id: 'rounded',
+    label: 'Rounded Rect',
+    nodeKind: 'resizableShape',
+    defaultNodeLabel: 'Rounded',
+    snippet: '',
+    category: 'basicshapes',
+    shape: 'rounded',
+    width: 120,
+    height: 80,
+    fillColor: '#ffffff',
+    strokeColor: '#000000',
+    description: 'Resizable rounded rectangle with editable text',
+  },
   // Flowchart
   {
     id: 'start',
@@ -1184,6 +1232,7 @@ function ShapeCard({ item, onInsert }: { item: ShapePaletteItem; onInsert: (s: s
           'erd': '#a78bfa',          // Purple
           'connectors': '#94a3b8',   // Gray
           'extras': '#64748b',       // Slate
+          'basicshapes': '#64748b',  // Slate
         };
         e.dataTransfer.setData(
           'application/x-diagram-snippet',
@@ -1194,6 +1243,11 @@ function ShapeCard({ item, onInsert }: { item: ShapePaletteItem; onInsert: (s: s
             color: item.color || categoryColors[item.category] || '#ffffff',
             icon: item.icon || item.id,
             id: item.id,
+            shape: item.shape,
+            width: item.width,
+            height: item.height,
+            fillColor: item.fillColor,
+            strokeColor: item.strokeColor,
           })
         );
       }}
