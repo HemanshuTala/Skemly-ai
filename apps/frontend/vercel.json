@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "http://ec2-13-60-224-91.eu-north-1.compute.amazonaws.com:5000/$1" },
+    { "source": "/api/(.*)", "destination": "http://ec2-13-60-224-91.eu-north-1.compute.amazonaws.com:5000/api/v1/$1" },
     { "source": "/socket.io/(.*)", "destination": "http://ec2-13-60-224-91.eu-north-1.compute.amazonaws.com:5000/socket.io/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
