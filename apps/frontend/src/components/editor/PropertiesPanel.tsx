@@ -87,7 +87,7 @@ interface PropertiesPanelProps {
 const PAPER_PRESETS = ['#09090b', '#f8f4ef', '#eef6ff', '#ffffff', '#e8e4df', '#1a1510', '#120d0a'];
 const NODE_FILL_PRESETS = ['#120d0a', '#15100d', '#1e3a2f', '#1e2d4a', '#3d2914', '#f4e7db', '#ffffff', '#c99367'];
 const NODE_STROKE_PRESETS = ['#c99367', '#d7a780', '#8f5c38', '#64748b', '#38bdf8', '#a78bfa', '#f4e7db', '#ffffff'];
-const NODE_TEXT_PRESETS = ['#f4e7db', '#ffffff', '#120d0a', '#c99367', '#94a3b8', '#fde68a'];
+const NODE_TEXT_PRESETS = ['#000000', '#f4e7db', '#ffffff', '#120d0a', '#c99367', '#94a3b8', '#fde68a'];
 const EDGE_LINE_PRESETS = ['#c99367', '#d7a780', '#38bdf8', '#a78bfa', '#34d399', '#f472b6', '#f4e7db', '#64748b'];
 
 const FONT_OPTIONS = [
@@ -545,7 +545,7 @@ export function PropertiesPanel({
                       label="Text"
                       sublabel="Label"
                       value={nodeStyle?.color}
-                      fallback="#ffffff"
+                      fallback="#000000"
                       onChange={(v) => onNodeStyleChange({ color: v })}
                       presets={NODE_TEXT_PRESETS}
                     />

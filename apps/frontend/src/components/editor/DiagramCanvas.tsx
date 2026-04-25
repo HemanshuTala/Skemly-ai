@@ -233,7 +233,7 @@ function getNodeStyle(data: any, kind: string): Required<CanvasNodeStyle> {
     width: Number(style.width || base.width),
     height: Number(style.height || base.height),
     fontFamily: String(style.fontFamily || 'inherit'),
-    color: String(style.color || '#ffffff'),
+    color: String(style.color || '#000000'),
     iconColor: String(style.iconColor || style.strokeColor || '#ffffff'),
     borderRadius:
       Number(style.borderRadius) > 0
@@ -1476,7 +1476,7 @@ function DiagramCanvasInner({
                 strokeColor: strokeColor,
                 strokeWidth: 2,
                 fontSize: 12,
-                color: '#ffffff',
+                color: '#000000',
                 iconColor: strokeColor
               }
             },
@@ -1512,7 +1512,7 @@ function DiagramCanvasInner({
           strokeColor: '#ffffff',
           strokeWidth: 2,
           fontSize: 12,
-          color: '#ffffff'
+          color: '#000000'
         }
       },
     };
@@ -1567,7 +1567,7 @@ function DiagramCanvasInner({
           strokeColor: '#ffffff',
           strokeWidth: 2,
           fontSize: 12,
-          color: '#ffffff'
+          color: '#000000'
         }
       },
     };
@@ -2068,7 +2068,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           strokeColor: '#ffffff',
           strokeWidth: 2,
           fontSize: 12,
-          color: '#ffffff'
+          color: '#000000'
         }
       },
     };

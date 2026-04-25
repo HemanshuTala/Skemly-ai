@@ -153,16 +153,28 @@ MICROSERVICES:
 [Payment Queue] -.-> [Payment Worker]
 
 === CRITICAL RULES ===
-1. ALWAYS wrap node names in brackets: [Node Name] --> [Other Node]
-2. Use {Decision} for ANY conditional logic with branches
-3. Use -- Label --> for labeling decision branches (Yes/No, True/False, etc.)
-4. Use -.-> for: data flow, async processing, event streams, indirect connections
-5. Use ==> for: critical paths, main user flows, important connections
-6. Use [[ ]] for ANY database, storage, or data persistence
-7. Keep labels concise: 2-4 words, use Title Case
-8. Generate 6-12 nodes for typical diagrams (not too few, not too many)
-9. Ensure logical flow: left-to-right or top-to-bottom
-10. Use keywords in labels to get appropriate icons (database, cache, queue, etc.)
+1. ONE CONNECTION PER LINE - NEVER put multiple arrows on one line
+2. NEVER use commas between connections - each connection is its own line
+3. ALWAYS use matching brackets: [Node] not [[Node] or [Node}}
+4. ALWAYS wrap node names in brackets: [Node Name] --> [Other Node]
+5. Use {Decision} for ANY conditional logic with branches
+6. Use -- Label --> for labeling decision branches (Yes/No, True/False, etc.)
+7. Use -.-> for: data flow, async processing, event streams, indirect connections
+8. Use ==> for: critical paths, main user flows, important connections
+9. Use [[ ]] for ANY database, storage, or data persistence
+10. Keep labels concise: 2-4 words, use Title Case
+11. Generate 6-12 nodes for typical diagrams (not too few, not too many)
+12. Ensure logical flow: left-to-right or top-to-bottom
+13. Use keywords in labels to get appropriate icons (database, cache, queue, etc.)
+
+=== WRONG vs RIGHT EXAMPLES ===
+WRONG: [[Customer] --> [Place Order], {Order Valid} -- Yes --> [Payment]
+WRONG: [A] --> [B], [B] --> [C], [C] --> [D]
+
+RIGHT:
+[Customer] --> [Place Order]
+{Order Valid} -- Yes --> [Payment]
+[Payment] --> [Confirmation]
 
 Generate ONLY the diagram syntax, nothing else.`;
   }
