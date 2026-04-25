@@ -528,7 +528,7 @@ export default function DiagramEditorPage() {
   const handleRenameSelectedNode = useCallback(
     (nextLabel: string) => {
       const label = nextLabel.trim();
-      if (!selectedNodeId || !label) return;
+      if (!selectedNodeId) return;
       updateVisualGraph((prev) => ({
         nodes: prev.nodes.map((n) =>
           n.id === selectedNodeId ? { ...n, data: { ...(n.data as any), label } } : n

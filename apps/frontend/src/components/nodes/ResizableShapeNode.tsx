@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 import '@reactflow/node-resizer/dist/style.css';
@@ -43,6 +43,13 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(data.label || '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Sync local label state when data.label changes from parent
+  useEffect(() => {
+    if (!isEditing) {
+      setLabel(data.label || '');
+    }
+  }, [data.label, isEditing]);
 
   const shape = data.shape || 'rectangle';
   const style = data.style || {};
