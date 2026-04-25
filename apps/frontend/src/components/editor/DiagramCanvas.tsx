@@ -2116,7 +2116,8 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     }
 
     // Handle labeled arrows with space separator: From -- label --> To
-    const labeledMatch = line.match(/^(.+?)\s+--\s+(.+?)\s*(-->|->|=>|---)\s*(.+)$/);
+    // Use negative lookahead (?!-) to exclude lines starting with -.- (dotted arrows)
+    const labeledMatch = line.match(/^(.+?)\s+--(?!\s*-)\s+(.+?)\s*(-->|->|=>|---)\s*(.+)$/);
     if (labeledMatch) {
       const fromNode = ensureNode(labeledMatch[1]);
       const edgeLabel = labeledMatch[2].trim();

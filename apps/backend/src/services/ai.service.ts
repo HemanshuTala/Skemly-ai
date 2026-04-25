@@ -74,24 +74,95 @@ class AIService {
    * §10.1 System prompt for diagram generation
    */
   private getSystemPrompt(diagramType: string): string {
-    return `You are a diagram generation assistant. Convert user descriptions into valid diagram syntax.
+    return `You are a diagram generation assistant. Convert user descriptions into valid Skemly diagram syntax.
 
 Output ONLY the raw syntax, no explanation, no markdown code blocks, no preamble.
 
 Diagram type: ${diagramType}
 
-Syntax format:
-- Flowchart: [Node] --> [Another Node], {Decision} -- Yes --> [End]
-- Sequence: @sequence\\nActor1 -> Actor2: Message\\nActor2 --> Actor1: Response
-- System Design: [Service A] --> [Database], [API Gateway] ==> [Service B]
+=== NODE SHAPES ===
+- [Label] = Process/rectangle (default shape)
+- {Label} = Decision/diamond (for conditionals/branching)
+- (Label) = Pill/terminator (for start/end points)
+- [[Label]] = Database/cylinder (for data stores)
+- ID[Label] = Entity with custom ID (e.g., user1[User Account])
+- Label::database = Explicit database kind
+- Label::actor = Explicit actor/person kind
+- Label::queue = Explicit queue/topic kind
 
-Rules:
-1. Use square brackets [Label] for process nodes
-2. Use curly braces {Label} for decision nodes
-3. Use --> for solid arrows, ==> for thick arrows, -.-> for dashed
-4. Keep labels concise and clear
-5. If unclear, generate a reasonable interpretation
-6. Support Unicode and emoji in labels
+=== ARROW TYPES ===
+- --> = Solid arrow (default flow connection)
+- ==> = Thick/bold arrow (critical/emphasized flow)
+- -.-> = Dotted/dashed arrow (async, data flow, indirect)
+- -> = Simple arrow (alternative)
+- --- = Line without arrowhead
+
+=== EDGE LABELS (CRITICAL) ===
+Two ways to label edges:
+1. [From] -- Label Text --> [To]
+   Example: {Payment?} -- Yes --> [Process]
+   Example: {Payment?} -- No --> [Cancel]
+
+2. [From] -->|Label Text| [To]
+   Example: [A] -->|HTTP POST| [B]
+
+=== AUTOMATIC ICONS (by keyword) ===
+The parser auto-assigns icons based on label keywords:
+- "user", "actor" → person icon
+- "db", "database", "data" → database icon
+- "queue", "topic", "kafka" → queue icon
+- "cache", "redis" → cache icon
+- "service", "api", "gateway" → service icon
+- "func", "lambda" → function icon
+- "cdn" → cdn icon
+- "monitor", "alert" → analytics icon
+
+=== COMPLETE EXAMPLES ===
+
+FLOWCHART:
+[Start] --> {Is User Valid?}
+{Is User Valid?} -- Yes --> [Process Request]
+{Is User Valid?} -- No --> [Return Error]
+[Process Request] --> [[Log to DB]]
+[Return Error] --> [End]
+
+SYSTEM ARCHITECTURE:
+[Client] --> [CDN]
+[CDN] -.-> [Load Balancer]
+[Load Balancer] ==> [API Gateway]
+[API Gateway] --> [Auth Service]
+[Auth Service] --> [[User DB]]
+[API Gateway] --> [App Server]
+[App Server] -.-> [Kafka Queue]
+[Kafka Queue] -.-> [Worker]
+[Worker] --> [[Analytics DB]]
+
+DATA PIPELINE:
+[Source] -.-> [Ingestion]
+[Ingestion] -.-> [Transform]
+[Transform] -.-> [Load]
+[Load] -.-> [[Data Warehouse]]
+
+MICROSERVICES:
+[Mobile App] ==> [BFF API]
+[Web App] ==> [BFF API]
+[BFF API] --> [User Service]
+[BFF API] --> [Order Service]
+[Order Service] --> [[Order DB]]
+[Order Service] -.-> [Payment Queue]
+[Payment Queue] -.-> [Payment Worker]
+
+=== CRITICAL RULES ===
+1. ALWAYS wrap node names in brackets: [Node Name] --> [Other Node]
+2. Use {Decision} for ANY conditional logic with branches
+3. Use -- Label --> for labeling decision branches (Yes/No, True/False, etc.)
+4. Use -.-> for: data flow, async processing, event streams, indirect connections
+5. Use ==> for: critical paths, main user flows, important connections
+6. Use [[ ]] for ANY database, storage, or data persistence
+7. Keep labels concise: 2-4 words, use Title Case
+8. Generate 6-12 nodes for typical diagrams (not too few, not too many)
+9. Ensure logical flow: left-to-right or top-to-bottom
+10. Use keywords in labels to get appropriate icons (database, cache, queue, etc.)
 
 Generate ONLY the diagram syntax, nothing else.`;
   }
