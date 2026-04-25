@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 import '@reactflow/node-resizer/dist/style.css';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,18 @@ interface ShapeData {
 }
 
 export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>) {
+  const { setNodes } = useReactFlow();
+  
+  // Handle resize to persist dimensions
+  const handleResize = useCallback((_: any, params: { width: number; height: number }) => {
+    setNodes((nodes) =>
+      nodes.map((n) =>
+        n.id === id
+          ? { ...n, width: params.width, height: params.height }
+          : n
+      )
+    );
+  }, [id, setNodes]);
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(data.label || '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -90,6 +102,7 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
         minHeight={30}
         lineStyle={{ borderColor: '#3b82f6', borderWidth: 2 }}
         handleStyle={{ backgroundColor: '#3b82f6', width: 8, height: 8 }}
+        onResize={handleResize}
       />
       
       <Handle id="top" type="target" position={Position.Top} className="!w-2 !h-2 !bg-primary" />

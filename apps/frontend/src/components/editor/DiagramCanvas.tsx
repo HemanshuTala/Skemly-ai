@@ -1509,7 +1509,9 @@ function DiagramCanvasInner({
             k === 'io'
               ? k
               : 'node';
-          const label = String(payload.label || 'Node');
+          const label = payload.kind === 'resizableShape' 
+            ? (payload.label || '')  // No default label for shapes
+            : String(payload.label || 'Node');
           const id = `n-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
           
           // Handle resizable shapes
@@ -1521,8 +1523,10 @@ function DiagramCanvasInner({
               id,
               type: 'resizableShape',
               position: pos,
+              width,
+              height,
               data: {
-                label: label,
+                label,
                 shape: shape,
                 style: {
                   fillColor: payload.fillColor || '#ffffff',
