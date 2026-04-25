@@ -157,7 +157,7 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
             fontFamily: 'inherit',
           }}
         >
-          <span className="text-center break-words line-clamp-3">{label}</span>
+          <span className="text-center break-words line-clamp-3" style={{ color: style.color || '#000000' }}>{label}</span>
         </div>
       )}
     </div>
