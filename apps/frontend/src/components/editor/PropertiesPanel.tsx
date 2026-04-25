@@ -28,6 +28,7 @@ import {
   BarChart,
   Activity,
   Layers,
+  Box,
 } from 'lucide-react';
 import type { Edge, Node } from 'reactflow';
 import { cn } from '@/lib/utils';
@@ -524,6 +525,39 @@ export function PropertiesPanel({
                       </div>
                     </div>
                   </InspectorSection>
+
+                  {/* Resizable Shape Type Selector */}
+                  {selectedNode?.type === 'resizableShape' && (
+                    <InspectorSection title="Shape Type" icon={Box}>
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-muted/30 border border-border/40">
+                          {[
+                            { value: 'rectangle', label: 'Rectangle' },
+                            { value: 'circle', label: 'Circle' },
+                            { value: 'rounded', label: 'Rounded' },
+                          ].map(({ value, label }) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => {
+                                const nodeData = selectedNode.data as any;
+                                selectedNode.data = { ...nodeData, shape: value };
+                                onNodeStyleChange({}); // Trigger update
+                              }}
+                              className={cn(
+                                'py-1.5 rounded-lg text-[10px] font-bold transition-all leading-tight',
+                                String((selectedNode.data as any)?.shape || 'rectangle') === value
+                                  ? 'bg-background text-primary shadow-sm'
+                                  : 'text-muted-foreground/50 hover:text-foreground hover:bg-background/30'
+                              )}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </InspectorSection>
+                  )}
 
                   {/* Colors */}
                   <InspectorSection title="Colors" icon={Palette}>

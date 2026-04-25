@@ -983,6 +983,7 @@ const ITEMS: ShapePaletteItem[] = [
 ];
 
 const CATEGORIES = [
+  { key: 'basicshapes' as const, label: 'Basic Shapes' },
   { key: 'flowchart' as const, label: 'Flowchart' },
   { key: 'ui' as const, label: 'UI Components' },
   { key: 'cloud' as const, label: 'Cloud & DevOps' },
@@ -1127,8 +1128,21 @@ export function ShapePalette({ onInsert }: ShapePaletteProps) {
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Shape Card Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
+// Rounded square icon component
+function RoundedSquareIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} aria-hidden fill="none" stroke="currentColor" strokeWidth="3">
+      <rect x="8" y="8" width="32" height="32" rx="8" />
+    </svg>
+  );
+}
+
 // Map shape IDs to Lucide icons
 const SHAPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  // Basic Shapes
+  'rect': Square,
+  'circle': Circle,
+  'rounded': RoundedSquareIcon,
   // UI
   'button': Box,
   'input': SearchIcon,

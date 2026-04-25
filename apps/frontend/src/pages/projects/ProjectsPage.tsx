@@ -23,6 +23,10 @@ import {
   Edit,
   Trash2,
   Loader2,
+  Sparkles,
+  Layers,
+  Zap,
+  ArrowRight,
 } from 'lucide-react'
 import { useProjectStore } from '@/stores/projectStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -242,18 +246,92 @@ export default function ProjectsPage() {
       )}
 
       {filteredProjects.length === 0 && !isLoading && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#27272a] flex items-center justify-center mb-4">
-            <FolderOpen className="w-8 h-8 text-[#a1a1aa]" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">No projects found</h3>
-          <p className="text-[#71717a] text-sm mb-6 max-w-sm">
-            {searchQuery ? 'Try adjusting your search' : 'Create your first project to organize your diagrams'}
-          </p>
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2 bg-white text-[#18181b] hover:bg-[#e4e4e7]">
-            <Plus className="w-4 h-4" />
-            Create Project
-          </Button>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          {/* Animated illustration */}
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="relative mb-8"
+          >
+            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#3f3f46] to-[#27272a] flex items-center justify-center shadow-2xl shadow-black/50">
+              <Layers className="w-12 h-12 text-[#a1a1aa]" />
+            </div>
+            <motion.div 
+              animate={{ y: [0, -4, 0] }}
+              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              className="absolute -top-2 -right-2 w-10 h-10 rounded-xl bg-gradient-to-br from-[#c99367] to-[#a67c52] flex items-center justify-center shadow-lg"
+            >
+              <Sparkles className="w-5 h-5 text-white" />
+            </motion.div>
+          </motion.div>
+
+          {/* Main text */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-white to-[#a1a1aa] bg-clip-text text-transparent">
+              {searchQuery ? 'No matching projects' : 'Start your first project'}
+            </h3>
+            <p className="text-[#71717a] text-base mb-8 max-w-md leading-relaxed">
+              {searchQuery 
+                ? 'Try adjusting your search terms or clear the filter to see all projects'
+                : 'Create a project to organize your diagrams, collaborate with your team, and bring your ideas to life'
+              }
+            </p>
+          </motion.div>
+
+          {/* CTA Buttons */}
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col sm:flex-row gap-3"
+          >
+            <Button 
+              onClick={() => setShowCreateModal(true)} 
+              className="gap-2 bg-white text-[#18181b] hover:bg-[#e4e4e7] px-6 py-5 text-sm font-semibold"
+            >
+              <Plus className="w-4 h-4" />
+              Create Project
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+            {!searchQuery && (
+              <Button 
+                variant="outline" 
+                className="gap-2 bg-transparent border-[#3f3f46] text-[#a1a1aa] hover:bg-[#27272a] hover:text-white px-6 py-5 text-sm"
+              >
+                <Zap className="w-4 h-4" />
+                Try Demo Project
+              </Button>
+            )}
+          </motion.div>
+
+          {/* Feature highlights - only show when no search query */}
+          {!searchQuery && (
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="mt-12 grid grid-cols-3 gap-6 max-w-lg"
+            >
+              {[
+                { icon: Layers, label: 'Organize', desc: 'Keep diagrams tidy' },
+                { icon: Sparkles, label: 'AI Powered', desc: 'Generate with AI' },
+                { icon: Zap, label: 'Collaborate', desc: 'Work together' },
+              ].map((feature, i) => (
+                <div key={i} className="flex flex-col items-center text-center">
+                  <div className="w-10 h-10 rounded-xl bg-[#27272a] flex items-center justify-center mb-2">
+                    <feature.icon className="w-5 h-5 text-[#c99367]" />
+                  </div>
+                  <span className="text-sm font-medium text-white">{feature.label}</span>
+                  <span className="text-xs text-[#71717a]">{feature.desc}</span>
+                </div>
+              ))}
+            </motion.div>
+          )}
         </div>
       )}
 
