@@ -181,7 +181,7 @@ function App() {
         <Toaster 
           position="top-right"
           toastOptions={{
-            duration: 3000,
+            duration: 2500,
             style: {
               background: '#18181b',
               color: '#ffffff',
@@ -198,6 +198,9 @@ function App() {
             <AnimatedRoutes />
           </SmoothScrollProvider>
         </BrowserRouter>
+
+
+
         <Analytics />
       </QueryClientProvider>
     </ErrorBoundary>
