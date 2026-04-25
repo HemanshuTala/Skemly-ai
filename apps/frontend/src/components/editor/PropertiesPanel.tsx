@@ -545,7 +545,7 @@ export function PropertiesPanel({
                       label="Text"
                       sublabel="Label"
                       value={nodeStyle?.color}
-                      fallback="#000000"
+                      fallback="#ffffff"
                       onChange={(v) => onNodeStyleChange({ color: v })}
                       presets={NODE_TEXT_PRESETS}
                     />
@@ -860,7 +860,7 @@ export function PropertiesPanel({
                     <ColorField
                       label="Label color"
                       value={(selectedEdge as any)?.labelStyle?.fill as string | undefined}
-                      fallback="#f4e7db"
+                      fallback="#000000"
                       onChange={(v) => onEdgeStyleChange({ labelColor: v })}
                       presets={NODE_TEXT_PRESETS}
                     />

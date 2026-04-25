@@ -233,7 +233,7 @@ function getNodeStyle(data: any, kind: string): Required<CanvasNodeStyle> {
     width: Number(style.width || base.width),
     height: Number(style.height || base.height),
     fontFamily: String(style.fontFamily || 'inherit'),
-    color: String(style.color || '#000000'),
+    color: String(style.color || '#ffffff'),
     iconColor: String(style.iconColor || style.strokeColor || '#ffffff'),
     borderRadius:
       Number(style.borderRadius) > 0
@@ -1476,7 +1476,7 @@ function DiagramCanvasInner({
                 strokeColor: strokeColor,
                 strokeWidth: 2,
                 fontSize: 12,
-                color: '#000000',
+                color: '#ffffff',
                 iconColor: strokeColor
               }
             },
@@ -1512,7 +1512,7 @@ function DiagramCanvasInner({
           strokeColor: '#ffffff',
           strokeWidth: 2,
           fontSize: 12,
-          color: '#000000'
+          color: '#ffffff'
         }
       },
     };
@@ -1567,7 +1567,7 @@ function DiagramCanvasInner({
           strokeColor: '#ffffff',
           strokeWidth: 2,
           fontSize: 12,
-          color: '#000000'
+          color: '#ffffff'
         }
       },
     };
@@ -2068,7 +2068,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           strokeColor: '#ffffff',
           strokeWidth: 2,
           fontSize: 12,
-          color: '#000000'
+          color: '#ffffff'
         }
       },
     };
@@ -2131,7 +2131,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           label: edgeLabel,
           type: 'smoothstep',
           style: { stroke: EDGE_STROKE, strokeWidth: 2 },
-          labelStyle: { fill: 'var(--color-foreground)', fontSize: 11, fontWeight: 700 },
+          labelStyle: { fill: '#000000', fontSize: 11, fontWeight: 700 },
           markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_STROKE, width: 18, height: 18 },
         });
       }
@@ -2153,7 +2153,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           label: edgeLabel,
           type: 'smoothstep',
           style: { stroke: EDGE_STROKE, strokeWidth: 2 },
-          labelStyle: { fill: 'var(--color-foreground)', fontSize: 11, fontWeight: 700 },
+          labelStyle: { fill: '#000000', fontSize: 11, fontWeight: 700 },
           markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_STROKE, width: 18, height: 18 },
         });
       }
