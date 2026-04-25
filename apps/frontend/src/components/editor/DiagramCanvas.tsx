@@ -793,9 +793,7 @@ function DiagramCanvasInner({
   const [interactionMode, setInteractionMode] = useState<'select' | 'pan'>('select');
   
   // DEBUG: Track nodes state
-  useEffect(() => {
-    console.log('[DEBUG] nodes state changed:', nodes.length, 'nodes');
-  }, [nodes]);
+
   const [isExportingSnapshot, setIsExportingSnapshot] = useState(false);
   // viewport is read inside <ReactFlow> via ViewportBridge to avoid the Zustand-provider error
   const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
@@ -1003,8 +1001,7 @@ function DiagramCanvasInner({
 
   // Parse syntax to generate nodes/edges
   useEffect(() => {
-    console.log('[DEBUG] Effect running. visualData:', visualData === undefined ? 'undefined' : (visualData ? 'object' : 'null'));
-    
+   
     const hasVisual =
       visualData &&
       ((visualData.nodes?.length ?? 0) > 0 || (visualData.edges?.length ?? 0) > 0);
@@ -1012,43 +1009,35 @@ function DiagramCanvasInner({
     const syntaxChanged = syntaxHash !== lastSyntaxHashRef.current;
     const visualChanged = visualHash !== lastAppliedVisualHashRef.current;
     
-    // DEBUG: Log every check
-    console.log('[DEBUG] Parse check:', { 
-      syntaxChanged, 
-      visualChanged, 
-      hasVisual, 
-      syntaxPreview: syntax?.slice(0, 30),
-      lastSyntax: lastSyntaxHashRef.current?.slice(0, 30)
-    });
+   
     
     // Only skip if BOTH hashes are unchanged AND we have no visual data to apply
     if (!syntaxChanged && !visualChanged && !hasVisual) {
-      console.log('[DEBUG] Skipping - no changes');
+    
       return;
     }
 
-    console.log('[DEBUG] About to setTimeout, will parse immediately');
+
     
     const t = window.setTimeout(() => {
-      console.log('[DEBUG] setTimeout callback executing');
+      
       isParsingRef.current = true;
       isInternalChangeRef.current = true;
 
       try {
-        console.log('[DEBUG] Parsing syntax:', syntax);
+     
         const graph = parseSyntaxToGraph(syntax);
-        console.log('[DEBUG] Parsed result:', { nodeCount: graph.nodes.length, nodes: graph.nodes.map(n => n.id) });
-
+       
         if (visualChanged && hasVisual) {
-          console.log('[DEBUG] Using visualData');
+          
           setNodes(visualData!.nodes || []);
           setEdges(visualData!.edges || []);
           lastAppliedVisualHashRef.current = visualHash;
           lastSyntaxHashRef.current = syntaxHash;
         } else if (syntaxChanged) {
-          console.log('[DEBUG] Setting nodes from syntax, count:', graph.nodes.length);
+          
           setNodes((prevNodes: Node[]) => {
-            console.log('[DEBUG] setNodes callback, prev:', prevNodes.length, 'new:', graph.nodes.length);
+            
             const positions = new Map<string, { x: number; y: number }>(prevNodes.map(n => [n.id, n.position]));
             const result = graph.nodes.map(n => {
               const prevPos = positions.get(n.id);
@@ -1057,7 +1046,7 @@ function DiagramCanvasInner({
                 position: prevPos || n.position
               };
             });
-            console.log('[DEBUG] Returning nodes:', result.length);
+            
             return result;
           });
           setEdges(graph.edges);
@@ -1083,7 +1072,7 @@ function DiagramCanvasInner({
     }, 0);
 
     return () => {
-      console.log('[DEBUG] Cleanup - clearing timeout');
+   
       window.clearTimeout(t);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2014,8 +2003,8 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
   const nodeById = new Map<string, Node>();
   const edges: Edge[] = [];
 
-  /** Arrow pattern: -->, ->, =>, ---, --, - */
-  const ARROW_REGEX = /\s*(?:-{2,}>|={1,}>|-{1,}>|---?|--?|==?)\s*/;
+  /** Arrow patterns: -->, ->, =>, ---, --, -, -.-> */
+  const ARROW_REGEX = /\s*(?:-\.-{1,}>|\.->{1,}>|-{2,}>|={1,}>|-{1,}>|---?|--?|==?)\s*/;
 
   const ensureNode = (raw: string) => {
     const trimmed = raw.trim();
@@ -2107,12 +2096,31 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       return;
     }
 
-    // Handle labeled arrows: From -- label --> To OR From -- label --- To
-    const labeledMatch = line.match(/^(.+?)\s+--\s+(.+?)\s*(?:-{2,}>|={1,}>|-{1,}>|---?|==?)\s*(.+)$/);
+    // Handle labeled arrows: From -- label --> To OR From -.-> To (dotted)
+    // Check dotted arrows first (more specific)
+    const dottedMatch = line.match(/^(.+?)\s+(-\.-{1,}>|\.->{1,}>)\s*(.+)$/);
+    if (dottedMatch) {
+      const fromNode = ensureNode(dottedMatch[1]);
+      const toNode = ensureNode(dottedMatch[3]);
+      if (fromNode && toNode) {
+        edges.push({
+          id: `e-${fromNode.id}-${toNode.id}-${index}`,
+          source: fromNode.id,
+          target: toNode.id,
+          type: 'smoothstep',
+          style: { stroke: EDGE_STROKE, strokeWidth: 2, strokeDasharray: '5,5' },
+          markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_STROKE, width: 18, height: 18 },
+        });
+      }
+      return;
+    }
+
+    // Handle labeled arrows with space separator: From -- label --> To
+    const labeledMatch = line.match(/^(.+?)\s+--\s+(.+?)\s*(-->|->|=>|---)\s*(.+)$/);
     if (labeledMatch) {
       const fromNode = ensureNode(labeledMatch[1]);
-      const toNode = ensureNode(labeledMatch[3]);
       const edgeLabel = labeledMatch[2].trim();
+      const toNode = ensureNode(labeledMatch[4]);
 
       if (fromNode && toNode) {
         edges.push({
@@ -2129,8 +2137,8 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       return;
     }
 
-    // Handle labeled arrows with pipe: From -->|label| To
-    const pipeMatch = line.match(/^(.+?)\s*(?:-{2,}>|={1,}>|-{1,}>|---?|==?)\s*\|(.+?)\|\s*(.+)$/);
+    // Handle labeled arrows with pipe: From -->|label| To or From -.->|label| To
+    const pipeMatch = line.match(/^(.+?)\s*(?:-\.-{1,}>|\.->{1,}>|-{2,}>|={1,}>|-{1,}>|---)\s*\|(.+?)\|\s*(.+)$/);
     if (pipeMatch) {
       const fromNode = ensureNode(pipeMatch[1]);
       const toNode = ensureNode(pipeMatch[3]);
