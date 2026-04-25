@@ -2142,9 +2142,9 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           type: 'smoothstep',
           style: { stroke: EDGE_STROKE, strokeWidth: 2 },
           labelStyle: { fill: '#000000', fontSize: 11, fontWeight: 700 },
-          labelBgStyle: { fill: '#f4e7db' },
+          labelBgStyle: { fill: '#f4e7db', stroke: '#c99367', strokeWidth: 1 },
           labelShowBg: true,
-          labelBgPadding: [4, 4],
+          labelBgPadding: [6, 4],
           markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_STROKE, width: 18, height: 18 },
         });
       }
@@ -2167,9 +2167,9 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           type: 'smoothstep',
           style: { stroke: EDGE_STROKE, strokeWidth: 2 },
           labelStyle: { fill: '#000000', fontSize: 11, fontWeight: 700 },
-          labelBgStyle: { fill: '#f4e7db' },
+          labelBgStyle: { fill: '#f4e7db', stroke: '#c99367', strokeWidth: 1 },
           labelShowBg: true,
-          labelBgPadding: [4, 4],
+          labelBgPadding: [6, 4],
           markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_STROKE, width: 18, height: 18 },
         });
       }
