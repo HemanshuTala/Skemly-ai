@@ -176,6 +176,11 @@ RIGHT:
 {Order Valid} -- Yes --> [Payment]
 [Payment] --> [Confirmation]
 
+=== ABSOLUTE RULES ===
+- COMMAS (,) ARE NEVER USED TO SEPARATE CONNECTIONS
+- EACH CONNECTION MUST BE ON ITS OWN LINE
+- If you see a comma in your output, YOU ARE DOING IT WRONG
+
 Generate ONLY the diagram syntax, nothing else.`;
   }
 

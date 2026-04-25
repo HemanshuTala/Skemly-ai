@@ -1995,10 +1995,20 @@ function unwrapNodeRef(raw: string): { label: string; kind: string } {
 }
 
 function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
-  const lines = String(syntax || '')
+  // Preprocess: split multiple connections on one line (comma-separated)
+  const preprocessed = String(syntax || '')
     .split('\n')
-    .map((l) => l.trim())
+    .flatMap((line) => {
+      const trimmed = line.trim();
+      // If line contains arrows and commas, split by comma
+      if (trimmed.includes('-->') && trimmed.includes(',')) {
+        return trimmed.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+      }
+      return [trimmed];
+    })
     .filter((l) => l.length > 0);
+
+  const lines = preprocessed;
 
   const nodeById = new Map<string, Node>();
   const edges: Edge[] = [];
@@ -2132,6 +2142,9 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           type: 'smoothstep',
           style: { stroke: EDGE_STROKE, strokeWidth: 2 },
           labelStyle: { fill: '#000000', fontSize: 11, fontWeight: 700 },
+          labelBgStyle: { fill: '#f4e7db' },
+          labelShowBg: true,
+          labelBgPadding: [4, 4],
           markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_STROKE, width: 18, height: 18 },
         });
       }
@@ -2154,6 +2167,9 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           type: 'smoothstep',
           style: { stroke: EDGE_STROKE, strokeWidth: 2 },
           labelStyle: { fill: '#000000', fontSize: 11, fontWeight: 700 },
+          labelBgStyle: { fill: '#f4e7db' },
+          labelShowBg: true,
+          labelBgPadding: [4, 4],
           markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_STROKE, width: 18, height: 18 },
         });
       }
