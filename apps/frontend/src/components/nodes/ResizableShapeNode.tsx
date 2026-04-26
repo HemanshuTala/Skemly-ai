@@ -25,7 +25,7 @@ interface ShapeData {
 }
 
 export function ResizableShapeNode({ data, selected, id, type }: NodeProps<ShapeData>) {
-  const { setNodes } = useReactFlow();
+  const { getNode } = useReactFlow();
   
   // Handle resize - only notify parent, don't call setNodes (ReactFlow handles visual resize)
   const handleResize = useCallback((_: any, params: { width: number; height: number }) => {
@@ -44,6 +44,17 @@ export function ResizableShapeNode({ data, selected, id, type }: NodeProps<Shape
 
   const shape = data.shape || 'rectangle';
   const style = data.style || {};
+
+  // Minimum dimensions per shape type
+  const MIN_W = shape === 'circle' ? 80 : 60;
+  const MIN_H = shape === 'circle' ? 80 : 40;
+
+  // Read the node's current recorded width/height from React Flow state.
+  // Applying these as explicit CSS prevents React Flow from re-measuring and
+  // collapsing the container when the label is empty (which would shrink to ~27px).
+  const rfNode = getNode(id);
+  const nodeW = Math.max(rfNode?.width ?? data.width ?? MIN_W, MIN_W);
+  const nodeH = Math.max(rfNode?.height ?? data.height ?? MIN_H, MIN_H);
   
   const handleDoubleClick = useCallback(() => {
     setIsEditing(true);
@@ -101,10 +112,17 @@ export function ResizableShapeNode({ data, selected, id, type }: NodeProps<Shape
   return (
     <div 
       className={cn(
-        "relative w-full h-full flex items-center justify-center",
+        "relative flex items-center justify-center",
         selected && "ring-2 ring-primary"
       )}
-      style={shapeStyles}
+      style={{
+        ...shapeStyles,
+        width: nodeW,
+        height: nodeH,
+        minWidth: MIN_W,
+        minHeight: MIN_H,
+        boxSizing: 'border-box',
+      }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer 

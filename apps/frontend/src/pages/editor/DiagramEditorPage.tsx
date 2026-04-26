@@ -443,8 +443,8 @@ export default function DiagramEditorPage() {
   // Auto-save hook with 5s delay and 30s maxWait to avoid rate limits
   const { save, saveNow } = useAutoSave({
     onSave: handleSave,
-    delay: 5000,
-    maxWait: 30000,
+    delay: 800,
+    maxWait: 5000,
     enabled: !!diagramId,
   });
 
