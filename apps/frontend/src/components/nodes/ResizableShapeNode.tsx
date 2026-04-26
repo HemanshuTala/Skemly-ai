@@ -86,6 +86,8 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
     const baseStyles = {
       background: style.fillColor || '#ffffff',
       border: `${style.strokeWidth || 2}px solid ${style.strokeColor || '#000000'}`,
+      boxShadow: selected ? '0 4px 12px rgba(59, 130, 246, 0.25)' : '0 2px 8px rgba(0, 0, 0, 0.08)',
+      transition: 'box-shadow 0.2s ease',
     };
 
     // Get custom border radius from data or style
@@ -116,10 +118,17 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
     >
       <NodeResizer 
         isVisible={selected} 
-        minWidth={50} 
-        minHeight={30}
-        lineStyle={{ borderColor: '#3b82f6', borderWidth: 2 }}
-        handleStyle={{ backgroundColor: '#3b82f6', width: 8, height: 8 }}
+        minWidth={shape === 'circle' ? 80 : 60} 
+        minHeight={shape === 'circle' ? 80 : 40}
+        lineStyle={{ borderColor: '#3b82f6', borderWidth: 2, borderStyle: 'solid' }}
+        handleStyle={{ 
+          backgroundColor: '#ffffff', 
+          border: '2px solid #3b82f6',
+          width: 10, 
+          height: 10,
+          borderRadius: '50%',
+        }}
+        handleClassName="shadow-sm"
         onResize={handleResize}
       />
       
@@ -140,24 +149,39 @@ export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>)
           onChange={(e) => setLabel(e.target.value)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className="w-full h-full p-2 text-center resize-none outline-none bg-transparent relative z-10"
+          className="w-full h-full p-3 text-center resize-none outline-none bg-transparent relative z-10"
           style={{ 
             fontSize: style.fontSize || 14, 
             color: style.color || '#000000',
             fontFamily: 'inherit',
+            lineHeight: '1.4',
           }}
           autoFocus
         />
       ) : (
         <div 
-          className="w-full h-full p-2 flex items-center justify-center overflow-hidden relative z-10"
+          className="w-full h-full p-3 flex items-center justify-center relative z-10"
           style={{ 
             fontSize: style.fontSize || 14, 
             color: style.color || '#000000',
             fontFamily: 'inherit',
+            lineHeight: '1.4',
+            overflow: shape === 'circle' ? 'visible' : 'auto',
           }}
         >
-          <span className="text-center break-words line-clamp-3" style={{ color: style.color || '#000000' }}>{label}</span>
+          <span 
+            className="text-center break-words" 
+            style={{ 
+              color: style.color || '#000000',
+              display: '-webkit-box',
+              WebkitLineClamp: shape === 'circle' ? 2 : 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              maxWidth: shape === 'circle' ? '70%' : '100%',
+            }}
+          >
+            {label}
+          </span>
         </div>
       )}
     </div>
