@@ -542,9 +542,10 @@ export default function DiagramEditorPage() {
       const { label, kind, width, height, shape, type } = info;
       // For resizable shapes, include dimensions and shape in syntax
       if (type === 'resizableShape' && shape) {
-        const dimPart = (width != null && height != null) ? `|w:${width},h:${height}` : '';
-        const shapePart = `|shape:${shape}`;
-        const result = `[${label}${dimPart}${shapePart}]`;
+        // Use single pipe separator, all attributes comma-separated
+        const dimPart = (width != null && height != null) ? `w:${width},h:${height},` : '';
+        const shapePart = `shape:${shape}`;
+        const result = `[${label}|${dimPart}${shapePart}]`;
         return result;
       }
       if (kind === 'decision') return `{${label}}`
