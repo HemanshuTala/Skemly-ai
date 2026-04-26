@@ -543,13 +543,12 @@ export default function DiagramEditorPage() {
 
     const wrap = (info: { label: string; kind: string; width?: number; height?: number; shape?: string; type?: string }) => {
       const { label, kind, width, height, shape, type } = info;
-      // For resizable shapes, include dimensions and shape in syntax
-      if (type === 'resizableShape' && shape) {
-        // Use single pipe separator, all attributes comma-separated
-        const dimPart = (width != null && height != null) ? `w:${width},h:${height},` : '';
-        const shapePart = `shape:${shape}`;
-        const result = `[${label}|${dimPart}${shapePart}]`;
-        return result;
+      // For resizable shapes, always include shape attribute so re-parsing restores the correct node type
+      if (type === 'resizableShape') {
+        // Default to 'rectangle' if shape was somehow lost
+        const shapeAttr = shape || 'rectangle';
+        const dimPart = (width != null && height != null) ? `w:${Math.round(width)},h:${Math.round(height)},` : '';
+        return `[${label}|${dimPart}shape:${shapeAttr}]`;
       }
       if (kind === 'decision') return `{${label}}`
       if (kind === 'startend') return `(${label})`
@@ -1448,9 +1447,14 @@ export default function DiagramEditorPage() {
                 onCanvasUserGesture={onCanvasUserGesture}
                 onUserGraphChange={(graph) => {
                   latestGraphRef.current = graph;
-                  // ALWAYS update localGraph to preserve dimensions/positions from canvas
+                  // Strip callback functions (onDimensionsChange, onLabelChange) from node data
+                  // before storing in localGraph. DiagramCanvas.nodesForReactFlow memo re-injects
+                  // fresh ones on every render. Stale closures here caused nodes to lose their type.
                   const snapshot = {
-                    nodes: graph.nodes.map((n) => ({ ...n })),
+                    nodes: graph.nodes.map((n) => {
+                      const { onDimensionsChange: _dc, onLabelChange: _lc, ...restData } = (n.data || {}) as any;
+                      return { ...n, data: restData };
+                    }),
                     edges: graph.edges.map((e) => ({ ...e })),
                   };
                   setLocalGraph(snapshot);

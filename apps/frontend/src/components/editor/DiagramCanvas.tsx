@@ -688,7 +688,16 @@ function FlowchartNode(props: NodeProps) {
   );
 }
 
+// nodeTypes MUST be defined outside the component to avoid ReactFlow remounting nodes on every render
 const nodeTypes = { diagramNode: FlowchartNode, resizableShape: ResizableShapeNode, image: ImageNode };
+
+// Strip callback functions from node data before serializing to parent/storage
+function stripNodeCallbacks(data: any): any {
+  if (!data) return data;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { onDimensionsChange, onLabelChange, ...rest } = data;
+  return rest;
+}
 
 function QuickAddHandles({
   node,
@@ -1026,82 +1035,87 @@ function DiagramCanvasInner({
       isParsingRef.current = true;
       isInternalChangeRef.current = true;
 
-      try {
+    try {
+   
+      const graph = parseSyntaxToGraph(syntax);
      
-        const graph = parseSyntaxToGraph(syntax);
-       
-        if (visualChanged && hasVisual) {
-          // Preserve node types when applying visualData from parent
-          const nodesWithType = (visualData!.nodes || []).map((n: any) => {
-            const nodeType = n.type || (n.data?.shape ? 'resizableShape' : 'diagramNode');
-            return { ...n, type: nodeType };
-          });
-          setNodes(nodesWithType);
-          setEdges(visualData!.edges || []);
-          lastAppliedVisualHashRef.current = visualHash;
-          lastSyntaxHashRef.current = syntaxHash;
-        } else if (syntaxChanged) {
-          
-          setNodes((prevNodes: Node[]) => {
-            // Create a map of existing nodes to preserve their data (including styles)
-            const existingNodes = new Map<string, Node>(prevNodes.map(n => [n.id, n]));
-            const positions = new Map<string, { x: number; y: number }>(prevNodes.map(n => [n.id, n.position]));
-            
-            const result = graph.nodes.map(n => {
-              const prevPos = positions.get(n.id);
-              const existing = existingNodes.get(n.id);
-              // Preserve node type when re-parsing from syntax
-              const nodeType = n.type || (n.data?.shape ? 'resizableShape' : 'diagramNode');
-              
-              if (existing) {
-                // Merge with existing node to preserve styles and other data
-                return {
-                  ...existing,
-                  ...n,
-                  type: nodeType,
-                  position: prevPos || n.position,
-                  data: {
-                    ...existing.data,
-                    ...n.data,
-                    // Preserve style from existing node if new one doesn't have it
-                    style: n.data?.style || existing.data?.style,
-                  }
-                };
-              }
-              
+      if (visualChanged && hasVisual) {
+        // Apply visualData from parent. Strip stale callbacks — nodesForReactFlow memo re-injects fresh ones.
+        setNodes((prevNodes: Node[]) => {
+          const existingNodes = new Map<string, Node>(prevNodes.map(n => [n.id, n]));
+          return (visualData!.nodes || []).map((n: any) => {
+            const cleanData = stripNodeCallbacks(n.data);
+            const nodeType = n.type || (cleanData?.shape ? 'resizableShape' : 'diagramNode');
+            const existing = existingNodes.get(n.id);
+            if (existing) {
+              const existingClean = stripNodeCallbacks(existing.data);
               return {
+                ...existing,
                 ...n,
                 type: nodeType,
-                position: prevPos || n.position
+                data: {
+                  ...existingClean,
+                  ...cleanData,
+                  style: cleanData?.style || existingClean?.style,
+                },
               };
-            });
-            
-            return result;
+            }
+            return { ...n, type: nodeType, data: cleanData };
           });
-          setEdges(graph.edges);
-          lastSyntaxHashRef.current = syntaxHash;
-          lastAppliedVisualHashRef.current = visualHash;
-          if (reactFlowInstance && graph.nodes.length > 0) {
-            setTimeout(() => {
-              reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
-            }, 50);
-          }
-          onGraphChange?.(graph);
-        } else {
-          console.log('[DEBUG] No action taken - visualChanged:', visualChanged, 'syntaxChanged:', syntaxChanged, 'hasVisual:', hasVisual);
-        }
-      } catch (err) {
-        console.error('[DEBUG] Error in parsing:', err);
-      }
+        });
+        setEdges(visualData!.edges || []);
+        lastAppliedVisualHashRef.current = visualHash;
+        lastSyntaxHashRef.current = visualHash;
+      } else if (syntaxChanged) {
+        // Re-parse from syntax text. Preserve existing positions and styles.
+        setNodes((prevNodes: Node[]) => {
+          const existingNodes = new Map<string, Node>(prevNodes.map(n => [n.id, n]));
+          const positions = new Map<string, { x: number; y: number }>(prevNodes.map(n => [n.id, n.position]));
 
-      window.setTimeout(() => {
-        isParsingRef.current = false;
-        isInternalChangeRef.current = false;
-      }, 100);
-    }, 0);
+          return graph.nodes.map(n => {
+            const prevPos = positions.get(n.id);
+            const existing = existingNodes.get(n.id);
+            const cleanData = stripNodeCallbacks(n.data);
+            // Preserve node type — use encoded type from syntax first, then existing node type
+            const nodeType = n.type || (cleanData?.shape ? 'resizableShape' : (existing?.type || 'diagramNode'));
+
+            if (existing) {
+              const existingClean = stripNodeCallbacks(existing.data);
+              return {
+                ...existing,
+                ...n,
+                type: nodeType,
+                position: prevPos || n.position,
+                data: {
+                  ...existingClean,
+                  ...cleanData,
+                  style: cleanData?.style || existingClean?.style,
+                },
+              };
+            }
+
+            return { ...n, type: nodeType, data: cleanData, position: prevPos || n.position };
+          });
+        });
+        setEdges(graph.edges);
+        lastSyntaxHashRef.current = syntaxHash;
+        lastAppliedVisualHashRef.current = visualHash;
+        if (reactFlowInstance && graph.nodes.length > 0) {
+          setTimeout(() => reactFlowInstance.fitView({ padding: 0.2, duration: 300 }), 50);
+        }
+        onGraphChange?.(graph);
+      }
+    } catch (err) {
+      console.error('Error in parsing:', err);
+    }
+
+    window.setTimeout(() => {
+      isParsingRef.current = false;
+      isInternalChangeRef.current = false;
+    }, 100);
+  }, 0);
 
     return () => {
-   
       window.clearTimeout(t);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1173,45 +1187,60 @@ function DiagramCanvasInner({
     [onEdgesChangeInternal, onEdgesChange, edges]
   );
 
-  // Handle dimension changes from ResizableShapeNode
+  // Handle dimension changes from ResizableShapeNode.
+  // NOTE: Do NOT call onUserGraphChange here — the useEffect([nodes,edges]) already does it.
   const handleNodeDimensionsChange = useCallback(
     (nodeId: string, width: number, height: number) => {
-      setNodes((prevNodes) => {
-        const updatedNodes = prevNodes.map((n) => {
+      setNodes((prevNodes) =>
+        prevNodes.map((n) => {
           if (n.id !== nodeId) return n;
           // CRITICAL: Preserve node type when updating dimensions
           const nodeType = n.type || (n.data?.shape ? 'resizableShape' : 'diagramNode');
-          return { 
-            ...n, 
-            type: nodeType,
-            width, 
-            height 
-          };
-        });
-        // Force immediate sync to parent when dimensions change
-        const updatedGraph = { nodes: updatedNodes, edges };
-        onUserGraphChange?.(updatedGraph);
-        return updatedNodes;
-      });
+          return { ...n, type: nodeType, width, height };
+        })
+      );
     },
-    [setNodes, edges, onUserGraphChange]
+    [setNodes]
   );
 
-  // Handle label changes from ResizableShapeNode
+  // Stable refs so that nodesForReactFlow memo can always reference latest callbacks
+  // without causing the memo to invalidate on every render.
+  const handleNodeDimensionsChangeRef = useRef(handleNodeDimensionsChange);
+  useEffect(() => { handleNodeDimensionsChangeRef.current = handleNodeDimensionsChange; }, [handleNodeDimensionsChange]);
+
+  // Handle label changes from ResizableShapeNode.
   const handleNodeLabelChange = useCallback(
     (nodeId: string, newLabel: string) => {
-      setNodes((prevNodes) => {
-        const updatedNodes = prevNodes.map((n) =>
+      setNodes((prevNodes) =>
+        prevNodes.map((n) =>
           n.id === nodeId ? { ...n, data: { ...n.data, label: newLabel } } : n
-        );
-        // Force immediate sync
-        const updatedGraph = { nodes: updatedNodes, edges };
-        onUserGraphChange?.(updatedGraph);
-        return updatedNodes;
-      });
+        )
+      );
       onCanvasUserGesture?.();
     },
-    [setNodes, onCanvasUserGesture, onUserGraphChange, edges]
+    [setNodes, onCanvasUserGesture]
+  );
+
+  const handleNodeLabelChangeRef = useRef(handleNodeLabelChange);
+  useEffect(() => { handleNodeLabelChangeRef.current = handleNodeLabelChange; }, [handleNodeLabelChange]);
+
+  // Inject fresh callbacks into resizable shape nodes on every render.
+  // This is the ONLY place callbacks live — never stored permanently in node data.
+  const nodesForReactFlow = useMemo(() =>
+    nodes.map((n) => {
+      if (n.type !== 'resizableShape') return n;
+      return {
+        ...n,
+        data: {
+          ...n.data,
+          onDimensionsChange: (id: string, w: number, h: number) =>
+            handleNodeDimensionsChangeRef.current(id, w, h),
+          onLabelChange: (id: string, label: string) =>
+            handleNodeLabelChangeRef.current(id, label),
+        },
+      };
+    }),
+    [nodes]
   );
 
   const relayNodesChange = useCallback(
@@ -1598,8 +1627,10 @@ function DiagramCanvasInner({
               width,
               height,
               data: {
+                // NOTE: Do NOT put onDimensionsChange/onLabelChange here.
+                // nodesForReactFlow memo injects fresh callbacks on every render.
                 label,
-                shape: shape,
+                shape,
                 style: {
                   fillColor: payload.fillColor || '#ffffff',
                   strokeColor: payload.strokeColor || '#000000',
@@ -1607,10 +1638,9 @@ function DiagramCanvasInner({
                   fontSize: 14,
                   color: '#000000',
                 },
-                onDimensionsChange: handleNodeDimensionsChange,
-                onLabelChange: handleNodeLabelChange,
               },
             };
+            onCanvasUserGesture?.();
             setNodes((nds: Node[]) => [...nds, newNode]);
             return;
           }
@@ -1849,7 +1879,7 @@ function DiagramCanvasInner({
       <div className="flex-1 relative w-full h-full overflow-hidden group/canvas">
         <ReactFlow
           style={{ width: '100%', height: '100%' }}
-          nodes={nodes}
+          nodes={nodesForReactFlow}
           edges={edges}
           onNodesChange={relayNodesChange}
           onEdgesChange={relayEdgesChange}
