@@ -292,22 +292,44 @@ export default function DiagramEditorPage() {
       // Parse syntax to get type/shape data (needed if DB nodes are missing type info)
       const parsedFromSyntax = parseSyntaxToGraph(currentDiagram.syntax || '');
       const parsedById = new Map(parsedFromSyntax.nodes.map((n: any) => [n.id, n]));
-
       const mergedNodes = (currentDiagram.nodes as any[]).map(dbNode => {
-        const parsedNode = parsedById.get(dbNode.id);
-        // Strip stale callbacks that may have been saved accidentally
+        // DB node IDs (e.g. n-1234-abcd) never match syntax-parsed IDs (e.g. 'rectangle').
+        // Match by ID first, then fall back to matching by label+type.
         const { onDimensionsChange: _dc, onLabelChange: _lc, ...cleanData } = (dbNode.data || {}) as any;
-        // For resizable shapes: prefer DB width/height (user resized), then parsed, then nothing
-        const width = dbNode.width ?? parsedNode?.width;
-        const height = dbNode.height ?? parsedNode?.height;
-        // Prefer DB type if present, else use parsed type to restore resizableShape
+        const dbLabel = cleanData.label || '';
+        const dbShape = cleanData.shape || '';
+        const parsedNode = parsedById.get(dbNode.id)
+          ?? parsedFromSyntax.nodes.find((p: any) =>
+              p.type === 'resizableShape' &&
+              (p.data?.label ?? '') === dbLabel &&
+              (p.data?.shape ?? '') === dbShape
+            )
+          ?? parsedFromSyntax.nodes.find((p: any) => (p.data?.label ?? '') === dbLabel);
+
+        // Prefer DB width/height (user resized), then parsed node dims, then extract from syntax
+        let width: number | undefined = dbNode.width ?? parsedNode?.width;
+        let height: number | undefined = dbNode.height ?? parsedNode?.height;
+
+        // Last resort: parse dimensions directly from syntax for resizableShape nodes
+        if ((!width || !height) && (dbNode.type === 'resizableShape' || dbShape)) {
+          const syntaxStr = currentDiagram.syntax || '';
+          // Look for [label|w:X,h:Y,shape:S] pattern matching this node's label
+          const escapedLabel = dbLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const dimMatch = syntaxStr.match(new RegExp(`\\[${escapedLabel}\\|([^\\]]*)\\]`));
+          if (dimMatch) {
+            dimMatch[1].split(',').forEach((attr: string) => {
+              const [k, v] = attr.trim().split(':');
+              if (k === 'w' && v && !width) width = parseInt(v, 10);
+              if (k === 'h' && v && !height) height = parseInt(v, 10);
+            });
+          }
+        }
+
         const type = dbNode.type || parsedNode?.type || 'diagramNode';
-        // Merge shape/style data from parsed if DB node is missing it
-        const shape = cleanData.shape || parsedNode?.data?.shape;
+        const shape = dbShape || parsedNode?.data?.shape;
         const style = cleanData.style || parsedNode?.data?.style;
         return {
           ...dbNode,
-          ...(parsedNode ? { position: dbNode.position || parsedNode.position } : {}),
           type,
           ...(width ? { width } : {}),
           ...(height ? { height } : {}),

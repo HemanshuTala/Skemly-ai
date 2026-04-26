@@ -991,8 +991,11 @@ function DiagramCanvasInner({
         id: n.id,
         x: n.position.x,
         y: n.position.y,
+        w: n.width,   // include dimensions so resize triggers visualChanged
+        h: n.height,
         label: (n.data as any)?.label,
         kind: (n.data as any)?.kind,
+        shape: (n.data as any)?.shape,
         style: (n.data as any)?.style,
       })),
       edges: vEdges.map((e) => ({
@@ -2172,8 +2175,8 @@ function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: stri
   const dbl = base.match(/^\[\[(.*)\]\]$/);
   if (dbl) return { label: dbl[1], kind: explicitKind || 'database' };
 
-  // [Label|w:X,h:Y,shape:S] — resizable shape syntax
-  const pipeMatch = base.match(/^\[([^|\]]+)\|([^\]]*)\]$/);
+  // [Label|w:X,h:Y,shape:S] — resizable shape syntax.
+  const pipeMatch = base.match(/^\[([^|\]]*)\|([^\]]*)\]$/);
   if (pipeMatch) {
     const label = pipeMatch[1].trim();
     const attrsStr = pipeMatch[2];
