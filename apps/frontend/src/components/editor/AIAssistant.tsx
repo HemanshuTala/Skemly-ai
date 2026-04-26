@@ -133,7 +133,9 @@ export function AIAssistant({ onGenerate }: AIAssistantProps) {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      toast.success('Code converted to diagram successfully!');
+      toast.success('Code converted to diagram successfully', {
+        duration: 5000,
+      });
       setCodeInput(''); // Clear code input after successful conversion
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message || 'Failed to convert code');
