@@ -1043,12 +1043,32 @@ function DiagramCanvasInner({
         } else if (syntaxChanged) {
           
           setNodes((prevNodes: Node[]) => {
-            
+            // Create a map of existing nodes to preserve their data (including styles)
+            const existingNodes = new Map<string, Node>(prevNodes.map(n => [n.id, n]));
             const positions = new Map<string, { x: number; y: number }>(prevNodes.map(n => [n.id, n.position]));
+            
             const result = graph.nodes.map(n => {
               const prevPos = positions.get(n.id);
+              const existing = existingNodes.get(n.id);
               // Preserve node type when re-parsing from syntax
               const nodeType = n.type || (n.data?.shape ? 'resizableShape' : 'diagramNode');
+              
+              if (existing) {
+                // Merge with existing node to preserve styles and other data
+                return {
+                  ...existing,
+                  ...n,
+                  type: nodeType,
+                  position: prevPos || n.position,
+                  data: {
+                    ...existing.data,
+                    ...n.data,
+                    // Preserve style from existing node if new one doesn't have it
+                    style: n.data?.style || existing.data?.style,
+                  }
+                };
+              }
+              
               return {
                 ...n,
                 type: nodeType,
