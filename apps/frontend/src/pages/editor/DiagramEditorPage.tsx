@@ -64,7 +64,10 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       let shape: string | undefined;
       
       if (pipeIndex >= 0) {
-        const attrsStr = content.slice(pipeIndex + 1);
+        let attrsStr = content.slice(pipeIndex + 1);
+        // Handle old corrupted format with two pipes: [Label|w:140,h:100|shape:rectangle]
+        // Convert to single pipe format by replacing second pipe with comma
+        attrsStr = attrsStr.replace(/\|shape:/, ',shape:');
         const attrs = attrsStr.split(',');
         attrs.forEach(attr => {
           const [key, value] = attr.split(':');
