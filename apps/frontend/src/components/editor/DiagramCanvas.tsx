@@ -1150,17 +1150,24 @@ function DiagramCanvasInner({
   const handleNodeDimensionsChange = useCallback(
     (nodeId: string, width: number, height: number) => {
       setNodes((prevNodes) => {
-        const updatedNodes = prevNodes.map((n) =>
-          n.id === nodeId ? { ...n, width, height } : n
-        );
-        // Force immediate sync to parent to prevent race condition with color changes
+        const updatedNodes = prevNodes.map((n) => {
+          if (n.id !== nodeId) return n;
+          // CRITICAL: Preserve node type when updating dimensions
+          const nodeType = n.type || (n.data?.shape ? 'resizableShape' : 'diagramNode');
+          return { 
+            ...n, 
+            type: nodeType,
+            width, 
+            height 
+          };
+        });
+        // Force immediate sync to parent when dimensions change
         const updatedGraph = { nodes: updatedNodes, edges };
         onUserGraphChange?.(updatedGraph);
         return updatedNodes;
       });
-      onCanvasUserGesture?.();
     },
-    [setNodes, onCanvasUserGesture, onUserGraphChange, edges]
+    [setNodes, edges, onUserGraphChange]
   );
 
   // Handle label changes from ResizableShapeNode
