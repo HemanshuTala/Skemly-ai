@@ -96,6 +96,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           } : undefined,
         },
       };
+      console.log('[parseSyntaxToGraph] Created node:', { id, width, height, shape, type: newNode.type });
       nodes.push(newNode);
       nodeById.set(id, newNode);
       return;
@@ -286,10 +287,27 @@ export default function DiagramEditorPage() {
       (currentDiagram.nodes?.length ?? 0) > 0 || (currentDiagram.edges?.length ?? 0) > 0
 
     if (hasPersistedVisual) {
+      // Parse syntax to get proper dimensions and shape data
+      const parsedFromSyntax = parseSyntaxToGraph(currentDiagram.syntax || '');
+      
+      // Merge database nodes with parsed data to ensure dimensions/shape are correct
+      const mergedNodes = (currentDiagram.nodes as any[]).map(dbNode => {
+        const parsedNode = parsedFromSyntax.nodes.find(p => p.id === dbNode.id);
+        if (parsedNode) {
+          // Use parsed node data for dimensions and shape, but keep database position
+          return {
+            ...parsedNode,
+            position: dbNode.position || parsedNode.position,
+          };
+        }
+        return dbNode;
+      });
+      
       const hydrated = {
-        nodes: currentDiagram.nodes as any,
+        nodes: mergedNodes,
         edges: currentDiagram.edges as any,
       };
+      console.log('[Load] Hydrated nodes:', hydrated.nodes.map(n => ({ id: n.id, width: n.width, height: n.height, type: n.type, shape: n.data?.shape })));
       setLocalGraph(hydrated);
       latestGraphRef.current = hydrated;
       setVisualOverride(true);
@@ -522,9 +540,11 @@ export default function DiagramEditorPage() {
       const { label, kind, width, height, shape, type } = info;
       // For resizable shapes, include dimensions and shape in syntax
       if (type === 'resizableShape' && shape) {
-        const dimPart = (width && height) ? `|w:${width},h:${height}` : '';
+        const dimPart = (width != null && height != null) ? `|w:${width},h:${height}` : '';
         const shapePart = `|shape:${shape}`;
-        return `[${label}${dimPart}${shapePart}]`;
+        const result = `[${label}${dimPart}${shapePart}]`;
+        console.log('[graphToSyntax] Resizable shape:', { label, width, height, shape, result });
+        return result;
       }
       if (kind === 'decision') return `{${label}}`
       if (kind === 'startend') return `(${label})`
