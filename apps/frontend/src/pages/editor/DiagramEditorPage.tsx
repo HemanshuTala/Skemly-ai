@@ -516,8 +516,11 @@ export default function DiagramEditorPage() {
 
   // Always use localGraph for selected node/edge to get fresh data (width/height/styles)
   // selectedNodeData can become stale after resize operations
+  // Always get the node from localGraph or latestGraphRef to ensure we have the full node data including 'type'
   const selectedNode = selectedNodeId
-    ? localGraph?.nodes?.find((n) => n.id === selectedNodeId) ?? selectedNodeData ?? null
+    ? localGraph?.nodes?.find((n) => n.id === selectedNodeId) 
+      ?? latestGraphRef.current?.nodes?.find((n) => n.id === selectedNodeId)
+      ?? null
     : null;
   const selectedEdge = selectedEdgeId
     ? localGraph?.edges?.find((e) => e.id === selectedEdgeId) ?? selectedEdgeData ?? null
@@ -728,9 +731,12 @@ export default function DiagramEditorPage() {
     }) => {
       const ids = selectedNodeIds.length > 0 ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : [];
       if (ids.length === 0) return;
+      console.log('[handleSelectedNodeStyleChange] Updating nodes:', ids, 'with patch:', patch);
       updateVisualGraph((prev) => ({
         nodes: prev.nodes.map((n) => {
           if (!ids.includes(n.id)) return n;
+          
+          console.log('[handleSelectedNodeStyleChange] Before update:', { id: n.id, type: n.type, width: n.width, height: n.height });
           
           const currentData = n.data as any;
           const currentStyle = currentData?.style || {};
@@ -740,9 +746,14 @@ export default function DiagramEditorPage() {
           const newStyle = { ...currentStyle, ...stylePatch };
           if (stylePatch.fontFamily === 'inherit') delete (newStyle as any).fontFamily;
           
-          // Build new node with updated dimensions and data
+          // Determine the correct node type - if it has a shape in data or patch, it's resizableShape
+          const nodeType = n.type || (currentData?.shape || shape ? 'resizableShape' : 'diagramNode');
+          
+          // Build new node with updated dimensions and data - CRITICAL: preserve type!
           const updatedNode: Node = {
             ...n,
+            // CRITICAL: Explicitly preserve type to prevent node from becoming diagramNode
+            type: nodeType,
             // Update width/height at node level for ReactFlow
             ...(width !== undefined && { width: Math.max(50, width) }),
             ...(height !== undefined && { height: Math.max(30, height) }),
@@ -754,6 +765,8 @@ export default function DiagramEditorPage() {
               ...(borderRadius !== undefined && { borderRadius }),
             },
           };
+          
+          console.log('[handleSelectedNodeStyleChange] After update:', { id: updatedNode.id, type: updatedNode.type, width: updatedNode.width, height: updatedNode.height });
           
           return updatedNode;
         }),
