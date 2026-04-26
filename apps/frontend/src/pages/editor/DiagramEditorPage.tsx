@@ -472,8 +472,12 @@ export default function DiagramEditorPage() {
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (diagramId && latestGraphRef.current) {
-        // Use fetch with keepalive for reliable delivery during page unload
         const token = localStorage.getItem('token');
+        // Strip callbacks — latestGraphRef is already clean (set to snapshot), but be safe
+        const cleanNodes = latestGraphRef.current.nodes.map((n: any) => {
+          const { onDimensionsChange: _dc, onLabelChange: _lc, ...restData } = (n.data || {}) as any;
+          return { ...n, data: restData };
+        });
         fetch(`/api/v1/diagrams/${diagramId}`, {
           method: 'PUT',
           headers: {
@@ -483,11 +487,11 @@ export default function DiagramEditorPage() {
           body: JSON.stringify({
             title,
             syntax: syntaxRef.current,
-            nodes: latestGraphRef.current.nodes,
+            nodes: cleanNodes,
             edges: latestGraphRef.current.edges,
           }),
           keepalive: true,
-        }).catch(() => {}); // Ignore errors - we're leaving anyway
+        }).catch(() => {});
       }
     };
     
