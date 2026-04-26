@@ -24,7 +24,8 @@ interface ShapeData {
   onLabelChange?: (id: string, label: string) => void;
 }
 
-export function ResizableShapeNode({ data, selected, id }: NodeProps<ShapeData>) {
+export function ResizableShapeNode({ data, selected, id, type }: NodeProps<ShapeData>) {
+  console.log(`[ResizableShapeNode] Render: id=${id}, type=${type}, shape=${data.shape}`);
   const { setNodes } = useReactFlow();
   
   // Handle resize - only notify parent, don't call setNodes (ReactFlow handles visual resize)
