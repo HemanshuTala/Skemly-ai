@@ -56,7 +56,6 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       // Check if extended format with pipe separator
       const pipeIndex = content.indexOf('|');
       const label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
-      console.log(`[parseSyntax] Node content: "${content}", pipeIndex: ${pipeIndex}, extracted label: "${label}"`);
       const id = label.replace(/\s+/g, '-').toLowerCase() || `node-${nodes.length}`;
       
       // Parse extended attributes if present
@@ -97,7 +96,6 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           } : undefined,
         },
       };
-      console.log('[parseSyntaxToGraph] Created node:', { id, label, width, height, shape, type: newNode.type });
       nodes.push(newNode);
       nodeById.set(id, newNode);
       return;
@@ -547,7 +545,6 @@ export default function DiagramEditorPage() {
         const dimPart = (width != null && height != null) ? `|w:${width},h:${height}` : '';
         const shapePart = `|shape:${shape}`;
         const result = `[${label}${dimPart}${shapePart}]`;
-        console.log('[graphToSyntax] Resizable shape:', { label, width, height, shape, result });
         return result;
       }
       if (kind === 'decision') return `{${label}}`
@@ -732,12 +729,9 @@ export default function DiagramEditorPage() {
     }) => {
       const ids = selectedNodeIds.length > 0 ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : [];
       if (ids.length === 0) return;
-      console.log('[handleSelectedNodeStyleChange] Updating nodes:', ids, 'with patch:', patch);
       updateVisualGraph((prev) => ({
         nodes: prev.nodes.map((n) => {
           if (!ids.includes(n.id)) return n;
-          
-          console.log('[handleSelectedNodeStyleChange] Before update:', { id: n.id, type: n.type, width: n.width, height: n.height });
           
           const currentData = n.data as any;
           const currentStyle = currentData?.style || {};
@@ -751,7 +745,7 @@ export default function DiagramEditorPage() {
           const nodeType = n.type || (currentData?.shape || shape ? 'resizableShape' : 'diagramNode');
           
           // Build new node with updated dimensions and data - CRITICAL: preserve type!
-          const updatedNode: Node = {
+          return {
             ...n,
             // CRITICAL: Explicitly preserve type to prevent node from becoming diagramNode
             type: nodeType,
@@ -766,10 +760,6 @@ export default function DiagramEditorPage() {
               ...(borderRadius !== undefined && { borderRadius }),
             },
           };
-          
-          console.log('[handleSelectedNodeStyleChange] After update:', { id: updatedNode.id, type: updatedNode.type, width: updatedNode.width, height: updatedNode.height });
-          
-          return updatedNode;
         }),
         edges: prev.edges,
       }));

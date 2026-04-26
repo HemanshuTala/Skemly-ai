@@ -25,14 +25,10 @@ interface ShapeData {
 }
 
 export function ResizableShapeNode({ data, selected, id, type }: NodeProps<ShapeData>) {
-  console.log(`[ResizableShapeNode] Render: id=${id}, type=${type}, shape=${data.shape}`);
   const { setNodes } = useReactFlow();
   
   // Handle resize - only notify parent, don't call setNodes (ReactFlow handles visual resize)
   const handleResize = useCallback((_: any, params: { width: number; height: number }) => {
-    console.log('[ResizableShapeNode] Resize triggered:', { id, width: params.width, height: params.height, onDimensionsChange: !!data.onDimensionsChange });
-    // Notify parent component (DiagramCanvas) of dimension change
-    // The visual resize is handled by ReactFlow's NodeResizer automatically
     data.onDimensionsChange?.(id, params.width, params.height);
   }, [id, data]);
   const [isEditing, setIsEditing] = useState(false);
