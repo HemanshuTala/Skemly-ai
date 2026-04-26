@@ -1149,11 +1149,16 @@ function DiagramCanvasInner({
   // Handle dimension changes from ResizableShapeNode
   const handleNodeDimensionsChange = useCallback(
     (nodeId: string, width: number, height: number) => {
+      console.log('[handleNodeDimensionsChange] Called:', { nodeId, width, height });
       setNodes((prevNodes) => {
+        const nodeBefore = prevNodes.find(n => n.id === nodeId);
+        console.log('[handleNodeDimensionsChange] Node before:', { id: nodeBefore?.id, type: nodeBefore?.type, data: nodeBefore?.data });
+        
         const updatedNodes = prevNodes.map((n) => {
           if (n.id !== nodeId) return n;
           // CRITICAL: Preserve node type when updating dimensions
           const nodeType = n.type || (n.data?.shape ? 'resizableShape' : 'diagramNode');
+          console.log('[handleNodeDimensionsChange] Updating node:', { id: n.id, oldType: n.type, newType: nodeType, shape: n.data?.shape });
           return { 
             ...n, 
             type: nodeType,
@@ -1161,6 +1166,10 @@ function DiagramCanvasInner({
             height 
           };
         });
+        
+        const nodeAfter = updatedNodes.find(n => n.id === nodeId);
+        console.log('[handleNodeDimensionsChange] Node after:', { id: nodeAfter?.id, type: nodeAfter?.type });
+        
         // Force immediate sync to parent when dimensions change
         const updatedGraph = { nodes: updatedNodes, edges };
         onUserGraphChange?.(updatedGraph);
