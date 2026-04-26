@@ -2160,7 +2160,7 @@ function slugifyId(input: string) {
     .replace(/[^a-z0-9-_]/g, '');
 }
 
-function unwrapNodeRef(raw: string): { label: string; kind: string } {
+function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: string; width?: number; height?: number } {
   const s = raw.trim();
   
   // Explicit kind with :: prefix
@@ -2171,6 +2171,23 @@ function unwrapNodeRef(raw: string): { label: string; kind: string } {
   // [[Database]]
   const dbl = base.match(/^\[\[(.*)\]\]$/);
   if (dbl) return { label: dbl[1], kind: explicitKind || 'database' };
+
+  // [Label|w:X,h:Y,shape:S] — resizable shape syntax
+  const pipeMatch = base.match(/^\[([^|\]]+)\|([^\]]*)\]$/);
+  if (pipeMatch) {
+    const label = pipeMatch[1].trim();
+    const attrsStr = pipeMatch[2];
+    let width: number | undefined;
+    let height: number | undefined;
+    let shape: string | undefined;
+    attrsStr.split(',').forEach(attr => {
+      const [k, v] = attr.trim().split(':');
+      if (k === 'w' && v) width = parseInt(v, 10);
+      if (k === 'h' && v) height = parseInt(v, 10);
+      if (k === 'shape' && v) shape = v.trim();
+    });
+    return { label, kind: 'resizableShape', shape: shape || 'rectangle', width, height };
+  }
 
   // [Process]
   const square = base.match(/^\[(.*)\]$/);
@@ -2244,6 +2261,33 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       return nodeById.get(finalId)!;
     }
 
+    // If it's a resizable shape, create the correct node type
+    if (finalKind === 'resizableShape') {
+      const unwrappedFull = idLabelMatch
+        ? unwrapNodeRef(trimmed.slice(finalId.length))
+        : unwrapNodeRef(trimmed);
+      const shapeNode: Node = {
+        id: finalId,
+        type: 'resizableShape',
+        position: { x: 0, y: 0 },
+        ...(unwrappedFull.width ? { width: unwrappedFull.width } : {}),
+        ...(unwrappedFull.height ? { height: unwrappedFull.height } : {}),
+        data: {
+          label: finalLabel,
+          shape: unwrappedFull.shape || 'rectangle',
+          style: {
+            fillColor: '#ffffff',
+            strokeColor: '#000000',
+            strokeWidth: 2,
+            fontSize: 14,
+            color: '#000000',
+          },
+        },
+      };
+      nodeById.set(finalId, shapeNode);
+      return shapeNode;
+    }
+
     // Determine icon from kind or label
     const getIconFromKind = (k: string, label: string): string => {
       const labelLower = label.toLowerCase();
@@ -2264,7 +2308,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       if (['ui', 'cloud', 'security', 'mobile', 'analytics', 'communication', 'media', 'location'].includes(k)) return k;
       return k;
     };
-    
+
     const icon = getIconFromKind(finalKind, finalLabel);
     
     const newNode: Node = {
