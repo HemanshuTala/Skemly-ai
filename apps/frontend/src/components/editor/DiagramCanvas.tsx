@@ -1047,8 +1047,11 @@ function DiagramCanvasInner({
             const positions = new Map<string, { x: number; y: number }>(prevNodes.map(n => [n.id, n.position]));
             const result = graph.nodes.map(n => {
               const prevPos = positions.get(n.id);
+              // Preserve node type when re-parsing from syntax
+              const nodeType = n.type || (n.data?.shape ? 'resizableShape' : 'diagramNode');
               return {
                 ...n,
+                type: nodeType,
                 position: prevPos || n.position
               };
             });
@@ -1554,8 +1557,12 @@ function DiagramCanvasInner({
             k === 'io'
               ? k
               : 'node';
+          // Get default label for resizable shapes - capitalize first letter
+          const shapeDefault = payload.shape 
+            ? payload.shape.charAt(0).toUpperCase() + payload.shape.slice(1)
+            : 'Shape';
           const label = payload.kind === 'resizableShape' 
-            ? (payload.label || '')  // No default label for shapes
+            ? (payload.label || shapeDefault)
             : String(payload.label || 'Node');
           const id = `n-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
           

@@ -77,11 +77,11 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
         });
       }
       
-      // Check if this is a resizable shape
-      const isResizableShape = shape && ['rectangle', 'circle', 'rounded'].includes(shape);
-      
-      const newNode: Node = {
+      // Determine node type - if it has a shape attribute, it's resizableShape
+      const isResizableShape = !!shape;
+      const newNode: any = {
         id,
+        label,
         position: { x: 100 + nodes.length * 150, y: 100 + nodes.length * 100 },
         ...(width && { width }),
         ...(height && { height }),
