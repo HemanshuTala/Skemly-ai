@@ -286,30 +286,43 @@ export default function DiagramEditorPage() {
     setTitle(currentDiagram.title || 'Untitled Diagram');
 
     const hasPersistedVisual =
-      (currentDiagram.nodes?.length ?? 0) > 0 || (currentDiagram.edges?.length ?? 0) > 0
+      (currentDiagram.nodes?.length ?? 0) > 0 || (currentDiagram.edges?.length ?? 0) > 0;
 
     if (hasPersistedVisual) {
-      // Parse syntax to get proper dimensions and shape data
+      // Parse syntax to get type/shape data (needed if DB nodes are missing type info)
       const parsedFromSyntax = parseSyntaxToGraph(currentDiagram.syntax || '');
-      
-      // Merge database nodes with parsed data to ensure dimensions/shape are correct
+      const parsedById = new Map(parsedFromSyntax.nodes.map((n: any) => [n.id, n]));
+
       const mergedNodes = (currentDiagram.nodes as any[]).map(dbNode => {
-        const parsedNode = parsedFromSyntax.nodes.find(p => p.id === dbNode.id);
-        if (parsedNode) {
-          // Use parsed node data for dimensions and shape, but keep database position
-          return {
-            ...parsedNode,
-            position: dbNode.position || parsedNode.position,
-          };
-        }
-        return dbNode;
+        const parsedNode = parsedById.get(dbNode.id);
+        // Strip stale callbacks that may have been saved accidentally
+        const { onDimensionsChange: _dc, onLabelChange: _lc, ...cleanData } = (dbNode.data || {}) as any;
+        // For resizable shapes: prefer DB width/height (user resized), then parsed, then nothing
+        const width = dbNode.width ?? parsedNode?.width;
+        const height = dbNode.height ?? parsedNode?.height;
+        // Prefer DB type if present, else use parsed type to restore resizableShape
+        const type = dbNode.type || parsedNode?.type || 'diagramNode';
+        // Merge shape/style data from parsed if DB node is missing it
+        const shape = cleanData.shape || parsedNode?.data?.shape;
+        const style = cleanData.style || parsedNode?.data?.style;
+        return {
+          ...dbNode,
+          ...(parsedNode ? { position: dbNode.position || parsedNode.position } : {}),
+          type,
+          ...(width ? { width } : {}),
+          ...(height ? { height } : {}),
+          data: {
+            ...cleanData,
+            ...(shape ? { shape } : {}),
+            ...(style ? { style } : {}),
+          },
+        };
       });
       
       const hydrated = {
         nodes: mergedNodes,
         edges: currentDiagram.edges as any,
       };
-      console.log('[Load] Hydrated nodes:', hydrated.nodes.map(n => ({ id: n.id, width: n.width, height: n.height, type: n.type, shape: n.data?.shape })));
       setLocalGraph(hydrated);
       latestGraphRef.current = hydrated;
       setVisualOverride(true);
@@ -482,20 +495,21 @@ export default function DiagramEditorPage() {
         codeAuthoritativeRef.current = true
         setVisualOverride(false)
         setLocalGraph(null)
-        // Don't reset latestGraphRef here - let canvas report the new graph after parsing
-        // Only save the syntax now - the parsed nodes/edges will be reported back by canvas
-        save({ 
-          syntax: newSyntax,
-        });
+        save({ syntax: newSyntax });
       } else {
         codeAuthoritativeRef.current = false
         setVisualOverride(true)
-        // For visual changes, save with current graph data
-        const graphForSave = latestGraphRef.current;
+        // Strip callbacks before saving — JSON serialization drops functions but
+        // having them in the saved payload caused type corruption on reload.
+        const rawGraph = latestGraphRef.current;
+        const cleanNodes = rawGraph?.nodes.map((n: any) => {
+          const { onDimensionsChange: _dc, onLabelChange: _lc, ...restData } = (n.data || {}) as any;
+          return { ...n, data: restData };
+        });
         save({ 
           syntax: newSyntax,
-          nodes: graphForSave?.nodes,
-          edges: graphForSave?.edges,
+          nodes: cleanNodes,
+          edges: rawGraph?.edges,
         });
       }
     },
@@ -601,7 +615,15 @@ export default function DiagramEditorPage() {
   const updateVisualGraph = useCallback(
     (updater: (prev: { nodes: Node[]; edges: Edge[] }) => { nodes: Node[]; edges: Edge[] }) => {
       // If we're currently in 'code mode' (localGraph is null), start from the latest auto-layout state.
-      const current = localGraph ?? latestGraphRef.current ?? { nodes: [], edges: [] };
+      const raw = localGraph ?? latestGraphRef.current ?? { nodes: [], edges: [] };
+      // Strip callbacks so graphToSyntax and save never see stale function refs
+      const current = {
+        nodes: raw.nodes.map((n: any) => {
+          const { onDimensionsChange: _dc, onLabelChange: _lc, ...restData } = (n.data || {}) as any;
+          return { ...n, data: restData };
+        }),
+        edges: raw.edges,
+      };
       const next = updater(current);
       setLocalGraph(next);
       // CRITICAL: Also update latestGraphRef so saves get the latest data including styles
@@ -1446,10 +1468,9 @@ export default function DiagramEditorPage() {
                 }}
                 onCanvasUserGesture={onCanvasUserGesture}
                 onUserGraphChange={(graph) => {
-                  latestGraphRef.current = graph;
                   // Strip callback functions (onDimensionsChange, onLabelChange) from node data
-                  // before storing in localGraph. DiagramCanvas.nodesForReactFlow memo re-injects
-                  // fresh ones on every render. Stale closures here caused nodes to lose their type.
+                  // before storing anywhere. DiagramCanvas.nodesForReactFlow memo re-injects
+                  // fresh ones on every render. Stale closures caused nodes to lose their type.
                   const snapshot = {
                     nodes: graph.nodes.map((n) => {
                       const { onDimensionsChange: _dc, onLabelChange: _lc, ...restData } = (n.data || {}) as any;
@@ -1457,6 +1478,8 @@ export default function DiagramEditorPage() {
                     }),
                     edges: graph.edges.map((e) => ({ ...e })),
                   };
+                  // Keep latestGraphRef clean (no callbacks) so updateVisualGraph and saves are safe
+                  latestGraphRef.current = snapshot;
                   setLocalGraph(snapshot);
                   if (codeAuthoritativeRef.current) {
                     return;
