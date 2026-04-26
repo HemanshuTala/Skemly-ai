@@ -56,6 +56,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       // Check if extended format with pipe separator
       const pipeIndex = content.indexOf('|');
       const label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
+      console.log(`[parseSyntax] Node content: "${content}", pipeIndex: ${pipeIndex}, extracted label: "${label}"`);
       const id = label.replace(/\s+/g, '-').toLowerCase() || `node-${nodes.length}`;
       
       // Parse extended attributes if present
@@ -96,7 +97,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           } : undefined,
         },
       };
-      console.log('[parseSyntaxToGraph] Created node:', { id, width, height, shape, type: newNode.type });
+      console.log('[parseSyntaxToGraph] Created node:', { id, label, width, height, shape, type: newNode.type });
       nodes.push(newNode);
       nodeById.set(id, newNode);
       return;
