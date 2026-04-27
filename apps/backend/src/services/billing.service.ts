@@ -78,16 +78,21 @@ class BillingService {
       throw new ApiError(400, 'ALREADY_SUBSCRIBED', `You already have an active ${user.plan} subscription. Please cancel it first before subscribing to a new plan.`);
     }
 
-    // Get or create Razorpay customer
     let customerId = user.razorpayCustomerId;
     if (!customerId) {
-      const customer = await this.razorpay!.customers.create({
-        name: user.name,
-        email: user.email,
-      });
-      customerId = customer.id;
-      user.razorpayCustomerId = customerId;
-      await user.save();
+      try {
+        const customer = await this.razorpay!.customers.create({
+          name: user.name || 'Skemly User', // Provide a fallback if name is empty
+          email: user.email,
+        });
+        customerId = customer.id;
+        user.razorpayCustomerId = customerId;
+        await user.save();
+      } catch (error: any) {
+        logger.error('Razorpay customer create error:', error);
+        const errorMessage = error?.error?.description || error?.message || 'Failed to create Razorpay customer';
+        throw new ApiError(400, 'PAYMENT_ERROR', errorMessage);
+      }
     }
 
     const razorpayPlanId = await this.resolveRazorpayPlanId(planId);
@@ -95,17 +100,25 @@ class BillingService {
     // Create subscription
     // Note: Razorpay doesn't allow callback_url in subscription.create
     // The redirect happens automatically when using subscription.short_url
-    const subscription = await this.razorpay!.subscriptions.create({
-      plan_id: razorpayPlanId,
-      total_count: 12, // 12 months
-      quantity: 1,
-      customer_notify: 1, // Send email/SMS notifications
-      notes: {
-        userId: userId,
-        planId: planId,
-        customerId,
-      },
-    } as any);
+    let subscription;
+    try {
+      subscription = await this.razorpay!.subscriptions.create({
+        plan_id: razorpayPlanId,
+        customer_id: customerId,
+        total_count: 12, // 12 months
+        quantity: 1,
+        customer_notify: 1, // Send email/SMS notifications
+        notes: {
+          userId: userId,
+          planId: planId,
+          customerId,
+        },
+      } as any);
+    } catch (error: any) {
+      logger.error('Razorpay subscription create error:', error);
+      const errorMessage = error?.error?.description || error?.message || 'Failed to create Razorpay subscription';
+      throw new ApiError(400, 'PAYMENT_ERROR', errorMessage);
+    }
 
     // Update user record
     user.razorpaySubscriptionId = subscription.id;
@@ -126,8 +139,14 @@ class BillingService {
     this.checkRazorpayAvailable();
     const cfg = this.planConfigs[planId];
 
-    // Try to reuse an existing active plan that matches app metadata.
-    const existing = await this.razorpay!.plans.all({ count: 100 });
+    let existing;
+    try {
+      existing = await this.razorpay!.plans.all({ count: 100 });
+    } catch (error: any) {
+      logger.error('Razorpay plans fetch error:', error);
+      const errorMessage = error?.error?.description || error?.message || 'Failed to fetch Razorpay plans';
+      throw new ApiError(400, 'PAYMENT_ERROR', errorMessage);
+    }
     const matched = existing.items?.find((plan: any) => {
       const notesPlanId = plan.notes?.appPlanId;
       return (
@@ -143,19 +162,26 @@ class BillingService {
     }
 
     // Create a plan automatically when none exists.
-    const created = await this.razorpay!.plans.create({
-      period: 'monthly',
-      interval: 1,
-      item: {
-        name: cfg.name,
-        amount: cfg.amountInPaise,
-        currency: 'INR',
-        description: cfg.description,
-      },
-      notes: {
-        appPlanId: cfg.id,
-      },
-    } as any);
+    let created;
+    try {
+      created = await this.razorpay!.plans.create({
+        period: 'monthly',
+        interval: 1,
+        item: {
+          name: cfg.name,
+          amount: cfg.amountInPaise,
+          currency: 'INR',
+          description: cfg.description,
+        },
+        notes: {
+          appPlanId: cfg.id,
+        },
+      } as any);
+    } catch (error: any) {
+      logger.error('Razorpay plan create error:', error);
+      const errorMessage = error?.error?.description || error?.message || 'Failed to create Razorpay plan';
+      throw new ApiError(400, 'PAYMENT_ERROR', errorMessage);
+    }
 
     logger.info(`Created Razorpay plan for ${planId}: ${created.id}`);
     return created.id;
@@ -370,7 +396,7 @@ class BillingService {
       
       // Verify signature if provided (for inline checkout)
       if (razorpaySignature && this.webhookSecret) {
-        const body = razorpaySubscriptionId + '|' + razorpayPaymentId;
+        const body = razorpayPaymentId + '|' + razorpaySubscriptionId;
         const expectedSignature = crypto
           .createHmac('sha256', this.webhookSecret)
           .update(body)

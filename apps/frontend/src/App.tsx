@@ -41,16 +41,14 @@ const queryClient = new QueryClient({
   },
 })
 
-// Initialize Lenis for smooth scrolling - DISABLED FOR TESTING
-// const lenis = new Lenis({
-//   duration: 1.2,
-// })
-
-// function raf(time: number) {
-//   lenis.raf(time)
-//   requestAnimationFrame(raf)
-// }
-// requestAnimationFrame(raf)
+// Lenis smooth scroll — enabled globally
+let lenisInstance: Lenis | null = null;
+function initLenis() {
+  if (lenisInstance) return;
+  lenisInstance = new Lenis({ duration: 1.1, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)) });
+  function raf(time: number) { lenisInstance!.raf(time); requestAnimationFrame(raf) }
+  requestAnimationFrame(raf);
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
@@ -69,10 +67,10 @@ function AnimatedRoutes() {
     <AnimatePresence mode="wait">
       <motion.div
         key={location.pathname}
-        initial={{ opacity: 0, scale: 0.99, filter: 'blur(10px)' }}
-        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-        exit={{ opacity: 0, scale: 1.01, filter: 'blur(10px)' }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -4 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
         <Routes location={location}>
           {/* Debug Route */}
@@ -167,6 +165,7 @@ function App() {
     localStorage.setItem('theme', 'dark')
     document.documentElement.classList.add('dark')
     document.body.classList.add('dark')
+    initLenis()
   }, [])
 
   useEffect(() => {

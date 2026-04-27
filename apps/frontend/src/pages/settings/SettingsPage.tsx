@@ -223,6 +223,13 @@ export default function SettingsPage() {
                       isCurrent={subscription?.plan === plan.id}
                       isBusy={isBillingBusy}
                       onSubscribe={async (planId) => {
+                        if (planId === 'free') {
+                          if (subscription?.plan && subscription.plan !== 'free') {
+                            toast('Please cancel your current subscription to switch to the free plan.')
+                          }
+                          return;
+                        }
+
                         await openRazorpayCheckout({
                           planId,
                           fetchUser,
