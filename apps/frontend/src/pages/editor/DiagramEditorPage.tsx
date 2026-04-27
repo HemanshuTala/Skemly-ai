@@ -44,10 +44,11 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
   // Pre-fix: Handle lines with missing closing brackets or extra opening brackets for resizable shapes
   // [[Rectangle|w:240,h:200,shape:rectangle] -> [Rectangle|w:240,h:200,shape:rectangle]
   // Works anywhere in the line, even in connections
-  fixedSyntax = fixedSyntax.replace(/\[\[+([a-zA-Z0-9_-\s]+)\|([^\]]*?)(?:\])?/g, (match, label, attrs) => {
+  // Note: Escaped hyphen to avoid "Range out of order" error
+  fixedSyntax = fixedSyntax.replace(/\[\[+([a-zA-Z0-9_\-\s]+)\|([^\]]*)(?:\])?/g, (match, label, attrs) => {
+    // We remove the non-greedy ? from attrs so it matches up to the closing bracket or end
     // Add closing bracket if missing
-    const hasClosing = match.endsWith(']');
-    return hasClosing ? `[${label}|${attrs}]` : `[${label}|${attrs}]`;
+    return `[${label}|${attrs}]`;
   });
   
   // Fix 1: Join lines that are clearly part of a broken extended format
@@ -61,7 +62,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     if (!line) continue;
     
     // Fix double/triple opening brackets ONLY if not a valid [[Database]]
-    let fixedLine = line.replace(/\[\[+([a-zA-Z0-9_-\s]+)(?=[\|\]])/g, (match, p1) => match.endsWith(']') ? `[[${p1}` : `[${p1}`);
+    let fixedLine = line.replace(/\[\[+([a-zA-Z0-9_\-\s]+)(?=[\|\]])/g, (match, p1) => match.endsWith(']') ? `[[${p1}` : `[${p1}`);
     
     // Fix missing closing bracket at end: [Rectangle|w:240,h:200,shape:rectangle -> [Rectangle|w:240,h:200,shape:rectangle]
     if (fixedLine.match(/^\[[^\]]+\|/) && !fixedLine.endsWith(']')) {

@@ -2237,16 +2237,33 @@ function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: stri
 }
 
 function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
+  // Fix corrupted syntax where commas were converted to newlines in extended format
+  // Pattern: lines like [Label|w:120], [h:80], [shape:rectangle] should be joined
+  let fixedSyntax = String(syntax || '');
+
+  // Pre-fix: Handle lines with missing closing brackets or extra opening brackets for resizable shapes
+  // [[Rectangle|w:240,h:200,shape:rectangle] -> [Rectangle|w:240,h:200,shape:rectangle]
+  fixedSyntax = fixedSyntax.replace(/\[\[+([a-zA-Z0-9_-\s]+)\|([^\]]*?)(?:\])?/g, (match, label, attrs) => {
+    const hasClosing = match.endsWith(']');
+    return hasClosing ? `[${label}|${attrs}]` : `[${label}|${attrs}]`;
+  });
+
   // Preprocess: split multiple connections on one line (comma-separated)
-  const preprocessed = String(syntax || '')
+  const preprocessed = fixedSyntax
     .split('\n')
     .flatMap((line) => {
       const trimmed = line.trim();
-      // If line contains arrows and commas, split by comma
-      if (trimmed.includes('-->') && trimmed.includes(',')) {
-        return trimmed.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+      // Fix double/triple opening brackets ONLY if not a valid [[Database]]
+      const fixedLine = trimmed.replace(/\[\[+([a-zA-Z0-9_-\s]+)(?=[\|\]])/g, (match, p1) => match.endsWith(']') ? `[[${p1}` : `[${p1}`);
+      // Fix missing closing bracket at end
+      if (fixedLine.match(/^\[[^\]]+\|/) && !fixedLine.endsWith(']')) {
+        return [fixedLine + ']'];
       }
-      return [trimmed];
+      // If line contains arrows and commas, split by comma
+      if (fixedLine.includes('-->') && fixedLine.includes(',')) {
+        return fixedLine.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+      }
+      return [fixedLine];
     })
     .filter((l) => l.length > 0);
 
