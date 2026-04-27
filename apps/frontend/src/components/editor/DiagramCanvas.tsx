@@ -2198,8 +2198,9 @@ function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: stri
         if (k === 'shape' && v) shape = v.trim();
       });
     }
-    // Ensure we have a valid label, not just attributes
-    const finalLabel = label || 'Shape';
+    // Ensure we have a valid label, not just attributes, and strip extra brackets
+    let finalLabel = label || 'Shape';
+    finalLabel = finalLabel.replace(/^[\[]+/, '').replace(/[\]]+$/, '').trim();
     return { label: finalLabel, kind: 'resizableShape', shape: shape || 'rectangle', width, height };
   }
 

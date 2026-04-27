@@ -41,9 +41,10 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
   // Pattern: lines like [Label|w:120], [h:80], [shape:rectangle] should be joined
   let fixedSyntax = String(syntax || '');
   
-  // Pre-fix: Handle lines with missing closing brackets or extra opening brackets
+  // Pre-fix: Handle lines with missing closing brackets or extra opening brackets for resizable shapes
   // [[Rectangle|w:240,h:200,shape:rectangle] -> [Rectangle|w:240,h:200,shape:rectangle]
-  fixedSyntax = fixedSyntax.replace(/\[\[+(\w[^\]]*?)\|([^\]]*?)(?:\])?$/gm, (match, label, attrs) => {
+  // Works anywhere in the line, even in connections
+  fixedSyntax = fixedSyntax.replace(/\[\[+([a-zA-Z0-9_-\s]+)\|([^\]]*?)(?:\])?/g, (match, label, attrs) => {
     // Add closing bracket if missing
     const hasClosing = match.endsWith(']');
     return hasClosing ? `[${label}|${attrs}]` : `[${label}|${attrs}]`;
@@ -59,8 +60,8 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     const line = lines[i].trim();
     if (!line) continue;
     
-    // Fix double/triple opening brackets: [[[Rectangle -> [Rectangle
-    let fixedLine = line.replace(/^\[\[+(?=\w)/, '[');
+    // Fix double/triple opening brackets ONLY if not a valid [[Database]]
+    let fixedLine = line.replace(/\[\[+([a-zA-Z0-9_-\s]+)(?=[\|\]])/g, (match, p1) => match.endsWith(']') ? `[[${p1}` : `[${p1}`);
     
     // Fix missing closing bracket at end: [Rectangle|w:240,h:200,shape:rectangle -> [Rectangle|w:240,h:200,shape:rectangle]
     if (fixedLine.match(/^\[[^\]]+\|/) && !fixedLine.endsWith(']')) {
@@ -121,7 +122,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       const pipeIndex = content.indexOf('|');
       let label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
       // Validate label: should not be empty and should not look like an attribute
-      label = label.trim();
+      label = label.replace(/^[\[]+/, '').replace(/[\]]+$/, '').trim();
       if (!label || label.match(/^(shape|w|h):/)) {
         label = 'Node'; // Default fallback for malformed labels
       }
@@ -193,7 +194,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           const pipeIndex = content.indexOf('|');
           let label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
           // Validate label: should not be empty and should not look like an attribute
-          label = label.trim();
+          label = label.replace(/^[\[]+/, '').replace(/[\]]+$/, '').trim();
           if (!label || label.match(/^(shape|w|h):/)) {
             console.error('[extractNodeInfo] Invalid label detected:', { raw, content, pipeIndex, label });
             label = 'Node';
@@ -745,7 +746,9 @@ export default function DiagramEditorPage() {
     nodes.forEach((n) => {
       // Defensive: ensure data exists and extract properties safely
       const data = (n as any)?.data || {}
-      const nodeLabel = String(data?.label || '').trim()
+      // Strip brackets in case they leaked into the label
+      let nodeLabel = String(data?.label || '').trim()
+      nodeLabel = nodeLabel.replace(/^[\[]+/, '').replace(/[\]]+$/, '').trim()
       const fallbackLabel = n.id?.startsWith('n-') ? 'Node' : String(n.id || 'Node')
       // DEBUG: Check for label corruption
       if (nodeLabel.includes('shape:') || nodeLabel.includes('w:') || nodeLabel.includes('h:')) {
