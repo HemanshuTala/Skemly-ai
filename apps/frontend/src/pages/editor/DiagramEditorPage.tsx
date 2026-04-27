@@ -723,6 +723,19 @@ export default function DiagramEditorPage() {
 
       const fromRef = wrap(from)
       const toRef = wrap(to)
+      
+      // DEBUG: Log resizable shape syntax generation
+      if (from.type === 'resizableShape' || to.type === 'resizableShape') {
+        console.log('[graphToSyntax] Generating edge syntax:', {
+          from: fromRef,
+          to: toRef,
+          fromType: from.type,
+          toType: to.type,
+          fromWidth: from.width,
+          fromHeight: from.height,
+          fromShape: from.shape,
+        });
+      }
 
       const label = String(e.label ?? '').trim()
       if (label) {
@@ -751,7 +764,12 @@ export default function DiagramEditorPage() {
       lines.push(wrap(info))
     })
 
-    return lines.join('\n')
+    const result = lines.join('\n')
+    // DEBUG: Check if resizableShape syntax is in output
+    if (result.includes('shape:rectangle') || result.includes('shape:circle')) {
+      console.log('[graphToSyntax] Final syntax contains resizable shapes:', result.substring(0, 500))
+    }
+    return result
   }, []);
 
   const updateVisualGraph = useCallback(
