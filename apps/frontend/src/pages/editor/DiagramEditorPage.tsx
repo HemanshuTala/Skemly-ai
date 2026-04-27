@@ -37,15 +37,62 @@ import { MarkerType, type Edge, type Node } from 'reactflow';
 
 // Helper functions for parsing and normalizing graph data
 function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
-  const lines = String(syntax || '')
-    .split('\n')
-    .map((l) => l.trim());
-
+  // Fix corrupted syntax where commas were converted to newlines in extended format
+  // Pattern: lines like [Label|w:120], [h:80], [shape:rectangle] should be joined
+  let fixedSyntax = String(syntax || '');
+  
+  // Fix 1: Join lines that are clearly part of a broken extended format
+  // Look for patterns like [Something|attr] followed by [attr] on next lines
+  const lines = fixedSyntax.split('\n');
+  const fixedLines: string[] = [];
+  let pendingLine = '';
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    // Check if this looks like a continuation of an extended format (starts with [ and contains attribute-like content)
+    const isAttrLine = line.match(/^\[(w:|h:|shape:)[^\]]*\]$/);
+    const isBrokenExtended = pendingLine && isAttrLine;
+    
+    if (isBrokenExtended) {
+      // This is a continuation - merge it into the pending line
+      const attrContent = line.slice(1, -1); // Remove brackets
+      pendingLine = pendingLine.slice(0, -1) + ',' + attrContent + ']';
+    } else if (line.match(/^\[[^\]]*\|[^\]]*$/)) {
+      // This line starts an extended format but doesn't end with ]
+      pendingLine = line;
+    } else if (pendingLine && line.match(/^[^\[]*\]$/)) {
+      // This line ends the pending extended format
+      pendingLine = pendingLine + line;
+      fixedLines.push(pendingLine);
+      pendingLine = '';
+    } else {
+      // Regular line
+      if (pendingLine) {
+        fixedLines.push(pendingLine);
+        pendingLine = '';
+      }
+      fixedLines.push(line);
+    }
+  }
+  if (pendingLine) fixedLines.push(pendingLine);
+  
+  // Fix 2: Handle the case where the entire extended format was broken across lines
+  // [Label|w:120], [h:80], [shape:rectangle]] -> [Label|w:120,h:80,shape:rectangle]
+  const rejoined = fixedLines.map((line, index) => {
+    // If this is an attribute-only line, skip it (it was already merged above)
+    if (line.match(/^\[(w:|h:|shape:)[^\]]*\]$/)) {
+      return null;
+    }
+    return line;
+  }).filter((l): l is string => l !== null);
+  
   const nodeById = new Map<string, Node>();
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  lines.forEach((line) => {
+  rejoined.forEach((line) => {
     if (!line) return;
     
     // Simple node pattern: [Node], {Node}, etc.
