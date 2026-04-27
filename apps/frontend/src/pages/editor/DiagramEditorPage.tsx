@@ -119,6 +119,10 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       // Helper to extract full node info from extended format [Label|w:100,h:80,shape:rect]
       // Use non-greedy regex to avoid capturing extra closing brackets
       const extractNodeInfo = (raw: string): { label: string; width?: number; height?: number; shape?: string; type?: string } => {
+        // DEBUG: Log parsing of extended format
+        if (raw.includes('shape:')) {
+          console.log('[extractNodeInfo] Parsing:', { raw });
+        }
         // Match content inside brackets without being greedy (stop at first closing bracket)
         const bracketMatch = raw.match(/^\[([^\]]*?)\]$/);
         if (bracketMatch) {
@@ -128,6 +132,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           // Validate label: should not be empty and should not look like an attribute
           label = label.trim();
           if (!label || label.match(/^(shape|w|h):/)) {
+            console.error('[extractNodeInfo] Invalid label detected:', { raw, content, pipeIndex, label });
             label = 'Node';
           }
           
@@ -610,6 +615,14 @@ export default function DiagramEditorPage() {
   // Handle syntax change
   const handleSyntaxChange = useCallback(
     (newSyntax: string, source: 'code' | 'visual') => {
+      // DEBUG: Log syntax changes
+      if (newSyntax.includes('shape:')) {
+        console.log('[handleSyntaxChange] Syntax update:', {
+          source,
+          hasShape: true,
+          lines: newSyntax.split('\n').filter(l => l.includes('shape:'))
+        });
+      }
       setSyntax(newSyntax);
       syntaxRef.current = newSyntax;
 
@@ -679,8 +692,13 @@ export default function DiagramEditorPage() {
           data,
           type: n.type,
           width: n.width,
-          height: n.height
+          height: n.height,
+          fullNode: n
         })
+      }
+      // DEBUG: Check if resizableShape has proper data
+      if (n.type === 'resizableShape' && !data?.shape) {
+        console.error('[graphToSyntax] resizableShape missing shape:', { nodeId: n.id, data, type: n.type })
       }
       nodeById.set(n.id, {
         label: nodeLabel || fallbackLabel,
