@@ -2260,9 +2260,22 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       if (trimmed.match(/^\[[^\]]+\|/) && !trimmed.endsWith(']')) {
         return [trimmed + ']'];
       }
-      // If line contains arrows and commas, split by comma
+      // If line contains arrows and commas, split — but ONLY on commas outside brackets.
+      // e.g. "[Rectangle|w:120,h:80,shape:rectangle] --> [B], [C] --> [D]"
+      // must NOT split on the commas inside the shape token.
       if (trimmed.includes('-->') && trimmed.includes(',')) {
-        return trimmed.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+        const parts: string[] = [];
+        let depth = 0;
+        let current = '';
+        for (const ch of trimmed) {
+          if (ch === '[') { depth++; current += ch; }
+          else if (ch === ']') { depth--; current += ch; }
+          else if (ch === ',' && depth === 0) { if (current.trim()) parts.push(current.trim()); current = ''; }
+          else { current += ch; }
+        }
+        if (current.trim()) parts.push(current.trim());
+        // Only apply the split if there really were top-level commas
+        if (parts.length > 1) return parts.filter((s) => s.length > 0);
       }
       return [trimmed];
     })
