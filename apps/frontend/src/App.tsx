@@ -6,7 +6,6 @@ import { Toaster } from 'react-hot-toast'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuthStore } from './stores/authStore'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import Lenis from 'lenis'
 
 // Pages
 import LandingPage from './pages/LandingPage'
@@ -40,15 +39,6 @@ const queryClient = new QueryClient({
     },
   },
 })
-
-// Lenis smooth scroll — enabled globally
-let lenisInstance: Lenis | null = null;
-function initLenis() {
-  if (lenisInstance) return;
-  lenisInstance = new Lenis({ duration: 1.1, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)) });
-  function raf(time: number) { lenisInstance!.raf(time); requestAnimationFrame(raf) }
-  requestAnimationFrame(raf);
-}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
@@ -165,7 +155,6 @@ function App() {
     localStorage.setItem('theme', 'dark')
     document.documentElement.classList.add('dark')
     document.body.classList.add('dark')
-    initLenis()
   }, [])
 
   useEffect(() => {
