@@ -1,5 +1,6 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
+import axios from 'axios';
 import { User } from '../models/user.model';
 import { ApiError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
@@ -84,15 +85,44 @@ class BillingService {
         const customer = await this.razorpay!.customers.create({
           name: user.name || 'Skemly User', // Provide a fallback if name is empty
           email: user.email,
-          fail_existing: 0,
+          fail_existing: '0',
         } as any);
         customerId = customer.id;
         user.razorpayCustomerId = customerId;
         await user.save();
       } catch (error: any) {
-        logger.error('Razorpay customer create error:', error);
         const errorMessage = error?.error?.description || error?.message || 'Failed to create Razorpay customer';
-        throw new ApiError(400, 'PAYMENT_ERROR', errorMessage);
+        
+        // If customer already exists and fail_existing didn't work, fetch manually via Axios
+        if (errorMessage.toLowerCase().includes('already exists')) {
+          logger.info(`Customer already exists for email ${user.email}, fetching via direct API...`);
+          try {
+            const keyId = process.env.RAZORPAY_KEY_ID;
+            const keySecret = process.env.RAZORPAY_KEY_SECRET;
+            
+            const response = await axios.get(`https://api.razorpay.com/v1/customers?email=${encodeURIComponent(user.email)}`, {
+              auth: {
+                username: keyId!,
+                password: keySecret!
+              }
+            });
+            
+            if (response.data && response.data.items && response.data.items.length > 0) {
+              customerId = response.data.items[0].id;
+              user.razorpayCustomerId = customerId;
+              await user.save();
+              logger.info(`Recovered existing customer ID: ${customerId}`);
+            } else {
+              throw new ApiError(400, 'PAYMENT_ERROR', 'Customer exists but could not be retrieved.');
+            }
+          } catch (fetchError: any) {
+            logger.error('Failed to fetch existing Razorpay customer:', fetchError?.message);
+            throw new ApiError(400, 'PAYMENT_ERROR', 'Customer already exists, but recovery failed.');
+          }
+        } else {
+          logger.error('Razorpay customer create error:', error);
+          throw new ApiError(400, 'PAYMENT_ERROR', errorMessage);
+        }
       }
     }
 
