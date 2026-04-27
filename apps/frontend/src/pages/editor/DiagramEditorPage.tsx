@@ -453,7 +453,9 @@ export default function DiagramEditorPage() {
 
         // Last resort: parse dimensions directly from syntax for resizableShape nodes
         if ((!width || !height) && (dbNode.type === 'resizableShape' || dbShape)) {
-          const syntaxStr = currentDiagram.syntax || '';
+          let syntaxStr = currentDiagram.syntax || '';
+          // Fix corrupted syntax with extra brackets: [[Rectangle|... -> [Rectangle|...
+          syntaxStr = syntaxStr.replace(/\[\[+([a-zA-Z0-9_\-\s]+)\|/g, '[$1|');
           // Look for [label|w:X,h:Y,shape:S] pattern matching this node's label
           const escapedLabel = dbLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const dimMatch = syntaxStr.match(new RegExp(`\\[${escapedLabel}\\|([^\\]]*)\\]`));

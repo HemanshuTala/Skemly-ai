@@ -2243,9 +2243,8 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
 
   // Pre-fix: Handle lines with missing closing brackets or extra opening brackets for resizable shapes
   // [[Rectangle|w:240,h:200,shape:rectangle] -> [Rectangle|w:240,h:200,shape:rectangle]
-  fixedSyntax = fixedSyntax.replace(/\[\[+([a-zA-Z0-9_-\s]+)\|([^\]]*?)(?:\])?/g, (match, label, attrs) => {
-    const hasClosing = match.endsWith(']');
-    return hasClosing ? `[${label}|${attrs}]` : `[${label}|${attrs}]`;
+  fixedSyntax = fixedSyntax.replace(/\[\[+([a-zA-Z0-9_\-\s]+)\|([^\]]*)(?:\])?/g, (match, label, attrs) => {
+    return `[${label}|${attrs}]`;
   });
 
   // Preprocess: split multiple connections on one line (comma-separated)
@@ -2254,7 +2253,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     .flatMap((line) => {
       const trimmed = line.trim();
       // Fix double/triple opening brackets ONLY if not a valid [[Database]]
-      const fixedLine = trimmed.replace(/\[\[+([a-zA-Z0-9_-\s]+)(?=[\|\]])/g, (match, p1) => match.endsWith(']') ? `[[${p1}` : `[${p1}`);
+      const fixedLine = trimmed.replace(/\[\[+([a-zA-Z0-9_\-\s]+)(?=[\|\]])/g, (match, p1) => match.endsWith(']') ? `[[${p1}` : `[${p1}`);
       // Fix missing closing bracket at end
       if (fixedLine.match(/^\[[^\]]+\|/) && !fixedLine.endsWith(']')) {
         return [fixedLine + ']'];
