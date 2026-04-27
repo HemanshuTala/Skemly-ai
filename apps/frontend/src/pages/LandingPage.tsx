@@ -759,7 +759,7 @@ export default function LandingPage() {
             </div>
 
             {/* Simple Nav Links */}
-            <div style={{ display:'flex', gap:32 }}>
+            <div style={{ display:'flex', gap:32   }}>
               {['Features', 'Pricing', 'Docs'].map(item => (
                 <motion.a key={item} href={`/${item.toLowerCase()}`} whileHover={{ color:T.text }} style={{ fontSize:14, color:T.textSub, fontFamily:T.font, transition:'color 0.15s' }}>{item}</motion.a>
               ))}
@@ -769,7 +769,7 @@ export default function LandingPage() {
           {/* Bottom Bar */}
           <div style={{ paddingTop:24, borderTop:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
             <div style={{ fontSize:13, color:T.textMuted, fontFamily:T.font }}>
-              © 2026 Skemly
+              © 2026 SkemlyAI
             </div>
           </div>
         </div>
