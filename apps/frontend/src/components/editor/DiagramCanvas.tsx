@@ -2166,35 +2166,54 @@ function slugifyId(input: string) {
 function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: string; width?: number; height?: number } {
   const s = raw.trim();
   
+  // Guard against empty or invalid input
+  if (!s || s === '[]' || s === '{}' || s === '()') {
+    return { label: 'Node', kind: 'node' };
+  }
+  
   // Explicit kind with :: prefix
   const kindMatch = s.match(/^(.*)::(node|decision|startend|database|entity|actor|queue|io)$/i);
   const base = kindMatch ? kindMatch[1].trim() : s;
   const explicitKind = kindMatch ? kindMatch[2].toLowerCase() : '';
 
   // [[Database]]
-  const dbl = base.match(/^\[\[(.*)\]\]$/);
-  if (dbl) return { label: dbl[1], kind: explicitKind || 'database' };
+  const dbl = base.match(/^\[\[(.*?)\]\]$/);
+  if (dbl) return { label: dbl[1].trim() || 'Database', kind: explicitKind || 'database' };
 
   // [Label|w:X,h:Y,shape:S] — resizable shape syntax.
-  const pipeMatch = base.match(/^\[([^|\]]*)\|([^\]]*)\]$/);
+  // Use non-greedy match for label to handle edge cases
+  const pipeMatch = base.match(/^\[([^|\]]*?)\|([^\]]*?)\]$/);
   if (pipeMatch) {
     const label = pipeMatch[1].trim();
     const attrsStr = pipeMatch[2];
     let width: number | undefined;
     let height: number | undefined;
     let shape: string | undefined;
-    attrsStr.split(',').forEach(attr => {
-      const [k, v] = attr.trim().split(':');
-      if (k === 'w' && v) width = parseInt(v, 10);
-      if (k === 'h' && v) height = parseInt(v, 10);
-      if (k === 'shape' && v) shape = v.trim();
-    });
-    return { label, kind: 'resizableShape', shape: shape || 'rectangle', width, height };
+    // Only process attrs if they look valid (contain :)
+    if (attrsStr.includes(':')) {
+      attrsStr.split(',').forEach(attr => {
+        const [k, v] = attr.trim().split(':');
+        if (k === 'w' && v && /^\d+$/.test(v)) width = parseInt(v, 10);
+        if (k === 'h' && v && /^\d+$/.test(v)) height = parseInt(v, 10);
+        if (k === 'shape' && v) shape = v.trim();
+      });
+    }
+    // Ensure we have a valid label, not just attributes
+    const finalLabel = label || 'Shape';
+    return { label: finalLabel, kind: 'resizableShape', shape: shape || 'rectangle', width, height };
   }
 
-  // [Process]
-  const square = base.match(/^\[(.*)\]$/);
-  if (square) return { label: square[1], kind: explicitKind || 'node' };
+  // [Process] - with better validation
+  const square = base.match(/^\[(.*?)\]$/);
+  if (square) {
+    const content = square[1].trim();
+    // Ignore if content looks like malformed attributes (starts with shape:, w:, h:)
+    if (content && !content.match(/^(shape|w|h):/)) {
+      return { label: content, kind: explicitKind || 'node' };
+    }
+    // If content is empty or looks like attributes, return default
+    return { label: 'Node', kind: explicitKind || 'node' };
+  }
 
   // {Decision}
   const curly = base.match(/^\{(.*)\}$/);

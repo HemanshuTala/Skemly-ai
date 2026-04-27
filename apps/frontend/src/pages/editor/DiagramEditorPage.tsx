@@ -55,7 +55,12 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       const content = nodeMatch[1];
       // Check if extended format with pipe separator
       const pipeIndex = content.indexOf('|');
-      const label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
+      let label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
+      // Validate label: should not be empty and should not look like an attribute
+      label = label.trim();
+      if (!label || label.match(/^(shape|w|h):/)) {
+        label = 'Node'; // Default fallback for malformed labels
+      }
       const id = label.replace(/\s+/g, '-').toLowerCase() || `node-${nodes.length}`;
       
       // Parse extended attributes if present
@@ -116,9 +121,16 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
         if (bracketMatch) {
           const content = bracketMatch[1];
           const pipeIndex = content.indexOf('|');
-          return pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
+          const label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
+          // Validate: label should not be empty and should not look like an attribute
+          const trimmed = label.trim();
+          if (trimmed && !trimmed.match(/^(shape|w|h):/)) {
+            return trimmed;
+          }
         }
-        return raw;
+        // Fallback: if no brackets or invalid content, extract what we can
+        const cleaned = raw.replace(/^[\[\{\(]/, '').replace(/[\]\}\)]$/, '').trim();
+        return cleaned || 'Node';
       };
       
       const fromLabel = extractLabel(fromRaw);
@@ -571,12 +583,16 @@ export default function DiagramEditorPage() {
   const graphToSyntax = useCallback((nodes: Node[], edges: Edge[]): string => {
     const nodeById = new Map<string, { label: string; kind: string; width?: number; height?: number; shape?: string; type?: string }>()
     nodes.forEach((n) => {
+      // Defensive: ensure data exists and extract properties safely
+      const data = (n as any)?.data || {}
+      const nodeLabel = String(data?.label || '').trim()
+      const fallbackLabel = n.id?.startsWith('n-') ? 'Node' : String(n.id || 'Node')
       nodeById.set(n.id, {
-        label: String((n.data as any)?.label ?? n.id),
-        kind: String((n.data as any)?.kind ?? 'node'),
+        label: nodeLabel || fallbackLabel,
+        kind: String(data?.kind ?? 'node'),
         width: n.width ?? undefined,
         height: n.height ?? undefined,
-        shape: (n.data as any)?.shape,
+        shape: data?.shape,
         type: n.type,
       })
     })
@@ -1498,9 +1514,19 @@ export default function DiagramEditorPage() {
                   // before storing anywhere. DiagramCanvas.nodesForReactFlow memo re-injects
                   // fresh ones on every render. Stale closures caused nodes to lose their type.
                   const snapshot = {
-                    nodes: graph.nodes.map((n) => {
-                      const { onDimensionsChange: _dc, onLabelChange: _lc, ...restData } = (n.data || {}) as any;
-                      return { ...n, data: restData };
+                    nodes: graph.nodes.map((n: any) => {
+                      // Defensive: ensure we have valid data object
+                      const originalData = n?.data || {}
+                      const { onDimensionsChange: _dc, onLabelChange: _lc, ...restData } = originalData
+                      // Preserve essential fields that might get lost
+                      const safeData = {
+                        label: originalData.label || 'Node',
+                        shape: originalData.shape,
+                        kind: originalData.kind || 'node',
+                        style: originalData.style,
+                        ...restData,
+                      }
+                      return { ...n, data: safeData };
                     }),
                     edges: graph.edges.map((e) => ({ ...e })),
                   };
