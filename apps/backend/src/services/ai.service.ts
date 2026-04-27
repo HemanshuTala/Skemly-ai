@@ -89,6 +89,8 @@ Diagram type: ${diagramType}
 - Label::database = Explicit database kind
 - Label::actor = Explicit actor/person kind
 - Label::queue = Explicit queue/topic kind
+- [Label|w:WIDTH,h:HEIGHT,shape:rectangle] = Resizable rectangle (e.g., [User Service|w:160,h:60,shape:rectangle])
+- [Label|w:WIDTH,h:HEIGHT,shape:circle] = Resizable circle (e.g., [State|w:80,h:80,shape:circle])
 
 === ARROW TYPES ===
 - --> = Solid arrow (default flow connection)
@@ -157,24 +159,30 @@ MICROSERVICES:
 2. NEVER use commas between connections - each connection is its own line
 3. ALWAYS use matching brackets: [Node] not [[Node] or [Node}}
 4. ALWAYS wrap node names in brackets: [Node Name] --> [Other Node]
-5. Use {Decision} for ANY conditional logic with branches
-6. Use -- Label --> for labeling decision branches (Yes/No, True/False, etc.)
-7. Use -.-> for: data flow, async processing, event streams, indirect connections
-8. Use ==> for: critical paths, main user flows, important connections
-9. Use [[ ]] for ANY database, storage, or data persistence
-10. Keep labels concise: 2-4 words, use Title Case
-11. Generate 6-12 nodes for typical diagrams (not too few, not too many)
-12. Ensure logical flow: left-to-right or top-to-bottom
-13. Use keywords in labels to get appropriate icons (database, cache, queue, etc.)
+5. For resizable shapes: EXACTLY ONE pipe character | between label and attributes: [Label|w:100,h:60,shape:rectangle]
+6. NEVER use double pipes || or pipe inside brackets before attributes
+7. Use {Decision} for ANY conditional logic with branches
+8. Use -- Label --> for labeling decision branches (Yes/No, True/False, etc.)
+9. Use -.-> for: data flow, async processing, event streams, indirect connections
+10. Use ==> for: critical paths, main user flows, important connections
+11. Use [[ ]] for ANY database, storage, or data persistence
+12. Keep labels concise: 2-4 words, use Title Case
+13. Generate 6-12 nodes for typical diagrams (not too few, not too many)
+14. Ensure logical flow: left-to-right or top-to-bottom
+15. Use keywords in labels to get appropriate icons (database, cache, queue, etc.)
 
 === WRONG vs RIGHT EXAMPLES ===
 WRONG: [[Customer] --> [Place Order], {Order Valid} -- Yes --> [Payment]
 WRONG: [A] --> [B], [B] --> [C], [C] --> [D]
+WRONG: [shape:rectangle]] --> [User Service]  (malformed brackets)
+WRONG: [[Rectangle|w:700,h:40,shape:rectangle]  (missing closing bracket)
+WRONG: [Label||w:100,h:60|shape:rectangle]  (double pipes)
 
 RIGHT:
 [Customer] --> [Place Order]
 {Order Valid} -- Yes --> [Payment]
 [Payment] --> [Confirmation]
+[User Service|w:160,h:60,shape:rectangle] --> [Database]
 
 === ABSOLUTE RULES ===
 - COMMAS (,) ARE NEVER USED TO SEPARATE CONNECTIONS
