@@ -41,6 +41,14 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
   // Pattern: lines like [Label|w:120], [h:80], [shape:rectangle] should be joined
   let fixedSyntax = String(syntax || '');
   
+  // Pre-fix: Handle lines with missing closing brackets or extra opening brackets
+  // [[Rectangle|w:240,h:200,shape:rectangle] -> [Rectangle|w:240,h:200,shape:rectangle]
+  fixedSyntax = fixedSyntax.replace(/\[\[+(\w[^\]]*?)\|([^\]]*?)(?:\])?$/gm, (match, label, attrs) => {
+    // Add closing bracket if missing
+    const hasClosing = match.endsWith(']');
+    return hasClosing ? `[${label}|${attrs}]` : `[${label}|${attrs}]`;
+  });
+  
   // Fix 1: Join lines that are clearly part of a broken extended format
   // Look for patterns like [Something|attr] followed by [attr] on next lines
   const lines = fixedSyntax.split('\n');
@@ -51,20 +59,28 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     const line = lines[i].trim();
     if (!line) continue;
     
+    // Fix double/triple opening brackets: [[[Rectangle -> [Rectangle
+    let fixedLine = line.replace(/^\[\[+(?=\w)/, '[');
+    
+    // Fix missing closing bracket at end: [Rectangle|w:240,h:200,shape:rectangle -> [Rectangle|w:240,h:200,shape:rectangle]
+    if (fixedLine.match(/^\[[^\]]+\|/) && !fixedLine.endsWith(']')) {
+      fixedLine += ']';
+    }
+    
     // Check if this looks like a continuation of an extended format (starts with [ and contains attribute-like content)
-    const isAttrLine = line.match(/^\[(w:|h:|shape:)[^\]]*\]$/);
+    const isAttrLine = fixedLine.match(/^\[(w:|h:|shape:)[^\]]*\]$/);
     const isBrokenExtended = pendingLine && isAttrLine;
     
     if (isBrokenExtended) {
       // This is a continuation - merge it into the pending line
-      const attrContent = line.slice(1, -1); // Remove brackets
+      const attrContent = fixedLine.slice(1, -1); // Remove brackets
       pendingLine = pendingLine.slice(0, -1) + ',' + attrContent + ']';
-    } else if (line.match(/^\[[^\]]*\|[^\]]*$/)) {
+    } else if (fixedLine.match(/^\[[^\]]*\|[^\]]*$/)) {
       // This line starts an extended format but doesn't end with ]
-      pendingLine = line;
-    } else if (pendingLine && line.match(/^[^\[]*\]$/)) {
+      pendingLine = fixedLine;
+    } else if (pendingLine && fixedLine.match(/^[^\[]*\]$/)) {
       // This line ends the pending extended format
-      pendingLine = pendingLine + line;
+      pendingLine = pendingLine + fixedLine;
       fixedLines.push(pendingLine);
       pendingLine = '';
     } else {
@@ -73,7 +89,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
         fixedLines.push(pendingLine);
         pendingLine = '';
       }
-      fixedLines.push(line);
+      fixedLines.push(fixedLine);
     }
   }
   if (pendingLine) fixedLines.push(pendingLine);
