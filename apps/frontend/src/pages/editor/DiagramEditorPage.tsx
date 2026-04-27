@@ -116,51 +116,106 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       const fromRaw = edgeMatch[1].trim();
       const toRaw = edgeMatch[2].trim();
       
-      // Helper to extract label from extended format [Label|w:100,h:80,shape:rect]
+      // Helper to extract full node info from extended format [Label|w:100,h:80,shape:rect]
       // Use non-greedy regex to avoid capturing extra closing brackets
-      const extractLabel = (raw: string): string => {
+      const extractNodeInfo = (raw: string): { label: string; width?: number; height?: number; shape?: string; type?: string } => {
         // Match content inside brackets without being greedy (stop at first closing bracket)
         const bracketMatch = raw.match(/^\[([^\]]*?)\]$/);
         if (bracketMatch) {
           const content = bracketMatch[1];
           const pipeIndex = content.indexOf('|');
-          const label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
-          // Validate: label should not be empty and should not look like an attribute
-          const trimmed = label.trim();
-          if (trimmed && !trimmed.match(/^(shape|w|h):/)) {
-            return trimmed;
+          let label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
+          // Validate label: should not be empty and should not look like an attribute
+          label = label.trim();
+          if (!label || label.match(/^(shape|w|h):/)) {
+            label = 'Node';
           }
+          
+          // Parse extended attributes if present
+          let width: number | undefined;
+          let height: number | undefined;
+          let shape: string | undefined;
+          
+          if (pipeIndex >= 0) {
+            let attrsStr = content.slice(pipeIndex + 1);
+            // Handle old corrupted format with two pipes
+            attrsStr = attrsStr.replace(/\|shape:/, ',shape:');
+            const attrs = attrsStr.split(',');
+            attrs.forEach(attr => {
+              const [key, value] = attr.trim().split(':');
+              if (key === 'w' && value) width = parseInt(value, 10);
+              if (key === 'h' && value) height = parseInt(value, 10);
+              if (key === 'shape' && value) shape = value.trim();
+            });
+          }
+          
+          return {
+            label,
+            width,
+            height,
+            shape,
+            type: shape ? 'resizableShape' : 'diagramNode',
+          };
         }
-        // Fallback: if no brackets or invalid content, extract what we can
-        // Use non-greedy replacement for each bracket type
+        // Fallback: if no brackets or invalid content
         const cleaned = raw.replace(/^[\[\{\(]+/, '').replace(/[\]\}\)]+$/, '').trim();
-        return cleaned || 'Node';
+        return { label: cleaned || 'Node' };
       };
       
-      const fromLabel = extractLabel(fromRaw);
-      const toLabel = extractLabel(toRaw);
-      const fromId = fromLabel.replace(/\s+/g, '-').toLowerCase();
-      const toId = toLabel.replace(/\s+/g, '-').toLowerCase();
+      const fromInfo = extractNodeInfo(fromRaw);
+      const toInfo = extractNodeInfo(toRaw);
+      const fromId = fromInfo.label.replace(/\s+/g, '-').toLowerCase();
+      const toId = toInfo.label.replace(/\s+/g, '-').toLowerCase();
       
-      // Create or find nodes (with basic data if not already defined)
+      // Create or find nodes (with full data including shape/dimensions if present)
       let fromNode = nodeById.get(fromId);
       let toNode = nodeById.get(toId);
       
       if (!fromNode) {
+        const isResizable = !!fromInfo.shape;
         fromNode = {
           id: fromId,
           position: { x: 100 + nodes.length * 150, y: 100 + nodes.length * 100 },
-          data: { label: fromLabel, kind: 'node' },
+          ...(fromInfo.width && { width: fromInfo.width }),
+          ...(fromInfo.height && { height: fromInfo.height }),
+          type: fromInfo.type || 'diagramNode',
+          data: { 
+            label: fromInfo.label, 
+            kind: 'node',
+            ...(fromInfo.shape && { shape: fromInfo.shape }),
+            style: isResizable ? {
+              fillColor: '#ffffff',
+              strokeColor: '#000000',
+              strokeWidth: 2,
+              fontSize: 14,
+              color: '#000000',
+            } : undefined,
+          },
         };
         nodes.push(fromNode);
         nodeById.set(fromId, fromNode);
       }
       
       if (!toNode) {
+        const isResizable = !!toInfo.shape;
         toNode = {
           id: toId,
           position: { x: 100 + nodes.length * 150, y: 100 + nodes.length * 150 },
-          data: { label: toLabel, kind: 'node' },
+          ...(toInfo.width && { width: toInfo.width }),
+          ...(toInfo.height && { height: toInfo.height }),
+          type: toInfo.type || 'diagramNode',
+          data: { 
+            label: toInfo.label, 
+            kind: 'node',
+            ...(toInfo.shape && { shape: toInfo.shape }),
+            style: isResizable ? {
+              fillColor: '#ffffff',
+              strokeColor: '#000000',
+              strokeWidth: 2,
+              fontSize: 14,
+              color: '#000000',
+            } : undefined,
+          },
         };
         nodes.push(toNode);
         nodeById.set(toId, toNode);
