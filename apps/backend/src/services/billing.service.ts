@@ -84,7 +84,8 @@ class BillingService {
         const customer = await this.razorpay!.customers.create({
           name: user.name || 'Skemly User', // Provide a fallback if name is empty
           email: user.email,
-        });
+          fail_existing: 0,
+        } as any);
         customerId = customer.id;
         user.razorpayCustomerId = customerId;
         await user.save();
