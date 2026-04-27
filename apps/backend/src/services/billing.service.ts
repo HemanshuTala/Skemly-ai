@@ -1,6 +1,5 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
-import axios from 'axios';
 import { User } from '../models/user.model';
 import { ApiError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
@@ -100,15 +99,17 @@ class BillingService {
             const keyId = process.env.RAZORPAY_KEY_ID;
             const keySecret = process.env.RAZORPAY_KEY_SECRET;
             
-            const response = await axios.get(`https://api.razorpay.com/v1/customers?email=${encodeURIComponent(user.email)}`, {
-              auth: {
-                username: keyId!,
-                password: keySecret!
+            const authHeader = 'Basic ' + Buffer.from(`${keyId!}:${keySecret!}`).toString('base64');
+            const response = await fetch(`https://api.razorpay.com/v1/customers?email=${encodeURIComponent(user.email)}`, {
+              headers: {
+                'Authorization': authHeader
               }
             });
             
-            if (response.data && response.data.items && response.data.items.length > 0) {
-              customerId = response.data.items[0].id;
+            const responseData = await response.json();
+            
+            if (responseData && responseData.items && responseData.items.length > 0) {
+              customerId = responseData.items[0].id;
               user.razorpayCustomerId = customerId;
               await user.save();
               logger.info(`Recovered existing customer ID: ${customerId}`);
