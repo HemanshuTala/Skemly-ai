@@ -106,7 +106,7 @@ class BillingService {
               }
             });
             
-            const responseData = await response.json();
+            const responseData = (await response.json()) as any;
             
             if (responseData && responseData.items && responseData.items.length > 0) {
               customerId = responseData.items[0].id;
