@@ -50,7 +50,8 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     
     // Simple node pattern: [Node], {Node}, etc.
     // Extended: [Label|w:120,h:80,shape:rectangle] for resizable shapes with dimensions
-    const nodeMatch = line.match(/^\[(.*)\]$/);
+    // Use non-greedy regex to avoid matching past the first closing bracket
+    const nodeMatch = line.match(/^\[([^\]]*?)\]$/);
     if (nodeMatch) {
       const content = nodeMatch[1];
       // Check if extended format with pipe separator
@@ -116,8 +117,10 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       const toRaw = edgeMatch[2].trim();
       
       // Helper to extract label from extended format [Label|w:100,h:80,shape:rect]
+      // Use non-greedy regex to avoid capturing extra closing brackets
       const extractLabel = (raw: string): string => {
-        const bracketMatch = raw.match(/^\[(.*)\]$/);
+        // Match content inside brackets without being greedy (stop at first closing bracket)
+        const bracketMatch = raw.match(/^\[([^\]]*?)\]$/);
         if (bracketMatch) {
           const content = bracketMatch[1];
           const pipeIndex = content.indexOf('|');
@@ -129,7 +132,8 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           }
         }
         // Fallback: if no brackets or invalid content, extract what we can
-        const cleaned = raw.replace(/^[\[\{\(]/, '').replace(/[\]\}\)]$/, '').trim();
+        // Use non-greedy replacement for each bracket type
+        const cleaned = raw.replace(/^[\[\{\(]+/, '').replace(/[\]\}\)]+$/, '').trim();
         return cleaned || 'Node';
       };
       
@@ -587,6 +591,17 @@ export default function DiagramEditorPage() {
       const data = (n as any)?.data || {}
       const nodeLabel = String(data?.label || '').trim()
       const fallbackLabel = n.id?.startsWith('n-') ? 'Node' : String(n.id || 'Node')
+      // DEBUG: Check for label corruption
+      if (nodeLabel.includes('shape:') || nodeLabel.includes('w:') || nodeLabel.includes('h:')) {
+        console.error('[graphToSyntax] CORRUPTED LABEL detected:', {
+          nodeId: n.id,
+          label: nodeLabel,
+          data,
+          type: n.type,
+          width: n.width,
+          height: n.height
+        })
+      }
       nodeById.set(n.id, {
         label: nodeLabel || fallbackLabel,
         kind: String(data?.kind ?? 'node'),
@@ -604,7 +619,12 @@ export default function DiagramEditorPage() {
         // Default to 'rectangle' if shape was somehow lost
         const shapeAttr = shape || 'rectangle';
         const dimPart = (width != null && height != null) ? `w:${Math.round(width)},h:${Math.round(height)},` : '';
-        return `[${label}|${dimPart}shape:${shapeAttr}]`;
+        const result = `[${label}|${dimPart}shape:${shapeAttr}]`;
+        // DEBUG: Check for corrupted output
+        if (label.includes('shape:') || label.includes('w:') || label.includes('h:')) {
+          console.error('[wrap] CORRUPTED OUTPUT:', { label, shapeAttr, dimPart, result, info })
+        }
+        return result;
       }
       if (kind === 'decision') return `{${label}}`
       if (kind === 'startend') return `(${label})`

@@ -2262,14 +2262,19 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     if (!trimmed) return null;
 
     // Handle ID[Label] or ID(Label) style (Mermaid-ish)
-    const idLabelMatch = trimmed.match(/^([a-zA-Z0-9_-]+)\s*[\[\(\{](.*)[\]\)\}]$/);
+    // Use non-greedy match (.*?) and better bracket matching to avoid capturing extra ]
+    const idLabelMatch = trimmed.match(/^([a-zA-Z0-9_-]+)\s*[\[\(\{]([^\]\)\}]*?)[\]\)\}]$/);
     let finalId = '';
     let finalLabel = '';
     let finalKind = 'node';
 
     if (idLabelMatch) {
       finalId = idLabelMatch[1];
-      const unwrapped = unwrapNodeRef(trimmed.slice(finalId.length));
+      const innerContent = idLabelMatch[2]; // The content inside brackets
+      // Reconstruct the bracketed part for unwrapNodeRef
+      const bracketType = trimmed.includes('(') ? '(' : trimmed.includes('{') ? '{' : '[';
+      const closingBracket = bracketType === '(' ? ')' : bracketType === '{' ? '}' : ']';
+      const unwrapped = unwrapNodeRef(`${bracketType}${innerContent}${closingBracket}`);
       finalLabel = unwrapped.label;
       finalKind = unwrapped.kind;
     } else {
