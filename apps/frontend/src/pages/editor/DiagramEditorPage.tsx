@@ -41,60 +41,40 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
   // Pattern: lines like [Label|w:120], [h:80], [shape:rectangle] should be joined
   let fixedSyntax = String(syntax || '');
   
-  // Pre-fix: Handle lines with missing closing brackets or extra opening brackets for resizable shapes
+  // Pre-fix: Strip extra leading brackets from resizable shape tokens anywhere in the line.
   // [[Rectangle|w:240,h:200,shape:rectangle] -> [Rectangle|w:240,h:200,shape:rectangle]
-  // Works anywhere in the line, even in connections
-  // Note: Escaped hyphen to avoid "Range out of order" error
-  fixedSyntax = fixedSyntax.replace(/\[\[+([a-zA-Z0-9_\-\s]+)\|([^\]]*)(?:\])?/g, (match, label, attrs) => {
-    // We remove the non-greedy ? from attrs so it matches up to the closing bracket or end
-    // Add closing bracket if missing
-    return `[${label}|${attrs}]`;
+  // Uses greedy attrs + required closing bracket so attrs are never empty.
+  fixedSyntax = fixedSyntax.replace(/\[{2,}([a-zA-Z0-9_ \-]+)\|([^\]]*)\]/g, (_match, label, attrs) => {
+    return `[${label.trim()}|${attrs}]`;
   });
   
-  // Fix 1: Join lines that are clearly part of a broken extended format
-  // Look for patterns like [Something|attr] followed by [attr] on next lines
+  // Per-line fixups
   const lines = fixedSyntax.split('\n');
   const fixedLines: string[] = [];
-  let pendingLine = '';
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    
-    // Fix double/triple opening brackets ONLY if not a valid [[Database]]
-    let fixedLine = line.replace(/\[\[+([a-zA-Z0-9_\-\s]+)(?=[\|\]])/g, (match, p1) => match.endsWith(']') ? `[[${p1}` : `[${p1}`);
-    
+
     // Fix missing closing bracket at end: [Rectangle|w:240,h:200,shape:rectangle -> [Rectangle|w:240,h:200,shape:rectangle]
+    let fixedLine = line;
     if (fixedLine.match(/^\[[^\]]+\|/) && !fixedLine.endsWith(']')) {
       fixedLine += ']';
     }
-    
-    // Check if this looks like a continuation of an extended format (starts with [ and contains attribute-like content)
+
+    // Check if this looks like a continuation of an extended format (attribute-only line)
     const isAttrLine = fixedLine.match(/^\[(w:|h:|shape:)[^\]]*\]$/);
-    const isBrokenExtended = pendingLine && isAttrLine;
-    
+    const lastLine = fixedLines[fixedLines.length - 1];
+    const isBrokenExtended = lastLine && isAttrLine && lastLine.match(/\[[^|]+\|[^\]]*$/);
+
     if (isBrokenExtended) {
-      // This is a continuation - merge it into the pending line
-      const attrContent = fixedLine.slice(1, -1); // Remove brackets
-      pendingLine = pendingLine.slice(0, -1) + ',' + attrContent + ']';
-    } else if (fixedLine.match(/^\[[^\]]*\|[^\]]*$/)) {
-      // This line starts an extended format but doesn't end with ]
-      pendingLine = fixedLine;
-    } else if (pendingLine && fixedLine.match(/^[^\[]*\]$/)) {
-      // This line ends the pending extended format
-      pendingLine = pendingLine + fixedLine;
-      fixedLines.push(pendingLine);
-      pendingLine = '';
+      // Merge attr continuation into previous line
+      const attrContent = fixedLine.slice(1, -1);
+      fixedLines[fixedLines.length - 1] = fixedLines[fixedLines.length - 1].replace(/\]$/, '') + ',' + attrContent + ']';
     } else {
-      // Regular line
-      if (pendingLine) {
-        fixedLines.push(pendingLine);
-        pendingLine = '';
-      }
       fixedLines.push(fixedLine);
     }
   }
-  if (pendingLine) fixedLines.push(pendingLine);
   
   // Fix 2: Handle the case where the entire extended format was broken across lines
   // [Label|w:120], [h:80], [shape:rectangle]] -> [Label|w:120,h:80,shape:rectangle]

@@ -1089,6 +1089,9 @@ function DiagramCanvasInner({
                 ...n,
                 type: nodeType,
                 position: prevPos || n.position,
+                // Preserve width/height from existing node if parsed node doesn't have them
+                width: n.width ?? existing.width,
+                height: n.height ?? existing.height,
                 data: {
                   ...existingClean,
                   ...cleanData,
@@ -2241,10 +2244,11 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
   // Pattern: lines like [Label|w:120], [h:80], [shape:rectangle] should be joined
   let fixedSyntax = String(syntax || '');
 
-  // Pre-fix: Handle lines with missing closing brackets or extra opening brackets for resizable shapes
+  // Pre-fix: Strip extra leading brackets from resizable shape tokens anywhere in the line.
   // [[Rectangle|w:240,h:200,shape:rectangle] -> [Rectangle|w:240,h:200,shape:rectangle]
-  fixedSyntax = fixedSyntax.replace(/\[\[+([a-zA-Z0-9_\-\s]+)\|([^\]]*)(?:\])?/g, (match, label, attrs) => {
-    return `[${label}|${attrs}]`;
+  // Uses greedy attrs + required closing bracket so attrs are never empty.
+  fixedSyntax = fixedSyntax.replace(/\[{2,}([a-zA-Z0-9_ \-]+)\|([^\]]*)\]/g, (_match, label, attrs) => {
+    return `[${label.trim()}|${attrs}]`;
   });
 
   // Preprocess: split multiple connections on one line (comma-separated)
@@ -2252,17 +2256,15 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     .split('\n')
     .flatMap((line) => {
       const trimmed = line.trim();
-      // Fix double/triple opening brackets ONLY if not a valid [[Database]]
-      const fixedLine = trimmed.replace(/\[\[+([a-zA-Z0-9_\-\s]+)(?=[\|\]])/g, (match, p1) => match.endsWith(']') ? `[[${p1}` : `[${p1}`);
-      // Fix missing closing bracket at end
-      if (fixedLine.match(/^\[[^\]]+\|/) && !fixedLine.endsWith(']')) {
-        return [fixedLine + ']'];
+      // Fix missing closing bracket at end of a shape token
+      if (trimmed.match(/^\[[^\]]+\|/) && !trimmed.endsWith(']')) {
+        return [trimmed + ']'];
       }
       // If line contains arrows and commas, split by comma
-      if (fixedLine.includes('-->') && fixedLine.includes(',')) {
-        return fixedLine.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+      if (trimmed.includes('-->') && trimmed.includes(',')) {
+        return trimmed.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
       }
-      return [fixedLine];
+      return [trimmed];
     })
     .filter((l) => l.length > 0);
 
@@ -2279,8 +2281,14 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     if (!trimmed) return null;
 
     // Handle ID[Label] or ID(Label) style (Mermaid-ish)
-    // Use non-greedy match (.*?) and better bracket matching to avoid capturing extra ]
-    const idLabelMatch = trimmed.match(/^([a-zA-Z0-9_-]+)\s*[\[\(\{]([^\]\)\}]*?)[\]\)\}]$/);
+    // IMPORTANT: Skip this path if the token contains '|' — those are extended shape tokens
+    // like [Rectangle|w:240,h:200,shape:rectangle] which must go through unwrapNodeRef directly.
+    // Without this guard, "Rectangle" gets parsed as the ID and "w:240,h:200,shape:rectangle"
+    // as the inner content, stripping the pipe and losing all shape/dimension data.
+    const hasPipe = trimmed.includes('|');
+    const idLabelMatch = !hasPipe
+      ? trimmed.match(/^([a-zA-Z0-9_-]+)\s*[\[\(\{]([^\]\)\}]*?)[\]\)\}]$/)
+      : null;
     let finalId = '';
     let finalLabel = '';
     let finalKind = 'node';
