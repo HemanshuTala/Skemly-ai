@@ -399,6 +399,19 @@ export default function DiagramEditorPage() {
         const type = dbNode.type || parsedNode?.type || 'diagramNode';
         const shape = dbShape || parsedNode?.data?.shape;
         const style = cleanData.style || parsedNode?.data?.style;
+        // DEBUG: Check if resizableShape type is being preserved
+        if (dbNode.type === 'resizableShape' || parsedNode?.type === 'resizableShape') {
+          console.log('[Node Merge] Merging resizableShape:', {
+            dbNodeId: dbNode.id,
+            dbNodeType: dbNode.type,
+            dbShape,
+            parsedNodeType: parsedNode?.type,
+            finalType: type,
+            finalShape: shape,
+            width,
+            height
+          });
+        }
         return {
           ...dbNode,
           type,
@@ -492,6 +505,18 @@ export default function DiagramEditorPage() {
       const normalized = graphForSave
         ? normalizeGraphForBackend(graphForSave)
         : { nodes: data.nodes || [], edges: data.edges || [] };
+
+      // DEBUG: Check resizableShape nodes being saved
+      const resizableNodes = normalized.nodes.filter((n: any) => n.type === 'resizableShape' || n.data?.shape);
+      if (resizableNodes.length > 0) {
+        console.log('[handleSave] Saving resizableShape nodes:', resizableNodes.map((n: any) => ({
+          id: n.id,
+          type: n.type,
+          width: n.width,
+          height: n.height,
+          shape: n.data?.shape,
+        })));
+      }
 
       try {
         // Always save with nodes and edges if we have them
