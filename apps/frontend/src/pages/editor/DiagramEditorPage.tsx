@@ -725,7 +725,7 @@ export default function DiagramEditorPage() {
     : null;
 
   const graphToSyntax = useCallback((nodes: Node[], edges: Edge[]): string => {
-    const nodeById = new Map<string, { label: string; kind: string; width?: number; height?: number; shape?: string; type?: string }>()
+    const nodeById = new Map<string, { label: string; kind: string; width?: number; height?: number; shape?: string; type?: string; style?: any }>()
     nodes.forEach((n) => {
       // Defensive: ensure data exists and extract properties safely
       const data = (n as any)?.data || {}
@@ -756,17 +756,24 @@ export default function DiagramEditorPage() {
         height: n.height ?? undefined,
         shape: data?.shape,
         type: n.type,
+        style: data?.style,
       })
     })
 
-    const wrap = (info: { label: string; kind: string; width?: number; height?: number; shape?: string; type?: string }) => {
-      const { label, kind, width, height, shape, type } = info;
+    const wrap = (info: { label: string; kind: string; width?: number; height?: number; shape?: string; type?: string; style?: any }) => {
+      const { label, kind, width, height, shape, type, style } = info;
       // For resizable shapes, always include shape attribute so re-parsing restores the correct node type
       if (type === 'resizableShape') {
         // Default to 'rectangle' if shape was somehow lost
         const shapeAttr = shape || 'rectangle';
         const dimPart = (width != null && height != null) ? `w:${Math.round(width)},h:${Math.round(height)},` : '';
-        const result = `[${label}|${dimPart}shape:${shapeAttr}]`;
+        // Include style properties if they exist and differ from defaults
+        const styleParts: string[] = [];
+        if (style?.fillColor && style.fillColor !== '#ffffff') styleParts.push(`fill:${style.fillColor}`);
+        if (style?.strokeColor && style.strokeColor !== '#000000') styleParts.push(`stroke:${style.strokeColor}`);
+        if (style?.color && style.color !== '#000000') styleParts.push(`color:${style.color}`);
+        const stylePart = styleParts.length > 0 ? styleParts.join(',') + ',' : '';
+        const result = `[${label}|${dimPart}${stylePart}shape:${shapeAttr}]`;
         // DEBUG: Check for corrupted output
         if (label.includes('shape:') || label.includes('w:') || label.includes('h:')) {
           console.error('[wrap] CORRUPTED OUTPUT:', { label, shapeAttr, dimPart, result, info })

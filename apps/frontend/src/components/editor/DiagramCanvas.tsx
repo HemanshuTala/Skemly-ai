@@ -2170,14 +2170,14 @@ function slugifyId(input: string) {
     .replace(/[^a-z0-9-_]/g, '');
 }
 
-function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: string; width?: number; height?: number } {
+function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: string; width?: number; height?: number; style?: Record<string, string> } {
   const s = raw.trim();
-  
+
   // Guard against empty or invalid input
   if (!s || s === '[]' || s === '{}' || s === '()') {
     return { label: 'Node', kind: 'node' };
   }
-  
+
   // Explicit kind with :: prefix
   const kindMatch = s.match(/^(.*)::(node|decision|startend|database|entity|actor|queue|io)$/i);
   const base = kindMatch ? kindMatch[1].trim() : s;
@@ -2187,7 +2187,7 @@ function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: stri
   const dbl = base.match(/^\[\[(.*?)\]\]$/);
   if (dbl) return { label: dbl[1].trim() || 'Database', kind: explicitKind || 'database' };
 
-  // [Label|w:X,h:Y,shape:S] — resizable shape syntax.
+  // [Label|w:X,h:Y,shape:S,fill:#fff,stroke:#000] — resizable shape syntax.
   // Use non-greedy match for label to handle edge cases
   const pipeMatch = base.match(/^\[([^|\]]*?)\|([^\]]*?)\]$/);
   if (pipeMatch) {
@@ -2196,19 +2196,25 @@ function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: stri
     let width: number | undefined;
     let height: number | undefined;
     let shape: string | undefined;
+    const style: Record<string, string> = {};
     // Only process attrs if they look valid (contain :)
     if (attrsStr.includes(':')) {
       attrsStr.split(',').forEach(attr => {
         const [k, v] = attr.trim().split(':');
-        if (k === 'w' && v && /^\d+$/.test(v)) width = parseInt(v, 10);
-        if (k === 'h' && v && /^\d+$/.test(v)) height = parseInt(v, 10);
-        if (k === 'shape' && v) shape = v.trim();
+        if (!k || !v) return;
+        if (k === 'w' && /^\d+$/.test(v)) width = parseInt(v, 10);
+        if (k === 'h' && /^\d+$/.test(v)) height = parseInt(v, 10);
+        if (k === 'shape') shape = v.trim();
+        if (k === 'fill' || k === 'fillColor') style.fillColor = v.trim();
+        if (k === 'stroke' || k === 'strokeColor') style.strokeColor = v.trim();
+        if (k === 'color' || k === 'textColor') style.color = v.trim();
+        if (k === 'strokeWidth') style.strokeWidth = v.trim();
       });
     }
     // Ensure we have a valid label, not just attributes, and strip extra brackets
     let finalLabel = label || 'Shape';
     finalLabel = finalLabel.replace(/^[\[]+/, '').replace(/[\]]+$/, '').trim();
-    return { label: finalLabel, kind: 'resizableShape', shape: shape || 'rectangle', width, height };
+    return { label: finalLabel, kind: 'resizableShape', shape: shape || 'rectangle', width, height, style };
   }
 
   // [Process] - with better validation
@@ -2335,6 +2341,8 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
       const unwrappedFull = idLabelMatch
         ? unwrapNodeRef(trimmed.slice(finalId.length))
         : unwrapNodeRef(trimmed);
+      // Use extracted style or defaults
+      const extractedStyle = unwrappedFull.style || {};
       const shapeNode: Node = {
         id: finalId,
         type: 'resizableShape',
@@ -2345,11 +2353,11 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           label: finalLabel,
           shape: unwrappedFull.shape || 'rectangle',
           style: {
-            fillColor: '#ffffff',
-            strokeColor: '#000000',
-            strokeWidth: 2,
+            fillColor: extractedStyle.fillColor || '#ffffff',
+            strokeColor: extractedStyle.strokeColor || '#000000',
+            strokeWidth: extractedStyle.strokeWidth ? parseInt(extractedStyle.strokeWidth, 10) : 2,
             fontSize: 14,
-            color: '#000000',
+            color: extractedStyle.color || '#000000',
           },
         },
       };
