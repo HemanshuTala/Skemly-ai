@@ -1052,6 +1052,8 @@ function DiagramCanvasInner({
             const existing = existingNodes.get(n.id);
             if (existing) {
               const existingClean = stripNodeCallbacks(existing.data);
+              // Check if cleanData has actual style properties (not just empty object)
+              const hasParsedStyle = cleanData?.style && Object.keys(cleanData.style).length > 0;
               return {
                 ...existing,
                 ...n,
@@ -1059,7 +1061,7 @@ function DiagramCanvasInner({
                 data: {
                   ...existingClean,
                   ...cleanData,
-                  style: cleanData?.style || existingClean?.style,
+                  style: hasParsedStyle ? cleanData.style : existingClean?.style,
                 },
               };
             }
@@ -1084,6 +1086,8 @@ function DiagramCanvasInner({
 
             if (existing) {
               const existingClean = stripNodeCallbacks(existing.data);
+              // Check if cleanData has actual style properties (not just empty object)
+              const hasParsedStyle = cleanData?.style && Object.keys(cleanData.style).length > 0;
               return {
                 ...existing,
                 ...n,
@@ -1095,7 +1099,7 @@ function DiagramCanvasInner({
                 data: {
                   ...existingClean,
                   ...cleanData,
-                  style: cleanData?.style || existingClean?.style,
+                  style: hasParsedStyle ? cleanData.style : existingClean?.style,
                 },
               };
             }
