@@ -1057,9 +1057,8 @@ function DiagramCanvasInner({
     
    
     
-    // Only skip if BOTH hashes are unchanged AND we have no visual data to apply
-    if (!syntaxChanged && !visualChanged && !hasVisual) {
-    
+    // Skip if neither hash changed — nothing new to apply
+    if (!syntaxChanged && !visualChanged) {
       return;
     }
 
@@ -1102,7 +1101,12 @@ function DiagramCanvasInner({
         });
         setEdges(visualData!.edges || []);
         lastAppliedVisualHashRef.current = visualHash;
-        lastSyntaxHashRef.current = visualHash;
+        // CRITICAL: set to syntaxHash (not visualHash) so the next run correctly
+        // detects whether the TEXT syntax has actually changed. Setting it to
+        // visualHash caused syntaxHash !== lastSyntaxHashRef → syntaxChanged=true
+        // on every subsequent render, triggering a full re-parse that created
+        // nodes with wrong BFS IDs/positions → the blink/flicker.
+        lastSyntaxHashRef.current = syntaxHash;
       } else if (syntaxChanged) {
         // Re-parse from syntax text. Preserve existing positions and styles.
         setNodes((prevNodes: Node[]) => {
