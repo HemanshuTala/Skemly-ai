@@ -367,6 +367,8 @@ export default function DiagramEditorPage() {
   const latestGraphRef = useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
   const [canvasStats, setCanvasStats] = useState({ nodes: 0, edges: 0 });
   const pngExporterRef = useRef<((scale: number) => Promise<string>) | null>(null);
+  /** Direct canvas style patcher — mutates node styles in the canvas without roundtripping through syntax. */
+  const canvasStylePatcherRef = useRef<((nodeIds: string[], stylePatch: Record<string, unknown>) => void) | null>(null);
 
   const editorChromeRef = useRef<HTMLDivElement | null>(null);
   const toolbarShellRef = useRef<HTMLDivElement | null>(null);
@@ -782,13 +784,19 @@ export default function DiagramEditorPage() {
       }
       // For regular nodes with custom styles, serialize them with kind: attribute
       const hasCustomStyle = style && (style.fillColor || style.strokeColor || style.color);
+      // DEBUG: Log style detection for regular nodes
+      if (style && (style.fillColor || style.strokeColor || style.color)) {
+        console.log('[wrap] Regular node with style:', { label, kind, style, hasCustomStyle });
+      }
       if (hasCustomStyle) {
         const styleParts: string[] = [];
         if (style?.fillColor) styleParts.push(`fill:${style.fillColor}`);
         if (style?.strokeColor) styleParts.push(`stroke:${style.strokeColor}`);
         if (style?.color) styleParts.push(`color:${style.color}`);
         const stylePart = styleParts.join(',');
-        return `[${label}|${stylePart},kind:${kind}]`;
+        const result = `[${label}|${stylePart},kind:${kind}]`;
+        console.log('[wrap] Serialized styled node:', result);
+        return result;
       }
       if (kind === 'decision') return `{${label}}`
       if (kind === 'startend') return `(${label})`
@@ -998,33 +1006,38 @@ export default function DiagramEditorPage() {
     }) => {
       const ids = selectedNodeIds.length > 0 ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : [];
       if (ids.length === 0) return;
+
+      // Separate style-only fields from structural ones
+      const { width, height, shape, borderRadius, ...stylePatch } = patch;
+      if (stylePatch.fontFamily === 'inherit') delete (stylePatch as any).fontFamily;
+
+      // ── STEP 1: Direct canvas patch for INSTANT visual feedback ──────────────
+      // This directly mutates the canvas node state without going through the
+      // lossy syntax-serialize → parse → visualData roundtrip that was silently
+      // discarding color values (fillColor, strokeColor, color).
+      if (canvasStylePatcherRef.current && Object.keys(stylePatch).length > 0) {
+        canvasStylePatcherRef.current(ids, stylePatch as Record<string, unknown>);
+      }
+
+      // ── STEP 2: Persist via updateVisualGraph (syntax + save) ────────────────
+      // This updates localGraph + serialises to syntax so the change survives
+      // save/reload. We still run this even if the patcher fired so the code
+      // editor and DB stay in sync.
       updateVisualGraph((prev) => ({
         nodes: prev.nodes.map((n) => {
           if (!ids.includes(n.id)) return n;
-          
           const currentData = n.data as any;
           const currentStyle = currentData?.style || {};
-          
-          // Build new style object (excluding width, height, shape, borderRadius which go in data)
-          const { width, height, shape, borderRadius, ...stylePatch } = patch;
           const newStyle = { ...currentStyle, ...stylePatch };
-          if (stylePatch.fontFamily === 'inherit') delete (newStyle as any).fontFamily;
-          
-          // Determine the correct node type - if it has a shape in data or patch, it's resizableShape
           const nodeType = n.type || (currentData?.shape || shape ? 'resizableShape' : 'diagramNode');
-          
-          // Build new node with updated dimensions and data - CRITICAL: preserve type!
           return {
             ...n,
-            // CRITICAL: Explicitly preserve type to prevent node from becoming diagramNode
             type: nodeType,
-            // Update width/height at node level for ReactFlow
             ...(width !== undefined && { width: Math.max(50, width) }),
             ...(height !== undefined && { height: Math.max(30, height) }),
             data: {
               ...currentData,
               style: newStyle,
-              // Store shape and borderRadius in data for resizable shapes
               ...(shape !== undefined && { shape }),
               ...(borderRadius !== undefined && { borderRadius }),
             },
@@ -1689,6 +1702,7 @@ export default function DiagramEditorPage() {
                 showGrid={canvasShowGrid}
                 showRuler={canvasShowRuler}
                 onRegisterPngExporter={(exporter) => { pngExporterRef.current = exporter; }}
+                onRegisterStylePatcher={(patcher) => { canvasStylePatcherRef.current = patcher; }}
                 onSelectionChange={({ nodeId, edgeId, nodeIds, edgeIds, selectedNode, selectedEdge }) => {
                   setSelectedNodeId(nodeId);
                   setSelectedEdgeId(edgeId);

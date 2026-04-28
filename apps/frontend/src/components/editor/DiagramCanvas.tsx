@@ -86,6 +86,13 @@ interface DiagramCanvasProps {
     selectedEdge: Edge | null;
   }) => void;
   onRegisterPngExporter?: (exporter: ((scale: number) => Promise<string>) | null) => void;
+  /**
+   * Registers a direct style-patcher function that can patch node styles in-place
+   * without going through the syntax/visualData roundtrip. Call with null to unregister.
+   */
+  onRegisterStylePatcher?: (
+    patcher: ((nodeIds: string[], stylePatch: Record<string, unknown>) => void) | null
+  ) => void;
 }
 
 type CanvasNodeStyle = {
@@ -770,6 +777,7 @@ function DiagramCanvasInner({
   showRuler = false,
   onSelectionChange,
   onRegisterPngExporter,
+  onRegisterStylePatcher,
 }: DiagramCanvasProps) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -960,6 +968,30 @@ function DiagramCanvasInner({
     onRegisterPngExporter(exporter);
     return () => onRegisterPngExporter(null);
   }, [onRegisterPngExporter, reactFlowInstance, selectedNodeId, interactionMode]);
+
+  // Register a direct style-patcher so the parent can update node styles in-place
+  // without going through the syntax → parse → visualData roundtrip (which loses styles).
+  useEffect(() => {
+    if (!onRegisterStylePatcher) return;
+    const patcher = (nodeIds: string[], stylePatch: Record<string, unknown>) => {
+      setNodes((prevNodes) =>
+        prevNodes.map((n) => {
+          if (!nodeIds.includes(n.id)) return n;
+          const currentData = (n.data as any) || {};
+          const currentStyle = currentData.style || {};
+          return {
+            ...n,
+            data: {
+              ...currentData,
+              style: { ...currentStyle, ...stylePatch },
+            },
+          };
+        })
+      );
+    };
+    onRegisterStylePatcher(patcher);
+    return () => onRegisterStylePatcher(null);
+  }, [onRegisterStylePatcher, setNodes]);
 
   const graphHash = useMemo(() => {
     const simple = {
