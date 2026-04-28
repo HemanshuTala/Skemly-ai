@@ -2188,6 +2188,7 @@ function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: stri
   if (dbl) return { label: dbl[1].trim() || 'Database', kind: explicitKind || 'database' };
 
   // [Label|w:X,h:Y,shape:S,fill:#fff,stroke:#000] — resizable shape syntax.
+  // [Label|fill:#ff0000,stroke:#00ff00,kind:node] — styled regular node syntax.
   // Use non-greedy match for label to handle edge cases
   const pipeMatch = base.match(/^\[([^|\]]*?)\|([^\]]*?)\]$/);
   if (pipeMatch) {
@@ -2196,6 +2197,7 @@ function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: stri
     let width: number | undefined;
     let height: number | undefined;
     let shape: string | undefined;
+    let kind: string | undefined;
     const style: Record<string, string> = {};
     // Only process attrs if they look valid (contain :)
     if (attrsStr.includes(':')) {
@@ -2205,6 +2207,7 @@ function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: stri
         if (k === 'w' && /^\d+$/.test(v)) width = parseInt(v, 10);
         if (k === 'h' && /^\d+$/.test(v)) height = parseInt(v, 10);
         if (k === 'shape') shape = v.trim();
+        if (k === 'kind') kind = v.trim();
         if (k === 'fill' || k === 'fillColor') style.fillColor = v.trim();
         if (k === 'stroke' || k === 'strokeColor') style.strokeColor = v.trim();
         if (k === 'color' || k === 'textColor') style.color = v.trim();
@@ -2214,6 +2217,11 @@ function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: stri
     // Ensure we have a valid label, not just attributes, and strip extra brackets
     let finalLabel = label || 'Shape';
     finalLabel = finalLabel.replace(/^[\[]+/, '').replace(/[\]]+$/, '').trim();
+    // If has kind: attribute, it's a styled regular node (not a resizable shape)
+    if (kind) {
+      return { label: finalLabel, kind, style };
+    }
+    // Otherwise it's a resizable shape
     return { label: finalLabel, kind: 'resizableShape', shape: shape || 'rectangle', width, height, style };
   }
 
@@ -2387,17 +2395,23 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     };
 
     const icon = getIconFromKind(finalKind, finalLabel);
-    
+
+    // Get the full unwrapped data including style
+    const unwrappedFull = idLabelMatch
+      ? unwrapNodeRef(trimmed.slice(finalId.length))
+      : unwrapNodeRef(trimmed);
+    const extractedStyle = unwrappedFull.style || {};
+
     const newNode: Node = {
       id: finalId,
       type: 'diagramNode',
       position: { x: 0, y: 0 },
-      data: { 
-        label: finalLabel, 
+      data: {
+        label: finalLabel,
         kind: finalKind,
         icon: icon,
-        // NOTE: Don't include hardcoded style here - let getNodeStyle provide defaults
-        // This allows user-customized colors to be preserved when re-parsing
+        // Include extracted style if present (fillColor, strokeColor, color)
+        ...(Object.keys(extractedStyle).length > 0 ? { style: extractedStyle } : {}),
       },
     };
     nodeById.set(finalId, newNode);

@@ -780,6 +780,16 @@ export default function DiagramEditorPage() {
         }
         return result;
       }
+      // For regular nodes with custom styles, serialize them with kind: attribute
+      const hasCustomStyle = style && (style.fillColor || style.strokeColor || style.color);
+      if (hasCustomStyle) {
+        const styleParts: string[] = [];
+        if (style?.fillColor) styleParts.push(`fill:${style.fillColor}`);
+        if (style?.strokeColor) styleParts.push(`stroke:${style.strokeColor}`);
+        if (style?.color) styleParts.push(`color:${style.color}`);
+        const stylePart = styleParts.join(',');
+        return `[${label}|${stylePart},kind:${kind}]`;
+      }
       if (kind === 'decision') return `{${label}}`
       if (kind === 'startend') return `(${label})`
       if (kind === 'database') return `[[${label}]]`
