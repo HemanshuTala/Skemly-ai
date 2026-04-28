@@ -304,29 +304,7 @@ export default function ProjectsPage() {
             )}
           </motion.div>
 
-          {/* Feature highlights - only show when no search query */}
-          {!searchQuery && (
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="mt-12 grid grid-cols-3 gap-6 max-w-lg"
-            >
-              {[
-                { icon: Layers, label: 'Organize', desc: 'Keep diagrams tidy' },
-                { icon: Sparkles, label: 'AI Powered', desc: 'Generate with AI' },
-                { icon: Zap, label: 'Collaborate', desc: 'Work together' },
-              ].map((feature, i) => (
-                <div key={i} className="flex flex-col items-center text-center">
-                  <div className="w-10 h-10 rounded-xl bg-[#27272a] flex items-center justify-center mb-2">
-                    <feature.icon className="w-5 h-5 text-[#c99367]" />
-                  </div>
-                  <span className="text-sm font-medium text-white">{feature.label}</span>
-                  <span className="text-xs text-[#71717a]">{feature.desc}</span>
-                </div>
-              ))}
-            </motion.div>
-          )}
+       
         </div>
       )}
 
