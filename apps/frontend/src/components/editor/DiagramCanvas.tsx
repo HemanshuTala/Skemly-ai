@@ -1052,7 +1052,7 @@ function DiagramCanvasInner({
             const existing = existingNodes.get(n.id);
             if (existing) {
               const existingClean = stripNodeCallbacks(existing.data);
-              // Check if cleanData has actual style properties (not just empty object)
+1              // Check if cleanData has actual style properties (not just empty object)
               const hasParsedStyle = cleanData?.style && Object.keys(cleanData.style).length > 0;
               return {
                 ...existing,
@@ -2396,13 +2396,8 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
         label: finalLabel, 
         kind: finalKind,
         icon: icon,
-        style: {
-          fillColor: '#27272a',
-          strokeColor: '#ffffff',
-          strokeWidth: 2,
-          fontSize: 12,
-          color: '#ffffff'
-        }
+        // NOTE: Don't include hardcoded style here - let getNodeStyle provide defaults
+        // This allows user-customized colors to be preserved when re-parsing
       },
     };
     nodeById.set(finalId, newNode);
