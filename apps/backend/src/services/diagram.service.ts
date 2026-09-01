@@ -104,6 +104,7 @@ class DiagramService {
     if (updates.tags !== undefined) allowedUpdates.tags = updates.tags;
     if (updates.nodes !== undefined) allowedUpdates.nodes = updates.nodes;
     if (updates.edges !== undefined) allowedUpdates.edges = updates.edges;
+    if (updates.requirements !== undefined) allowedUpdates.requirements = updates.requirements;
 
     // Use $set for regular fields and $inc for version
     const diagram = await Diagram.findByIdAndUpdate(

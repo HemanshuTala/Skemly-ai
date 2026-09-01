@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Modal } from '../ui/modal';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
@@ -133,7 +133,7 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
                 type="button"
                 onClick={() => setSelectedColor(color)}
                 className={`w-10 h-10 rounded-lg transition-all ${
-                  selectedColor === color ? 'ring-2 ring-offset-2 ring-primary-500' : ''
+                  selectedColor === color ? 'ring-2 ring-offset-2 ring-primary' : ''
                 }`}
                 style={{ backgroundColor: color }}
                 disabled={isLoading}

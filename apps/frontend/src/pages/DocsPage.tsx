@@ -9,19 +9,19 @@ import SkemlyLogo from '../assets/Skemly.png'
 import DocsCanvas from '../assets/docs.png'
 
 const T = {
-  bg: '#080808',
-  surface: '#111111',
-  surfaceHi: '#161616',
-  border: '#1f1f1f',
-  borderHi: '#2a2a2a',
-  text: '#f2f0eb',
-  textSub: '#8a8680',
-  textMuted: '#3d3d3b',
-  accent: '#c9b89a',
-  accentDim: '#8a7d68',
-  font: "'DM Sans', -apple-system, sans-serif",
-  fontSerif: "'Cormorant Garamond', Georgia, serif",
-  fontMono: "'DM Mono', 'Fira Code', monospace",
+  bg: '#09090b',
+  surface: '#0e0e11',
+  surfaceHi: '#18181b',
+  border: 'rgba(255,255,255,0.06)',
+  borderHi: '#27272a',
+  text: '#ffffff',
+  textSub: '#a1a1aa',
+  textMuted: '#71717a',
+  accent: '#ffffff',
+  accentDim: '#71717a',
+  font: '"Inter", -apple-system, sans-serif',
+  fontSerif: '"Outfit", "Inter", sans-serif',
+  fontMono: '"JetBrains Mono", monospace',
 }
 
 const SP_SOFT = { type: 'spring', stiffness: 100, damping: 20 }
@@ -114,9 +114,9 @@ const USE_CASES = [
 ]
 
 const FAQS = [
-  { q: 'Is Skemly free to use?', a: 'Yes! Skemly has a generous free tier with 10 diagrams, 5 AI generations, and basic features. Upgrade to Starter (₹20/mo) or Basic (₹40/mo) for more power.' },
+  { q: 'Is Skemly free to use?', a: 'Yes! Schemely has a generous free tier with 10 diagrams, 5 AI generations, and basic features. Upgrade to Starter (₹20/mo) or Basic (₹40/mo) for more power.' },
   { q: 'What file formats can I export to?', a: 'You can export diagrams as PNG, SVG, or PDF. Pro plans include high-resolution exports without watermarks.' },
-  { q: 'Can I use Skemly offline?', a: 'Currently, Skemly requires an internet connection. We\'re working on offline support for the future.' },
+  { q: 'Can I use Skemly offline?', a: 'Currently, Schemely requires an internet connection. We\'re working on offline support for the future.' },
   { q: 'How does AI generation work?', a: 'Describe your system in plain English, and our AI will generate a complete diagram. Edit it visually or in code as needed.' },
   { q: 'Is my data secure?', a: 'Absolutely. All diagrams are encrypted at rest and in transit. We never train AI on your private diagrams.' },
   { q: 'Can I collaborate with my team?', a: 'Team collaboration is available on Basic and higher plans. Share diagrams, leave comments, and work together in real-time.' },
@@ -138,11 +138,11 @@ export default function DocsPage() {
   return (
     <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.font }}>
       {/* ── NAV ── */}
-      <nav style={{ position: 'sticky', top: 0, zIndex: 100, height: 64, background: `rgba(8,8,8,0.95)`, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${T.border}` }}>
+      <nav style={{ position: 'sticky', top: 0, zIndex: 100, height: 64, background: `rgba(9,9,11,0.95)`, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${T.border}` }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <motion.div whileHover={{ scale: 1.02 }} transition={SP_BOUNCY} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => window.location.href = '/'}>
             <img src={SkemlyLogo} alt="Skemly" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
-            <span style={{ fontSize: 18, fontWeight: 700, color: T.text, letterSpacing: '-0.02em' }}>Skemly</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: T.text, letterSpacing: '-0.02em' }}>Schemely</span>
           </motion.div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <motion.a href="/" whileHover={{ color: T.text }} style={{ padding: '8px 16px', fontSize: 14, color: T.textMuted, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -163,7 +163,7 @@ export default function DocsPage() {
             <div style={{ padding: '24px 20px', borderBottom: `1px solid ${T.border}` }}>
               <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
                 <img src={SkemlyLogo} alt="Skemly" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
-                <span style={{ fontSize: 18, fontWeight: 700, color: T.text }}>Skemly</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: T.text }}>Schemely</span>
               </a>
             </div>
 
@@ -211,9 +211,9 @@ export default function DocsPage() {
           <section id="getting-started" style={{ marginBottom: 80 }}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={SP_SOFT}>
               <div style={{ fontSize: 11, color: T.accent, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 12, fontWeight: 600 }}>Documentation</div>
-              <h1 style={{ fontSize: 42, fontWeight: 600, marginBottom: 20, fontFamily: T.fontSerif, fontStyle: 'italic' }}>Getting Started with Skemly</h1>
+              <h1 style={{ fontSize: 42, fontWeight: 600, marginBottom: 20, fontFamily: T.fontSerif, fontStyle: 'italic' }}>Getting Started with Schemely</h1>
               <p style={{ fontSize: 18, color: T.textSub, lineHeight: 1.7, marginBottom: 32 }}>
-                Skemly is the fastest way to create professional system diagrams. Write code or use AI — 
+                Schemely is the fastest way to create professional system diagrams. Write code or use AI — 
                 your diagrams update in real-time.
               </p>
               
@@ -261,12 +261,12 @@ export default function DocsPage() {
                     {['#ff5f57', '#febc2e', '#28c840'].map((c, i) => (
                       <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />
                     ))}
-                    <span style={{ marginLeft: 12, fontSize: 12, color: T.textMuted, fontFamily: T.fontMono }}>Skemly Editor</span>
+                    <span style={{ marginLeft: 12, fontSize: 12, color: T.textMuted, fontFamily: T.fontMono }}>Schemely Editor</span>
                   </div>
                   {/* Canvas Image */}
                   <img 
                     src={DocsCanvas} 
-                    alt="Skemly Editor Canvas" 
+                    alt="Schemely Editor Canvas" 
                     style={{ 
                       width: '100%', 
                       height: 'auto', 
@@ -278,15 +278,15 @@ export default function DocsPage() {
                     position: 'absolute',
                     inset: 0,
                     pointerEvents: 'none',
-                    boxShadow: 'inset 0 0 60px rgba(201,184,154,0.05)'
+                    boxShadow: 'inset 0 0 60px rgba(255,255,255,0.03)'
                   }} />
                 </motion.div>
                 <p style={{ fontSize: 14, color: T.textSub, marginTop: 16, textAlign: 'center' }}>
-                  The Skemly canvas — where code meets visual design. Write on the left, see diagrams on the right.
+                  The Schemely canvas — where code meets visual design. Write on the left, see diagrams on the right.
                 </p>
               </div>
 
-              <motion.a href="/editor" whileHover={{ scale: 1.02 }} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 28px', background: T.text, color: T.bg, borderRadius: 8, fontSize: 15, fontWeight: 500, textDecoration: 'none' }}>
+              <motion.a href="/dashboard" whileHover={{ scale: 1.02 }} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 28px', background: T.text, color: T.bg, borderRadius: 8, fontSize: 15, fontWeight: 500, textDecoration: 'none' }}>
                 <Zap size={18} /> Create Your First Diagram
               </motion.a>
             </motion.div>
@@ -296,7 +296,7 @@ export default function DocsPage() {
           <section id="syntax" style={{ marginBottom: 80 }}>
             <h2 style={{ fontSize: 32, fontWeight: 600, marginBottom: 24, fontFamily: T.fontSerif, fontStyle: 'italic' }}>Diagram Syntax</h2>
             <p style={{ fontSize: 16, color: T.textSub, lineHeight: 1.7, marginBottom: 32 }}>
-              Skemly uses a clean, intuitive syntax inspired by Mermaid. Write text, see diagrams instantly.
+              Schemely uses a clean, intuitive syntax inspired by Mermaid. Write text, see diagrams instantly.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
@@ -322,12 +322,12 @@ export default function DocsPage() {
           <section id="ai-generation" style={{ marginBottom: 80 }}>
             <h2 style={{ fontSize: 32, fontWeight: 600, marginBottom: 24, fontFamily: T.fontSerif, fontStyle: 'italic' }}>AI Generation</h2>
             <p style={{ fontSize: 16, color: T.textSub, lineHeight: 1.7, marginBottom: 32 }}>
-              Describe your system in plain English, and Skemly AI will generate a complete diagram for you.
+              Describe your system in plain English, and Schemely AI will generate a complete diagram for you.
             </p>
 
             <div style={{ padding: 32, background: `linear-gradient(135deg, ${T.surface} 0%, ${T.surfaceHi} 100%)`, borderRadius: 16, border: `1px solid ${T.border}`, marginBottom: 32 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: `rgba(201,184,154,0.1)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: `rgba(255,255,255,0.05)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Sparkles size={20} color={T.accent} />
                 </div>
                 <div>
@@ -378,7 +378,7 @@ export default function DocsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>
               {[
                 { title: 'Drag & Drop', desc: 'Move nodes anywhere on the infinite canvas' },
-                { title: 'Auto Layout', desc: 'Let Skemly arrange your diagram beautifully' },
+                { title: 'Auto Layout', desc: 'Let Schemely arrange your diagram beautifully' },
                 { title: 'Custom Styling', desc: 'Change colors, fonts, and shapes' },
                 { title: 'Zoom & Pan', desc: 'Navigate large diagrams with ease' },
                 { title: 'Snap to Grid', desc: 'Align elements perfectly' },
@@ -435,7 +435,7 @@ export default function DocsPage() {
               })}
             </div>
 
-            <div style={{ marginTop: 32, padding: 24, background: `rgba(201,184,154,0.05)`, borderRadius: 12, border: `1px solid ${T.accentDim}` }}>
+            <div style={{ marginTop: 32, padding: 24, background: `rgba(255,255,255,0.02)`, borderRadius: 12, border: `1px solid ${T.borderHi}` }}>
               <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Share2 size={18} color={T.accent} /> Share Links
               </h4>
@@ -450,7 +450,7 @@ export default function DocsPage() {
           <section id="use-cases" style={{ marginBottom: 80 }}>
             <h2 style={{ fontSize: 32, fontWeight: 600, marginBottom: 24, fontFamily: T.fontSerif, fontStyle: 'italic' }}>Use Cases</h2>
             <p style={{ fontSize: 16, color: T.textSub, lineHeight: 1.7, marginBottom: 32 }}>
-              Skemly is built for every type of technical documentation. Here's how teams use it.
+              Schemely is built for every type of technical documentation. Here's how teams use it.
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>
@@ -458,7 +458,7 @@ export default function DocsPage() {
                 const Icon = useCase.icon
                 return (
                   <motion.div key={i} whileHover={{ y: -4 }} style={{ padding: 28, background: T.surface, borderRadius: 12, border: `1px solid ${T.border}` }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 10, background: `rgba(201,184,154,0.1)`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 10, background: `rgba(255,255,255,0.05)`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
                       <Icon size={22} color={T.accent} />
                     </div>
                     <h4 style={{ fontSize: 18, fontWeight: 600, marginBottom: 10 }}>{useCase.title}</h4>

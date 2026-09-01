@@ -1,27 +1,24 @@
 import { useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuthStore } from '@/stores/authStore'
 import { billingAPI } from '@/services/api.service'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PlanCard } from '@/components/billing/PlanCard'
 import { openRazorpayCheckout } from '@/components/billing/RazorpayInlineCheckout'
-import { 
-  User, 
-  CreditCard,
-} from 'lucide-react'
+import { User, CreditCard, CheckCircle2, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 export default function SettingsPage() {
   const { user, updateProfile, fetchUser } = useAuthStore()
-  const [name, setName] = useState(user?.name || '')
+  const [name, setName]   = useState(user?.name || '')
   const [avatar, setAvatar] = useState(user?.avatar || '')
   const [isSavingProfile, setIsSavingProfile] = useState(false)
-  const [plans, setPlans] = useState<any[]>([])
-  const [subscription, setSubscription] = useState<any>(null)
+  const [plans, setPlans]                     = useState<any[]>([])
+  const [subscription, setSubscription]       = useState<any>(null)
   const [isLoadingBilling, setIsLoadingBilling] = useState(true)
-  const [isBillingBusy, setIsBillingBusy] = useState(false)
+  const [isBillingBusy, setIsBillingBusy]     = useState(false)
 
   useEffect(() => {
     setName(user?.name || '')
@@ -38,18 +35,14 @@ export default function SettingsPage() {
       setPlans(plansRes.data?.data || [])
       setSubscription(subRes.data?.data || null)
     } catch (err: any) {
-      console.error('[Billing] Failed to load:', err)
       toast.error(`Failed to load billing: ${err?.message || 'Unknown error'}`)
     } finally {
       setIsLoadingBilling(false)
     }
   }
 
-  useEffect(() => {
-    loadBillingData()
-  }, [])
+  useEffect(() => { loadBillingData() }, [])
 
-  // Refresh billing and user data when window becomes visible (e.g., returning from payment)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -61,222 +54,233 @@ export default function SettingsPage() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [fetchUser])
 
-  return (
-    <div className="max-w-4xl mx-auto pb-12 px-4 pt-6">
-      {/* Header with gradient */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#18181b] border border-[#27272a] p-6 mb-6">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-[#27272a]">
-            <User className="w-8 h-8 text-[#a1a1aa]" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-white">Settings</h1>
-            <p className="text-[#a1a1aa] text-sm mt-0.5">
-              Manage your account and billing
-            </p>
-          </div>
-        </div>
-      </div>
+  const initials = user?.name
+    ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    : 'U'
 
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true)
+    try {
+      await updateProfile({ name, avatar: avatar || undefined })
+      toast.success('Profile updated')
+    } catch {
+      toast.error('Failed to update profile')
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }
+
+  return (
+    <div className="max-w-[900px] mx-auto px-6 py-8 space-y-6">
+
+      {/* ── Page header ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+      >
+        <h1 className="text-[22px] font-bold text-white tracking-[-0.02em]">Settings</h1>
+        <p className="text-[13px] text-[#52525b] mt-0.5">Manage your account and subscription</p>
+      </motion.div>
+
+      {/* ── Tabs ── */}
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="inline-flex h-10 bg-[#18181b] p-1 rounded-lg border border-[#27272a]">
-          <TabsTrigger value="profile" className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-[#a1a1aa] data-[state=active]:bg-[#27272a] data-[state=active]:text-white transition-all">
-            <User className="w-4 h-4" />
-            <span>Profile</span>
+        <TabsList>
+          <TabsTrigger value="profile">
+            <User className="w-3.5 h-3.5 mr-1.5" />
+            Profile
           </TabsTrigger>
-          <TabsTrigger value="billing" className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-[#a1a1aa] data-[state=active]:bg-[#27272a] data-[state=active]:text-white transition-all">
-            <CreditCard className="w-4 h-4" />
-            <span>Billing</span>
+          <TabsTrigger value="billing">
+            <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+            Billing
           </TabsTrigger>
         </TabsList>
 
-        <AnimatePresence mode="wait">
-          <TabsContent key="profile" value="profile" className="mt-0 focus-visible:outline-none">
-            <motion.div
-              key="profile-motion"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-14 h-14 rounded-full bg-[#27272a] flex items-center justify-center overflow-hidden border border-[#3f3f46]">
-                    {avatar ? (
-                      <img src={avatar} alt={name} className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-6 h-6 text-[#a1a1aa]" />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="text-white font-medium">{name || 'User'}</h3>
-                    <p className="text-sm text-[#71717a]">{user?.email}</p>
-                  </div>
+        {/* ── Profile Tab ── */}
+        <TabsContent value="profile">
+          <div className="rounded-xl border border-white/[0.06] bg-[#0d0d10] overflow-hidden">
+
+            {/* Profile header */}
+            <div className="flex items-center gap-4 p-6 border-b border-white/[0.05]">
+              <div className="w-14 h-14 rounded-xl bg-white/[0.07] border border-white/[0.10] flex items-center justify-center overflow-hidden text-[18px] font-bold text-white">
+                {avatar ? (
+                  <img src={avatar} alt={name} className="w-full h-full object-cover" />
+                ) : (
+                  initials
+                )}
+              </div>
+              <div>
+                <h3 className="text-[15px] font-semibold text-white">{name || 'Your Name'}</h3>
+                <p className="text-[13px] text-[#52525b]">{user?.email}</p>
+                <span className={`inline-block mt-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                  user?.plan === 'free'
+                    ? 'bg-white/[0.05] text-[#52525b] border border-white/[0.07]'
+                    : 'bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/20'
+                }`}>
+                  {user?.plan?.toUpperCase() || 'FREE'} plan
+                </span>
+              </div>
+            </div>
+
+            {/* Form */}
+            <div className="p-6 space-y-5">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-[#52525b] uppercase tracking-[0.08em]">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full px-3 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-[13px] text-white placeholder:text-[#3f3f46] outline-none focus:border-white/[0.15] focus:bg-white/[0.05] transition-all font-[inherit]"
+                  />
                 </div>
-                
-                <div className="grid gap-4 md:grid-cols-2 mb-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-[#71717a]">Display Name</label>
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full h-9 rounded-lg border border-[#27272a] bg-[#0c0c0e] px-3 text-sm text-white focus:border-[#52525b] focus:outline-none transition-colors"
-                      placeholder="Your name"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-[#71717a]">Avatar URL</label>
-                    <input
-                      value={avatar}
-                      onChange={(e) => setAvatar(e.target.value)}
-                      className="w-full h-9 rounded-lg border border-[#27272a] bg-[#0c0c0e] px-3 text-sm text-white focus:border-[#52525b] focus:outline-none transition-colors"
-                      placeholder="https://..."
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-end pt-4 border-t border-[#27272a]">
-                  <Button
-                    isLoading={isSavingProfile}
-                    className="bg-white text-[#18181b] hover:bg-[#e4e4e7] border-0 text-sm h-9 px-4"
-                    onClick={async () => {
-                      setIsSavingProfile(true)
-                      try {
-                        await updateProfile({ name, avatar: avatar || undefined })
-                        toast.success('Profile updated')
-                      } finally {
-                        setIsSavingProfile(false)
-                      }
-                    }}
-                  >
-                    Save Changes
-                  </Button>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-[#52525b] uppercase tracking-[0.08em]">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={user?.email || ''}
+                    disabled
+                    className="w-full px-3 py-2 rounded-lg border border-white/[0.04] bg-white/[0.02] text-[13px] text-[#52525b] cursor-not-allowed font-[inherit]"
+                  />
                 </div>
               </div>
-            </motion.div>
-          </TabsContent>
 
-          <TabsContent key="billing" value="billing" className="mt-0 focus-visible:outline-none">
-            <motion.div
-              key="billing-motion"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
-            >
-              {/* Current Subscription Status */}
-              {subscription?.plan && subscription.plan !== 'free' && (
-                <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-4 mb-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-[#71717a] uppercase tracking-wide">Current Plan</p>
-                      <p className="text-lg font-semibold text-white capitalize">{subscription.plan}</p>
-                      {subscription.planExpiresAt && (
-                        <p className="text-xs text-[#a1a1aa]">
-                          Renews: {new Date(subscription.planExpiresAt).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-1 rounded bg-green-500/10 text-green-400 text-xs font-medium">
-                        Active
-                      </span>
-                      <Button
-                        variant="secondary"
-                        className="text-red-400 hover:bg-red-500/10 text-xs h-7 px-2"
-                        isLoading={isBillingBusy}
-                        onClick={async () => {
-                          setIsBillingBusy(true)
-                          try {
-                            await billingAPI.cancel()
-                            toast.success('Subscription cancelled')
-                            loadBillingData()
-                          } catch (e: any) {
-                            toast.error(e?.response?.data?.error?.message || 'Cancel failed')
-                          } finally {
-                            setIsBillingBusy(false)
-                          }
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-[#52525b] uppercase tracking-[0.08em]">
+                  Avatar URL
+                </label>
+                <input
+                  type="url"
+                  value={avatar}
+                  onChange={(e) => setAvatar(e.target.value)}
+                  placeholder="https://example.com/avatar.jpg"
+                  className="w-full px-3 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-[13px] text-white placeholder:text-[#3f3f46] outline-none focus:border-white/[0.15] focus:bg-white/[0.05] transition-all font-[inherit]"
+                />
+              </div>
 
+              {/* Save */}
+              <div className="flex items-center justify-end pt-4 border-t border-white/[0.05]">
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={isSavingProfile}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-[#09090b] text-[12px] font-bold hover:bg-[#e4e4e7] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isSavingProfile ? (
+                    <>
+                      <span className="w-3 h-3 rounded-full border-2 border-[#09090b]/30 border-t-[#09090b] animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── Billing Tab ── */}
+        <TabsContent value="billing" className="space-y-5">
+
+          {/* Current subscription */}
+          {subscription?.plan && subscription.plan !== 'free' && (
+            <div className="rounded-xl border border-white/[0.06] bg-[#0d0d10] p-5">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-medium text-white">
-                  {subscription?.plan && subscription.plan !== 'free' ? 'Change Plan' : 'Subscription Plans'}
-                </h3>
+                <div>
+                  <p className="text-[11px] font-semibold text-[#52525b] uppercase tracking-[0.08em] mb-1">
+                    Current Plan
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[18px] font-bold text-white capitalize">{subscription.plan}</span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/20">
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                      Active
+                    </span>
+                  </div>
+                  {subscription.planExpiresAt && (
+                    <p className="text-[12px] text-[#52525b] mt-1">
+                      Renews: {new Date(subscription.planExpiresAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                <button
+                  disabled={isBillingBusy}
+                  onClick={async () => {
+                    setIsBillingBusy(true)
+                    try {
+                      await billingAPI.cancel()
+                      toast.success('Subscription cancelled')
+                      loadBillingData()
+                    } catch (e: any) {
+                      toast.error(e?.response?.data?.error?.message || 'Cancel failed')
+                    } finally {
+                      setIsBillingBusy(false)
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg border border-[#f87171]/20 bg-[#f87171]/10 text-[#f87171] text-[11px] font-semibold hover:bg-[#f87171]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel Plan
+                </button>
               </div>
+            </div>
+          )}
 
-              {isLoadingBilling ? (
-                <div className="flex items-center justify-center h-64">
-                  <Loader2 className="w-8 h-8 animate-spin text-[#71717a]" />
-                </div>
-              ) : (
-                <div className="grid md:grid-cols-3 gap-3">
-                  {plans.map((plan) => (
-                    <PlanCard
-                      key={plan.id}
-                      plan={plan}
-                      isCurrent={subscription?.plan === plan.id}
-                      isBusy={isBillingBusy}
-                      onSubscribe={async (planId) => {
-                        if (planId === 'free') {
-                          if (subscription?.plan && subscription.plan !== 'free') {
-                            toast('Please cancel your current subscription to switch to the free plan.')
-                          }
-                          return;
+          {/* Plans grid */}
+          <div>
+            <p className="text-[13px] font-semibold text-white mb-3">
+              {subscription?.plan && subscription.plan !== 'free' ? 'Change Plan' : 'Choose a Plan'}
+            </p>
+            {isLoadingBilling ? (
+              <div className="grid md:grid-cols-3 gap-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="rounded-xl border border-white/[0.05] bg-[#0d0d10] p-5 space-y-4 h-64">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-1/3 rounded" />
+                      <Skeleton className="h-8 w-1/2 rounded" />
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-3 w-full rounded" />
+                      <Skeleton className="h-3 w-4/5 rounded" />
+                      <Skeleton className="h-3 w-3/4 rounded" />
+                    </div>
+                    <Skeleton className="h-9 w-full rounded-lg" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-3 gap-3">
+                {plans.map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    isCurrent={subscription?.plan === plan.id}
+                    isBusy={isBillingBusy}
+                    onSubscribe={async (planId) => {
+                      if (planId === 'free') {
+                        if (subscription?.plan && subscription.plan !== 'free') {
+                          toast('Please cancel your current subscription first.')
                         }
-
-                        await openRazorpayCheckout({
-                          planId,
-                          fetchUser,
-                          onSuccess: () => {
-                            loadBillingData()
-                          },
-                          onError: (error: string) => {
-                            console.error('Payment error:', error)
-                          }
-                        })
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-
-            </motion.div>
-          </TabsContent>
-        </AnimatePresence>
+                        return
+                      }
+                      await openRazorpayCheckout({
+                        planId,
+                        fetchUser,
+                        onSuccess: () => loadBillingData(),
+                        onError: (err: string) => console.error('Payment error:', err),
+                      })
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   )
 }
-
-// Removed unused Workspace tab content
-
-function formatDistanceToNow(date: Date, options?: { addSuffix?: boolean }) {
-  // simple fallback or import from date-fns
-  return date.toLocaleDateString()
-}
-
-function Loader2(props: any) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-    </svg>
-  )
-}
-

@@ -72,6 +72,27 @@ export const updateDiagram = async (req: AuthRequest, res: Response, next: NextF
   try {
     const { id } = req.params;
     const { createVersion, ...updates } = req.body;
+    
+    const ifMatchVersion = req.headers['if-match-version'];
+    if (ifMatchVersion !== undefined) {
+      const diagram = await Diagram.findById(id);
+      if (!diagram) {
+        throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
+      }
+      const clientVersion = parseInt(String(ifMatchVersion), 10);
+      if (diagram.version !== clientVersion) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'DIAGRAM_VERSION_CONFLICT',
+            message: `Diagram version conflict. Server version is ${diagram.version}, but client sent ${clientVersion}.`,
+            serverVersion: diagram.version,
+            clientVersion
+          }
+        });
+      }
+    }
+
     const diagram = await diagramService.updateDiagram(id, req.userId!, updates, createVersion);
     res.json({ success: true, data: diagram });
   } catch (err) {

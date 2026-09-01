@@ -14,7 +14,6 @@ Skemly is a modern, collaborative diagramming and visual workspace powered by AI
 - **Frontend**: React, TypeScript, Vite, Tailwind CSS, Framer Motion, GSAP, Three.js.
 - **Backend**: Node.js, Express, MongoDB, Redis, Socket.io.
 - **AI**: Integration with OpenAI, Anthropic, and Cohere.
-- **Payments**: Razorpay integration for subscriptions.
 
 ## Getting Started
 

@@ -34,7 +34,7 @@ export function ColorPicker({ value, onChange, className }: ColorPickerProps) {
         <Popover.Trigger asChild>
           <button
             type="button"
-            className="h-8 w-8 rounded-lg border border-border/70 shadow-sm transition-all hover:scale-105 hover:border-primary/40"
+            className="h-8 w-8 rounded-lg border border-white/[0.10] shadow-sm transition-all hover:scale-105 hover:border-white/[0.20]"
             style={{ backgroundColor: normalized }}
             aria-label="Pick color"
           />
@@ -42,7 +42,7 @@ export function ColorPicker({ value, onChange, className }: ColorPickerProps) {
         <Popover.Portal>
           <Popover.Content
             sideOffset={8}
-            className="z-[10060] rounded-xl border border-border/70 bg-card p-3 shadow-2xl backdrop-blur-xl"
+            className="z-[10060] rounded-xl border border-white/[0.08] bg-[#0d0d10] p-3 shadow-xl backdrop-blur-xl"
           >
             <HexColorPicker color={normalized} onChange={onChange} />
             <div className="mt-3 flex items-center gap-2 text-[10px] font-semibold text-muted-foreground">
@@ -62,7 +62,7 @@ export function ColorPicker({ value, onChange, className }: ColorPickerProps) {
             onChange(normalizeHex(next));
           }
         }}
-        className="h-8 flex-1 rounded-lg border border-border/50 bg-background/50 px-2 font-mono text-[11px] outline-none focus:border-primary/40 focus:bg-background"
+        className="h-8 flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 font-mono text-[11px] outline-none focus:border-white/[0.20] focus:bg-white/[0.03] text-white"
         spellCheck={false}
       />
     </div>

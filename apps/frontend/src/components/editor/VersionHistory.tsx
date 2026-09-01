@@ -4,18 +4,14 @@ import {
   History,
   X,
   RotateCcw,
-  GitCommit,
   Clock,
   User,
-  MessageSquare,
   Check,
   ChevronRight,
   ChevronDown,
   Eye,
   Diff,
   Trash2,
-  MoreHorizontal,
-  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -57,7 +53,6 @@ export function VersionHistory({
   onRestore,
   onCompare,
   onDelete,
-  currentCode,
 }: VersionHistoryProps) {
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
   const [compareMode, setCompareMode] = useState(false);
@@ -109,162 +104,133 @@ export function VersionHistory({
     return date.toLocaleDateString();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-4xl max-h-[85vh] rounded-2xl border border-[#3f3f46] bg-[#18181b] shadow-2xl overflow-hidden flex flex-col"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#27272a]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center">
-              <History className="w-5 h-5 text-white" />
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '100%' }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          className="fixed right-0 top-0 bottom-0 w-[400px] z-50 bg-[#0d0d10] border-l border-white/[0.05] flex flex-col shadow-2xl"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-white" />
+              <h2 className="text-sm font-semibold text-white">Version History</h2>
+              <span className="text-xs text-[#71717a] ml-1">{versions.length} versions</span>
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-white">Version History</h2>
-              <p className="text-xs text-[#71717a]">{versions.length} versions saved</p>
-            </div>
+            <button
+              onClick={onClose}
+              className="text-[#71717a] hover:text-white hover:bg-white/[0.04] rounded-lg p-1 transition-colors"
+              aria-label="Close Version History"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <div className="flex items-center gap-2">
-            {versions.length > 1 && (
-              <Button
-                variant={compareMode ? 'primary' : 'ghost'}
-                size="sm"
+
+          {/* Toolbar row */}
+          {versions.length > 1 && (
+            <div className="px-3 py-2 border-b border-white/[0.05] flex gap-2 items-center justify-between">
+              <button
                 onClick={() => {
                   setCompareMode(!compareMode);
                   setCompareVersions([]);
                 }}
-                leftIcon={<Diff className="w-4 h-4" />}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1 rounded border text-xs font-semibold transition-all duration-150",
+                  compareMode
+                    ? "bg-violet-600 text-white border-violet-500"
+                    : "text-[#a1a1aa] border-white/[0.05] hover:bg-white/[0.04]"
+                )}
               >
-                {compareMode ? 'Cancel Compare' : 'Compare'}
-              </Button>
-            )}
-            <button
-              onClick={onClose}
-              className="p-2 rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a] transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Compare action bar */}
-        <AnimatePresence>
-          {compareMode && compareVersions.length > 0 && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="px-6 py-3 border-b border-[#27272a] bg-[#27272a]/50"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-[#a1a1aa]">
-                  Selected: {compareVersions.length}/2 versions
-                </p>
-                <Button
-                  size="sm"
+                <Diff className="w-3.5 h-3.5" />
+                {compareMode ? 'Cancel Compare' : 'Compare Modes'}
+              </button>
+              {compareMode && compareVersions.length > 0 && (
+                <button
                   disabled={compareVersions.length !== 2}
                   onClick={handleCompare}
+                  className="px-3 py-1 rounded bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  Compare Selected
-                </Button>
-              </div>
-            </motion.div>
+                  Compare ({compareVersions.length}/2)
+                </button>
+              )}
+            </div>
           )}
-        </AnimatePresence>
 
-        {/* Versions list */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="divide-y divide-[#27272a]">
-            {versions.map((version, index) => {
+          {/* Versions list */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {versions.map((version) => {
               const isExpanded = expandedVersions.has(version.id);
               const isSelected = compareMode && compareVersions.includes(version.id);
               const isCurrent = currentVersionId === version.id;
 
               return (
-                <motion.div
+                <div
                   key={version.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
                   className={cn(
-                    'group px-6 py-4 transition-colors',
-                    isSelected && 'bg-white/5',
-                    !isSelected && 'hover:bg-[#27272a]/30'
+                    'group px-3 py-3 border-b border-white/[0.04] cursor-pointer transition-all',
+                    isSelected ? 'bg-white/[0.04] border-l-2 border-l-violet-500' : 'hover:bg-white/[0.02]',
+                    !isSelected && 'border-l-2 border-l-transparent'
                   )}
                 >
-                  <div className="flex items-start gap-4">
-                    {/* Selection checkbox in compare mode */}
+                  <div className="flex items-start gap-3">
+                    {/* Checkbox for compare mode */}
                     {compareMode && (
                       <button
-                        onClick={() => handleCompareSelect(version.id)}
+                        onClick={(e) => { e.stopPropagation(); handleCompareSelect(version.id); }}
                         className={cn(
-                          'mt-1 w-5 h-5 rounded border flex items-center justify-center transition-colors',
+                          'mt-1 w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors',
                           isSelected
-                            ? 'bg-white border-white text-[#18181b]'
-                            : 'border-[#3f3f46] hover:border-white'
+                            ? 'bg-violet-600 border-violet-500 text-white'
+                            : 'border-white/[0.08] hover:border-white/[0.2] bg-transparent'
                         )}
                       >
                         {isSelected && <Check className="w-3 h-3" />}
                       </button>
                     )}
 
-                    {/* Version number/avatar */}
-                    <div className="flex-shrink-0">
-                      <div className={cn(
-                        'w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold',
-                        isCurrent
-                          ? 'bg-white text-[#18181b]'
-                          : 'bg-[#27272a] border border-[#3f3f46] text-white'
-                      )}>
+                    <div className="flex-1 min-w-0" onClick={() => !compareMode && toggleExpanded(version.id)}>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         {version.isAutoSave ? (
-                          <Clock className="w-4 h-4" />
+                          <span className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> Auto-save
+                          </span>
                         ) : (
-                          version.versionNumber
+                          <span className="text-xs bg-white/[0.06] text-[#a1a1aa] px-1.5 py-0.5 rounded font-mono">
+                            v{version.versionNumber}
+                          </span>
                         )}
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm text-white">
-                          {version.isAutoSave ? 'Auto-save' : `Version ${version.versionNumber}`}
-                        </span>
                         {isCurrent && (
-                          <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[10px] font-medium">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/20">
                             Current
                           </span>
                         )}
                         {version.tags?.map(tag => (
                           <span
                             key={tag}
-                            className="px-2 py-0.5 rounded-full bg-[#3f3f46] text-[#a1a1aa] text-[10px]"
+                            className="text-xs bg-white/[0.04] px-1.5 rounded text-[#71717a]"
                           >
                             {tag}
                           </span>
                         ))}
                       </div>
 
-                      <p className="text-sm text-[#a1a1aa] mb-2">{version.message}</p>
+                      <p className="text-xs text-[#a1a1aa] mb-2">{version.message}</p>
 
-                      <div className="flex items-center gap-4 text-xs text-[#71717a]">
-                        <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-3 text-xs">
+                        <div className="text-[#71717a] flex items-center gap-1">
                           <User className="w-3 h-3" />
                           {version.author.name}
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3 h-3" />
+                        <div className="text-[#52525b]">
                           {formatRelativeTime(version.timestamp)}
                         </div>
                         {version.changes && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-green-400">+{version.changes.added}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-emerald-400">+{version.changes.added}</span>
                             <span className="text-red-400">-{version.changes.removed}</span>
                           </div>
                         )}
@@ -277,12 +243,10 @@ export function VersionHistory({
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="mt-4 overflow-hidden"
+                            className="mt-3 overflow-hidden"
                           >
-                            <div className="rounded-xl border border-[#27272a] bg-[#09090b] p-4">
-                              <pre className="text-xs font-mono text-[#52525b] line-clamp-10">
-                                {version.code}
-                              </pre>
+                            <div className="bg-[#09090b] rounded-lg p-3 font-mono text-xs text-[#a1a1aa] border border-white/[0.05] max-h-48 overflow-y-auto custom-scrollbar">
+                              <pre className="whitespace-pre-wrap">{version.code}</pre>
                             </div>
                           </motion.div>
                         )}
@@ -290,33 +254,28 @@ export function VersionHistory({
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => toggleExpanded(version.id)}
-                        className="p-2 rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a]"
-                        title={isExpanded ? 'Collapse' : 'Expand'}
+                        onClick={(e) => { e.stopPropagation(); toggleExpanded(version.id); }}
+                        className="p-1 rounded text-[#71717a] hover:text-white hover:bg-white/[0.06]"
                       >
-                        {isExpanded ? (
-                          <ChevronDown className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
+                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </button>
 
                       {!compareMode && (
                         <>
                           <button
-                            onClick={() => handleRestore(version)}
-                            className="p-2 rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a]"
-                            title="Restore this version"
+                            onClick={(e) => { e.stopPropagation(); handleRestore(version); }}
+                            className="p-1 rounded text-[#71717a] hover:text-white hover:bg-white/[0.06]"
+                            title="Restore"
                           >
                             <RotateCcw className="w-4 h-4" />
                           </button>
                           {onDelete && (
                             <button
-                              onClick={() => onDelete(version.id)}
-                              className="p-2 rounded-lg text-[#71717a] hover:text-red-400 hover:bg-red-500/10"
-                              title="Delete version"
+                              onClick={(e) => { e.stopPropagation(); onDelete(version.id); }}
+                              className="p-1 rounded text-[#71717a] hover:text-[#f87171] hover:bg-[#f87171]/10"
+                              title="Delete"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -325,39 +284,29 @@ export function VersionHistory({
                       )}
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
+
+            {versions.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                <History className="w-8 h-8 text-[#52525b] mb-3" />
+                <h3 className="text-sm font-semibold text-white mb-1">No history</h3>
+                <p className="text-xs text-[#52525b]">Save to create history</p>
+              </div>
+            )}
           </div>
 
-          {versions.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16">
-              <History className="w-12 h-12 text-[#3f3f46] mb-4" />
-              <p className="text-lg font-semibold text-white mb-1">No versions yet</p>
-              <p className="text-sm text-[#71717a]">Save your diagram to create a version history</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-[#27272a] bg-[#18181b]">
-          <p className="text-xs text-[#71717a]">
-            Versions are automatically saved every 5 minutes
-          </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-          >
-            Close
-          </Button>
-        </div>
-      </motion.div>
-    </div>
+          {/* Footer */}
+          <div className="px-3 py-2 border-t border-white/[0.05] text-xs text-[#52525b] text-center bg-[#0a0a0d]">
+            Automatically created upon saving
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
-// Mock data generator for testing
 export function generateMockVersions(count: number = 5): Version[] {
   const versions: Version[] = [];
   const messages = [
@@ -377,7 +326,7 @@ export function generateMockVersions(count: number = 5): Version[] {
     versions.push({
       id: `v-${i}`,
       versionNumber: i,
-      timestamp: new Date(Date.now() - i * 30 * 60 * 1000), // 30 min intervals
+      timestamp: new Date(Date.now() - i * 30 * 60 * 1000), 
       author: {
         name: i % 2 === 0 ? 'You' : 'Team Member',
         avatar: undefined,

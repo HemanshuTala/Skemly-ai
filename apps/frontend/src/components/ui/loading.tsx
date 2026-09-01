@@ -1,4 +1,4 @@
-﻿import { motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -13,7 +13,7 @@ export function LoadingSpinner({ size = 'md', className }: { size?: 'sm' | 'md' 
     <div className="relative">
       {/* Pulsing ring */}
       <motion.div
-        className={cn('absolute inset-0 rounded-full border-2 border-primary/20', sizeClasses[size])}
+        className={cn('absolute inset-0 rounded-full border-2 border-[#8b5cf6]/50 bg-gradient-to-tr from-violet-600/20 to-indigo-600/20', sizeClasses[size])}
         animate={{
           scale: [1, 1.4, 1],
           opacity: [0.5, 0, 0.5],
@@ -24,14 +24,14 @@ export function LoadingSpinner({ size = 'md', className }: { size?: 'sm' | 'md' 
           ease: 'easeInOut',
         }}
       />
-      <Loader2 className={cn(`${sizeClasses[size]} animate-spin text-primary relative`, className)} />
+      <div className={cn(`${sizeClasses[size]} rounded-full border-2 border-white/[0.15] border-t-white/80 animate-spin relative`, className)} />
     </div>
   )
 }
 
 export function LoadingPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-[#09090b]">
       <div className="text-center space-y-6">
         <LoadingSpinner size="lg" />
         <motion.p
@@ -53,7 +53,7 @@ export function LoadingOverlay() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-background/90 backdrop-blur-xl z-50 flex items-center justify-center"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
     >
       <div className="text-center space-y-6">
         <LoadingSpinner size="lg" />
@@ -96,8 +96,8 @@ export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'rounded-xl bg-gradient-to-r from-muted/30 via-muted/50 to-muted/30',
-        'animate-[shimmer_2s_infinite]',
+        'rounded-xl bg-gradient-to-r from-white/[0.02] via-white/[0.06] to-white/[0.02]',
+        'animate-pulse',
         className
       )}
     />

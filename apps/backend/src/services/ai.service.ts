@@ -16,7 +16,7 @@ import logger from '../utils/logger';
  */
 class AIService {
   private groq: Groq | null = null;
-  // Using llama-3.3-70b-versatile - high performance model for reasoning tasks
+  // Using llama-3.3-70b-versatile - Groq's high-speed production reasoning model
   private readonly model = 'llama-3.3-70b-versatile';
 
   constructor() {

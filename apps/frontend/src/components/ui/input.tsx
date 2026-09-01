@@ -33,7 +33,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-semibold text-white/90 mb-2 tracking-tight">
+          <label className="block text-sm font-medium text-[#a1a1aa] mb-2 tracking-tight">
             {label}
           </label>
         )}
@@ -60,14 +60,14 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             type={inputType}
             className={cn(
               'relative w-full h-11 px-4 text-sm font-medium rounded-xl border transition-all duration-300 ease-out',
-              'bg-[#27272a] text-white',
-              'placeholder:text-[#71717a] placeholder:font-normal',
-              'focus:outline-none focus:border-white focus:ring-1 focus:ring-white/20',
-              'hover:border-[#52525b] hover:bg-[#27272a]',
+              'bg-white/[0.02] text-white',
+              'placeholder:text-[#52525b] placeholder:font-normal',
+              'focus:outline-none focus:border-white/[0.20] focus:ring-0 focus:bg-white/[0.03]',
+              'hover:border-white/[0.20] hover:bg-white/[0.03]',
               error
-                ? 'border-[#f87171]/60 focus:border-[#f87171] focus:ring-[#f87171]/20'
-                : 'border-[#3f3f46]',
-              disabled && 'opacity-50 cursor-not-allowed hover:border-[#3f3f46]',
+                ? 'border-red-500/50 bg-red-500/5 focus:border-red-500/50'
+                : 'border-white/[0.08]',
+              disabled && 'opacity-50 cursor-not-allowed hover:border-white/[0.08]',
               leftIcon && 'pl-11',
               (rightIcon || type === 'password') && 'pr-11',
               className
@@ -111,7 +111,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
 
         {helperText && !error && (
-          <p className="mt-2 text-xs text-[#71717a] font-medium">{helperText}</p>
+          <p className="mt-2 text-xs text-[#71717a]">{helperText}</p>
         )}
       </div>
     );

@@ -89,6 +89,12 @@ export interface Project {
   createdAt: string
 }
 
+export interface Requirement {
+  id: string
+  title: string
+  description: string
+}
+
 export interface Diagram {
   id: string
   title: string
@@ -104,6 +110,7 @@ export interface Diagram {
   version: number
   isPublic?: boolean
   publicLinkToken?: string | null
+  requirements?: Requirement[]
   createdAt: string
   updatedAt: string
 }
@@ -322,14 +329,16 @@ export const diagramAPI = {
       },
     })),
   
-  update: (id: string, data: { title?: string; syntax?: string; nodes?: any[]; edges?: any[] }) =>
-    api.put(`/diagrams/${id}`, data).then((res) => ({
+  update: (id: string, data: { title?: string; syntax?: string; nodes?: any[]; edges?: any[]; requirements?: any[] }, version?: number) => {
+    const config = version !== undefined ? { headers: { 'If-Match-Version': String(version) } } : undefined;
+    return api.put(`/diagrams/${id}`, data, config).then((res) => ({
       ...res,
       data: {
         ...res.data,
         data: normalizeDiagram(res.data?.data),
       },
-    })),
+    }));
+  },
   
   delete: (id: string) =>
     api.delete(`/diagrams/${id}`),
@@ -446,11 +455,17 @@ export const aiAPI = {
     diagramType?: string
   }) => api.post('/ai/code-to-diagram', data),
   
-  explain: (data: { diagramId: string; nodeId?: string }) =>
+  explain: (data: { diagramId: string; nodeId?: string; nodeIds?: string[] }) =>
     api.post('/ai/explain', data),
   
   improve: (diagramId: string) =>
     api.post('/ai/improve', { diagramId }),
+  
+  review: (diagramId: string) =>
+    api.post('/ai/review', { diagramId }),
+  
+  tradeoffs: (diagramId: string) =>
+    api.post('/ai/tradeoffs', { diagramId }),
   
   autofix: (data: { syntax: string; error: string }) =>
     api.post('/ai/autofix', data),

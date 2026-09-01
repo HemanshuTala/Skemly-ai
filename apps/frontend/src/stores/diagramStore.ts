@@ -10,7 +10,7 @@ interface DiagramState {
   createDiagram: (data: { title: string; type: string; workspaceId: string; projectId?: string }) => Promise<Diagram>
   getDiagram: (id: string) => Promise<void>
   loadDiagram: (id: string) => Promise<void>
-  updateDiagram: (id: string, data: { title?: string; syntax?: string; nodes?: any[]; edges?: any[] }) => Promise<void>
+  updateDiagram: (id: string, data: { title?: string; syntax?: string; nodes?: any[]; edges?: any[]; requirements?: any[] }) => Promise<void>
   deleteDiagram: (id: string) => Promise<void>
   duplicateDiagram: (id: string) => Promise<void>
   starDiagram: (id: string) => Promise<void>
@@ -74,10 +74,12 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
 
   updateDiagram: async (id, data) => {
     try {
-      await diagramAPI.update(id, data)
+      const currentVersion = get().currentDiagram?.id === id ? get().currentDiagram?.version : undefined;
+      const res = await diagramAPI.update(id, data, currentVersion)
+      const updatedDiagram = res.data.data
       set((state) => ({
-        diagrams: state.diagrams.map((d) => (d.id === id ? { ...d, ...data } : d)),
-        currentDiagram: state.currentDiagram?.id === id ? { ...state.currentDiagram, ...data } : state.currentDiagram,
+        diagrams: state.diagrams.map((d) => (d.id === id ? updatedDiagram : d)),
+        currentDiagram: state.currentDiagram?.id === id ? updatedDiagram : state.currentDiagram,
       }))
     } catch (error: any) {
       const message = error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update diagram'

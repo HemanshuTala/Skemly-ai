@@ -11,6 +11,7 @@ export interface Diagram {
   workspaceId: string;
   createdBy: string;
   isPublic: boolean;
+  requirements?: any[];
   createdAt: string;
   updatedAt: string;
 }

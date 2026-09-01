@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { billingAPI } from '@/services/api.service'
 import toast from 'react-hot-toast'
 import {
   LayoutDashboard,
@@ -19,6 +18,10 @@ import {
   Zap,
   Bell,
   Layers,
+  LayoutTemplate,
+  ChevronRight,
+  Building2,
+  UserCircle,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -27,46 +30,16 @@ import skemlyLogo from '@/assets/Skemly.png'
 
 /* ─── Nav config ──────────────────────────────────────── */
 const NAV_MAIN = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Projects',  href: '/projects',  icon: FolderOpen },
-
+  { name: 'Dashboard',  href: '/dashboard',  icon: LayoutDashboard },
+  { name: 'Projects',   href: '/projects',   icon: FolderOpen },
+  { name: 'Templates',  href: '/templates',  icon: LayoutTemplate },
 ]
 const NAV_WORKSPACE = [
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Members',    href: '/workspace',          icon: Users },
+  { name: 'Settings',   href: '/settings',           icon: Settings },
 ]
 
-const SIDEBAR_W = 248
-
-/* ─── Zinc tokens (mirrors Tailwind zinc scale) ───────── */
-const Z = {
-  950: '#09090b', 900: '#18181b', 800: '#27272a',
-  700: '#3f3f46', 600: '#52525b', 500: '#71717a',
-  400: '#a1a1aa', 300: '#d4d4d8', 200: '#e4e4e7',
-  100: '#f4f4f5',
-} as const
-
-/* ─── Shared small icon-button ────────────────────────── */
-function IconBtn({
-  children,
-  badge,
-  onClick,
-}: {
-  children: React.ReactNode
-  badge?: boolean
-  onClick?: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="relative flex items-center justify-center w-9 h-9 rounded-lg border border-[#3f3f46] bg-transparent text-[#a1a1aa] hover:text-white hover:bg-[#27272a] hover:border-[#52525b] transition-colors"
-    >
-      {children}
-      {badge && (
-        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#f87171] border-2 border-[#18181b]" />
-      )}
-    </button>
-  )
-}
+const SIDEBAR_W = 232
 
 /* ─── Nav item ────────────────────────────────────────── */
 function NavItem({
@@ -74,7 +47,7 @@ function NavItem({
   active,
   onClick,
 }: {
-  item: (typeof NAV_MAIN)[0] & { badge?: string }
+  item: { name: string; href: string; icon: React.ElementType; badge?: string }
   active: boolean
   onClick?: () => void
 }) {
@@ -83,20 +56,28 @@ function NavItem({
     <Link
       to={item.href}
       onClick={onClick}
+      aria-current={active ? 'page' : undefined}
       className={cn(
-        'relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group',
+        'relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 group select-none',
         active
-          ? 'bg-[#27272a] text-white border border-[#3f3f46]'
-          : 'text-[#a1a1aa] hover:text-white hover:bg-[#27272a]/50'
+          ? 'bg-white/[0.07] text-white'
+          : 'text-[#71717a] hover:text-[#d4d4d8] hover:bg-white/[0.04]'
       )}
     >
       {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white rounded-r" />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-white rounded-r-full" />
       )}
-      <Icon size={16} strokeWidth={1.5} className={cn(active ? 'text-white' : 'text-[#71717a] group-hover:text-white')} />
-      <span className="flex-1 text-[13px] font-medium">{item.name}</span>
+      <Icon
+        size={15}
+        strokeWidth={active ? 2 : 1.5}
+        className={cn(
+          'shrink-0 transition-colors',
+          active ? 'text-white' : 'text-[#52525b] group-hover:text-[#a1a1aa]'
+        )}
+      />
+      <span className="flex-1 tracking-[-0.01em]">{item.name}</span>
       {item.badge && (
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#3f3f46] text-[#a1a1aa] font-mono">
+        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.06] text-[#71717a] font-mono leading-none">
           {item.badge}
         </span>
       )}
@@ -127,114 +108,163 @@ function Sidebar({
   onWorkspaceChange: (ws: any) => void
 }) {
   const [wsDropdownOpen, setWsDropdownOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const wsDropdownRef = useRef<HTMLDivElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    if (!wsDropdownOpen) return
+    if (!wsDropdownOpen && !userMenuOpen) return
     const handleClickOutside = (e: MouseEvent) => {
       if (wsDropdownRef.current && !wsDropdownRef.current.contains(e.target as Node)) {
         setWsDropdownOpen(false)
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [wsDropdownOpen])
+  }, [wsDropdownOpen, userMenuOpen])
+
+  const initials = user?.name
+    ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    : 'U'
 
   return (
     <aside
       style={{ width: SIDEBAR_W }}
       className={cn(
-        'fixed top-0 left-0 z-10 h-screen flex flex-col overflow-hidden',
-        'bg-[#18181b] border-r border-[#27272a]',
-        'transition-transform duration-300 ease-in-out lg:translate-x-0',
+        'fixed top-0 left-0 z-50 h-screen flex flex-col',
+        'bg-[#0a0a0d] border-r border-white/[0.05]',
+        'transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:translate-x-0',
         open ? 'translate-x-0' : '-translate-x-full',
       )}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 h-[52px] px-4 border-b border-[#27272a]">
+      {/* Logo + close */}
+      <div className="flex items-center gap-2.5 h-[52px] px-4 border-b border-white/[0.05] shrink-0">
         <Link
           to="/dashboard"
-          className="flex items-center gap-2.5"
           onClick={onClose}
+          className="flex items-center gap-2 flex-1 min-w-0"
         >
           <img
             src={skemlyLogo}
-            alt="Skemly"
-            className="w-7 h-7 object-contain flex-shrink-0"
+            alt="Schemely"
+            className="w-6 h-6 object-contain shrink-0"
           />
-          <span className="text-[15px] font-semibold text-white tracking-tight">
-            Skemly
+          <span className="text-[14px] font-semibold text-white tracking-[-0.02em] truncate">
+            Schemely
           </span>
         </Link>
-        <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded bg-[#27272a] text-white border border-[#3f3f46] tracking-wide uppercase">
-          {user?.plan === 'free' ? 'FREE' : user?.plan || 'FREE'}
+
+        {/* Plan badge */}
+        <span className={cn(
+          'text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-widest shrink-0',
+          user?.plan === 'free'
+            ? 'bg-white/[0.06] text-[#71717a] border border-white/[0.08]'
+            : 'bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/20'
+        )}>
+          {user?.plan?.toUpperCase() || 'FREE'}
         </span>
+
         <button
           onClick={onClose}
-          className="lg:hidden ml-1 p-1.5 rounded-md text-[#71717a] hover:text-white hover:bg-[#27272a] transition-colors"
+          className="lg:hidden p-1 rounded-md text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-colors"
+          aria-label="Close sidebar"
         >
-          <X size={16} />
+          <X size={15} />
         </button>
       </div>
 
       {/* Workspace Selector */}
-      <div className="px-3 py-2 border-b border-[#27272a]">
-        <div className="relative" ref={wsDropdownRef}>
-          <button
-            onClick={() => setWsDropdownOpen(!wsDropdownOpen)}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#27272a] hover:bg-[#3f3f46] transition-colors text-left"
-          >
-            <div className="w-6 h-6 rounded bg-[#3f3f46] flex items-center justify-center flex-shrink-0">
-              <FolderOpen size={12} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-[#71717a] uppercase tracking-wider">Workspace</p>
-              <p className="text-[13px] font-medium text-white truncate">
-                {currentWorkspace?.name || 'Select workspace...'}
-              </p>
-            </div>
-            <ChevronDown size={14} className={cn('text-[#71717a] transition-transform', wsDropdownOpen && 'rotate-180')} />
-          </button>
+      <div className="px-3 py-2.5 border-b border-white/[0.05] shrink-0" ref={wsDropdownRef}>
+        <button
+          onClick={() => setWsDropdownOpen(!wsDropdownOpen)}
+          className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-white/[0.04] transition-colors text-left group"
+          aria-expanded={wsDropdownOpen}
+          aria-haspopup="listbox"
+        >
+          <div className="w-6 h-6 rounded-md bg-white/[0.07] flex items-center justify-center shrink-0">
+            <Building2 size={11} className="text-[#a1a1aa]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-[#52525b] uppercase tracking-[0.08em] font-medium leading-none mb-0.5">
+              Workspace
+            </p>
+            <p className="text-[12px] font-medium text-white truncate leading-none">
+              {currentWorkspace?.name || 'Select workspace'}
+            </p>
+          </div>
+          <ChevronDown
+            size={12}
+            className={cn('text-[#52525b] transition-transform duration-200', wsDropdownOpen && 'rotate-180')}
+          />
+        </button>
 
+        <AnimatePresence>
           {wsDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-[#27272a] border border-[#3f3f46] rounded-lg overflow-hidden shadow-xl z-50">
-              {workspaces.length === 0 ? (
-                <div className="px-3 py-2 text-[12px] text-[#71717a]">No workspaces found</div>
-              ) : (
-                workspaces.map((ws) => (
-                  <button
-                    key={ws.id}
-                    onClick={() => {
-                      onWorkspaceChange(ws)
-                      setWsDropdownOpen(false)
-                    }}
-                    className={cn(
-                      'w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[#3f3f46] transition-colors',
-                      currentWorkspace?.id === ws.id ? 'bg-[#3f3f46]' : ''
-                    )}
-                  >
-                    <div className="w-5 h-5 rounded bg-[#52525b] flex items-center justify-center flex-shrink-0">
-                      <FolderOpen size={10} className="text-white" />
-                    </div>
-                    <span className="text-[13px] text-white truncate flex-1">{ws.name}</span>
-                    {currentWorkspace?.id === ws.id && (
-                      <div className="w-2 h-2 rounded-full bg-green-400" />
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.97 }}
+              transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute left-3 right-3 top-auto mt-1 bg-[#0e0e11] border border-white/[0.08] rounded-xl overflow-hidden shadow-2xl shadow-black/50 z-50"
+              role="listbox"
+            >
+              <div className="p-1.5 space-y-0.5 max-h-[200px] overflow-y-auto custom-scrollbar">
+                {workspaces.length === 0 ? (
+                  <div className="px-3 py-2 text-[12px] text-[#52525b]">No workspaces found</div>
+                ) : (
+                  workspaces.map((ws) => (
+                    <button
+                      key={ws.id}
+                      role="option"
+                      aria-selected={currentWorkspace?.id === ws.id}
+                      onClick={() => {
+                        onWorkspaceChange(ws)
+                        setWsDropdownOpen(false)
+                      }}
+                      className={cn(
+                        'w-full flex items-center gap-2.5 px-2.5 py-2 text-left rounded-lg text-[12px] transition-colors',
+                        currentWorkspace?.id === ws.id
+                          ? 'bg-white/[0.06] text-white'
+                          : 'text-[#a1a1aa] hover:bg-white/[0.04] hover:text-white'
+                      )}
+                    >
+                      <div className="w-5 h-5 rounded bg-white/[0.06] flex items-center justify-center shrink-0">
+                        <Building2 size={10} />
+                      </div>
+                      <span className="truncate flex-1 font-medium">{ws.name}</span>
+                      {currentWorkspace?.id === ws.id && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#4ade80] shrink-0" />
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
+      </div>
+
+      {/* New Diagram CTA */}
+      <div className="px-3 pt-3 shrink-0">
+        <Link
+          to="/diagram/new"
+          onClick={onClose}
+          className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-white text-[#0a0a0d] text-[12px] font-semibold hover:bg-[#e4e4e7] transition-colors group"
+        >
+          <Plus size={13} strokeWidth={2.5} />
+          New Diagram
+        </Link>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 overflow-hidden">
-        <p className="text-[10px] font-semibold text-[#52525b] uppercase tracking-[0.1em] px-3 mb-2">
-          General
-        </p>
-        <div className="space-y-0.5">
+      <nav className="flex-1 px-3 py-3 overflow-y-auto custom-scrollbar min-h-0" aria-label="Main navigation">
+        <div className="space-y-0.5 mb-5">
+          <p className="text-[10px] font-semibold text-[#3f3f46] uppercase tracking-[0.1em] px-3 mb-2">
+            Workspace
+          </p>
           {NAV_MAIN.map((item) => (
             <NavItem
               key={item.name}
@@ -245,10 +275,10 @@ function Sidebar({
           ))}
         </div>
 
-        <p className="text-[10px] font-semibold text-[#52525b] uppercase tracking-[0.1em] px-3 mb-2 mt-6">
-          Workspace
-        </p>
         <div className="space-y-0.5">
+          <p className="text-[10px] font-semibold text-[#3f3f46] uppercase tracking-[0.1em] px-3 mb-2">
+            Account
+          </p>
           {NAV_WORKSPACE.map((item) => (
             <NavItem
               key={item.name}
@@ -260,48 +290,74 @@ function Sidebar({
         </div>
       </nav>
 
-      {/* New Diagram CTA */}
-      <div className="px-3 pb-3 border-t border-[#27272a] pt-3">
-        <Link
-          to="/diagram/new"
-          onClick={onClose}
-          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-white text-[#18181b] text-[13px] font-semibold hover:bg-[#e4e4e7] transition-colors"
-        >
-          <Plus size={14} strokeWidth={2} />
-          New Diagram
-        </Link>
-      </div>
-
-      {/* User */}
-      <div className="px-3 pb-3 border-t border-[#27272a] pt-3">
-        <div className="relative group">
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#27272a] transition-colors">
-            <div className="w-8 h-8 rounded-lg bg-[#27272a] border border-[#3f3f46] flex items-center justify-center text-[12px] font-semibold text-white flex-shrink-0">
-              {user?.name?.slice(0, 2).toUpperCase() || 'U'}
+      {/* User section */}
+      <div className="px-3 pb-3 border-t border-white/[0.05] pt-3 shrink-0" ref={userMenuRef}>
+        {/* Upgrade CTA for free users */}
+        {user?.plan === 'free' && (
+          <button
+            onClick={onUpgrade}
+            className="w-full flex items-center gap-2 px-3 py-2 mb-2 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left group"
+          >
+            <Zap size={13} className="text-[#fbbf24] shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-white leading-none">Upgrade to Pro</p>
+              <p className="text-[10px] text-[#52525b] leading-none mt-0.5">Unlock AI features</p>
             </div>
-            <div className="flex-1 text-left min-w-0">
-              <div className="text-[13px] font-medium text-white truncate">
+            <ChevronRight size={12} className="text-[#52525b] group-hover:text-[#a1a1aa] transition-colors" />
+          </button>
+        )}
+
+        {/* User card */}
+        <div className="relative">
+          <button
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-white/[0.04] transition-colors text-left"
+            aria-expanded={userMenuOpen}
+          >
+            <div className="w-7 h-7 rounded-lg bg-white/[0.08] border border-white/[0.10] flex items-center justify-center text-[11px] font-bold text-white shrink-0">
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-medium text-white truncate leading-tight">
                 {user?.name || 'User'}
               </div>
-              <div className="text-[11px] text-[#71717a] truncate">
+              <div className="text-[11px] text-[#52525b] truncate leading-tight">
                 {user?.email}
               </div>
             </div>
-            <ChevronDown size={14} className="text-[#52525b]" />
+            <ChevronDown size={12} className={cn('text-[#52525b] transition-transform duration-200 shrink-0', userMenuOpen && 'rotate-180')} />
           </button>
 
-          {/* Dropdown — appears on hover */}
-          <div className="hidden group-hover:block absolute bottom-full left-0 w-full mb-2 bg-[#27272a] border border-[#3f3f46] rounded-lg overflow-hidden shadow-xl shadow-black/50">
-           
-            <div className="h-px bg-[#3f3f46]" />
-            <button
-              onClick={onLogout}
-              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#f87171] hover:bg-[#3f3f46] transition-colors"
-            >
-              <LogOut size={14} />
-              Logout
-            </button>
-          </div>
+          <AnimatePresence>
+            {userMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 4, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute bottom-full left-0 right-0 mb-1 bg-[#0e0e11] border border-white/[0.08] rounded-xl overflow-hidden shadow-2xl shadow-black/50 z-50"
+              >
+                <div className="p-1.5">
+                  <Link
+                    to="/settings"
+                    onClick={() => { setUserMenuOpen(false); onClose() }}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] text-[#a1a1aa] hover:text-white hover:bg-white/[0.04] transition-colors"
+                  >
+                    <UserCircle size={14} />
+                    Profile & Settings
+                  </Link>
+                  <div className="h-px bg-white/[0.06] my-1" />
+                  <button
+                    onClick={() => { setUserMenuOpen(false); onLogout() }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] text-[#f87171] hover:bg-[#f87171]/10 transition-colors"
+                  >
+                    <LogOut size={14} />
+                    Sign out
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </aside>
@@ -313,52 +369,75 @@ function Topbar({
   onMenuOpen,
   user,
   onUpgrade,
+  onSearchClick,
+  pathname,
 }: {
   onMenuOpen: () => void
   user: any
   onUpgrade: () => void
+  onSearchClick: () => void
+  pathname: string
 }) {
+  // Derive page title from pathname
+  const pageLabel: Record<string, string> = {
+    '/dashboard':          'Dashboard',
+    '/projects':           'Projects',
+    '/templates':          'Templates',
+    '/workspace':          'Members',
+    '/workspace/settings': 'Workspace Settings',
+    '/settings':           'Settings',
+  }
+  const title = pageLabel[pathname] ?? 'Schemely'
+
   return (
-    <header className="sticky top-0 z-30 flex items-center h-[52px] bg-[#18181b] border-b border-[#27272a] px-5 gap-3">
+    <header className="sticky top-0 z-30 flex items-center h-[52px] bg-[#0a0a0d]/80 backdrop-blur-xl border-b border-white/[0.05] px-4 gap-3 shrink-0">
       {/* Mobile menu */}
       <button
         onClick={onMenuOpen}
-        className="lg:hidden p-1.5 rounded-md text-[#71717a] hover:text-white hover:bg-[#27272a] transition-colors"
+        className="lg:hidden p-1.5 rounded-md text-[#71717a] hover:text-white hover:bg-white/[0.06] transition-colors"
+        aria-label="Open navigation"
       >
         <Menu size={17} />
       </button>
 
-      {/* Search */}
-      <div className="relative flex-1 max-w-[320px]">
-        <Search
-          size={14}
-          strokeWidth={1.5}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52525b]"
-        />
-        <input
-          type="text"
-          placeholder="Search diagrams..."
-          className="w-full bg-[#27272a] border border-[#3f3f46] rounded-lg py-2 pl-9 pr-10 text-[13px] text-white placeholder:text-[#71717a] outline-none focus:border-white focus:ring-1 focus:ring-white/20 transition-all font-[inherit]"
-        />
-        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-[#71717a] bg-[#3f3f46] px-1.5 py-0.5 rounded font-mono">
-          ⌘K
-        </span>
-      </div>
+      {/* Page title — hidden on mobile (sidebar covers it) */}
+      <span className="hidden lg:block text-[13px] font-semibold text-white tracking-[-0.01em]">
+        {title}
+      </span>
 
-      {/* Right */}
+      <div className="hidden lg:block w-px h-4 bg-white/[0.08] mx-0.5" />
+
+      {/* Search */}
+      <button
+        onClick={onSearchClick}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.05] transition-colors text-[#52525b] hover:text-[#a1a1aa] min-w-[180px] max-w-[240px]"
+        aria-label="Search (Ctrl+K)"
+      >
+        <Search size={13} />
+        <span className="text-[12px] flex-1 text-left">Search…</span>
+        <kbd className="text-[10px] font-mono bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.08] leading-none">
+          ⌘K
+        </kbd>
+      </button>
+
+      {/* Right actions */}
       <div className="flex items-center gap-2 ml-auto">
         {user?.plan === 'free' && (
           <button
             onClick={onUpgrade}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-[#e4e4e7] text-[#18181b] text-[12px] font-semibold transition-colors"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-[#09090b] text-[11px] font-bold hover:bg-[#e4e4e7] transition-colors"
           >
-            <Zap size={13} strokeWidth={2} />
+            <Zap size={11} strokeWidth={2.5} />
             Upgrade
           </button>
         )}
-        <div className="w-px h-5 bg-[#27272a]" />
-     
-        
+        <Link
+          to="/diagram/new"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] text-white text-[11px] font-semibold hover:bg-white/[0.08] transition-colors"
+        >
+          <Plus size={12} strokeWidth={2.5} />
+          <span className="hidden sm:inline">New</span>
+        </Link>
       </div>
     </header>
   )
@@ -374,37 +453,43 @@ export default function DashboardLayout() {
   const { user, logout, fetchUser } = useAuthStore()
   const { fetchWorkspaces, workspaces, currentWorkspace } = useWorkspaceStore()
 
-  // Fetch workspaces and user on mount
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [location.pathname])
+
   useEffect(() => {
     fetchWorkspaces()
     fetchUser()
   }, [fetchWorkspaces, fetchUser])
 
-  // Refresh user data when window becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchUser()
-      }
+      if (document.visibilityState === 'visible') fetchUser()
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [fetchUser])
 
-  /* ── Upgrade via Razorpay ── */
-  const handleUpgrade = async () => {
-    // Navigate to settings billing page to choose a plan
-    navigate('/settings')
-  }
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setCommandOpen((o) => !o)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
+  const handleUpgrade = () => navigate('/settings')
   const handleLogout = () => { logout(); navigate('/login') }
-
-  function isActive(href: string) {
-    return location.pathname === href
-  }
+  const isActive = (href: string) => location.pathname === href
 
   return (
-    <div className="h-screen bg-[#09090b]">
+    <div className="h-screen bg-[#09090b] overflow-hidden">
+      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
+
       {/* Mobile backdrop */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -413,8 +498,9 @@ export default function DashboardLayout() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-40 lg:hidden bg-black/60"
+            className="fixed inset-0 z-40 lg:hidden bg-black/70 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
           />
         )}
       </AnimatePresence>
@@ -432,16 +518,29 @@ export default function DashboardLayout() {
         onWorkspaceChange={(ws) => useWorkspaceStore.getState().setCurrentWorkspace(ws)}
       />
 
-      {/* Content area */}
-      <div className="lg:pl-[248px]">
+      {/* Content */}
+      <div className="lg:pl-[232px] h-full flex flex-col">
         <Topbar
           onMenuOpen={() => setSidebarOpen(true)}
           user={user}
           onUpgrade={handleUpgrade}
+          onSearchClick={() => setCommandOpen(true)}
+          pathname={location.pathname}
         />
 
-        <div style={{ height: 'calc(100vh - 52px)', overflow: 'scroll', background: '#09090b' }}>
-          <Outlet />
+        <div data-lenis-prevent className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduceMotion ? false : { opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="min-h-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -18,10 +18,17 @@ export default function DiagramNewPage() {
     const run = async () => {
       setIsCreating(true)
       try {
+        // If currentWorkspace is not loaded, fetch workspaces first
+        let activeWorkspace = useWorkspaceStore.getState().currentWorkspace
+        if (!activeWorkspace) {
+          await useWorkspaceStore.getState().fetchWorkspaces()
+          activeWorkspace = useWorkspaceStore.getState().currentWorkspace
+        }
+
         const diagram = await createDiagram({
           title: 'Untitled Diagram',
           type: 'flowchart',
-          workspaceId: currentWorkspace?.id || 'default',
+          workspaceId: activeWorkspace?.id || 'default',
         })
 
         const aiQuery = location.search.includes('ai=1') ? '?ai=1' : ''
@@ -35,12 +42,12 @@ export default function DiagramNewPage() {
     }
 
     void run()
-  }, [currentWorkspace, createDiagram, navigate, location.search])
+  }, [createDiagram, navigate, location.search])
 
   return (
     <div className="h-screen flex items-center justify-center bg-background">
       <div className="text-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-600 mx-auto mb-4" />
+        <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-4" />
         <p className="text-muted-foreground">Creating your diagram...</p>
       </div>
     </div>

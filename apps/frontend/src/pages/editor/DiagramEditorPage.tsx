@@ -4,6 +4,16 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Link as RouterLink } from 'react-router-dom';
 import { useDiagramStore } from '@/stores/diagramStore';
 import { useAuthStore } from '@/stores/authStore';
+import {
+  useEditorStore,
+  useUIState,
+  useSaveState,
+  useSelectionState,
+  useAIState,
+  useCanvasSettings,
+  useLayoutState,
+} from '@/stores/editorStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { CodeEditor, type CodeEditorApi } from '@/components/editor/CodeEditor';
 import { ShapePalette } from '@/components/editor/ShapePalette';
@@ -11,12 +21,21 @@ import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
 import { PropertiesPanel } from '@/components/editor/PropertiesPanel';
 import { NotesEditor } from '@/components/editor/NotesEditor';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { useAIGenerate } from '@/hooks/useAIGenerate';
+import { socketClient } from '@/lib/socket';
 import { aiAPI, commentAPI, diagramAPI, exportAPI, notesAPI } from '@/services/api.service';
 import { Modal } from '@/components/ui/modal';
+import { ArchitectureReviewModal } from '@/components/editor/ArchitectureReviewModal';
+import { TradeoffAnalysisModal } from '@/components/editor/TradeoffAnalysisModal';
+import { RequirementsTraceabilityModal } from '@/components/editor/RequirementsTraceabilityModal';
+import { InterviewModeModal } from '@/components/editor/InterviewModeModal';
+import { ExportPanel } from '@/components/editor/ExportPanel';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Loader2, 
   Sparkles, 
+  ClipboardList, 
   Link2 as LinkIcon, 
   LayoutGrid, 
   Code, 
@@ -37,18 +56,13 @@ import { MarkerType, type Edge, type Node } from 'reactflow';
 
 // Helper functions for parsing and normalizing graph data
 function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
-  // Fix corrupted syntax where commas were converted to newlines in extended format
-  // Pattern: lines like [Label|w:120], [h:80], [shape:rectangle] should be joined
   let fixedSyntax = String(syntax || '');
   
-  // Pre-fix: Strip extra leading brackets from resizable shape tokens anywhere in the line.
-  // [[Rectangle|w:240,h:200,shape:rectangle] -> [Rectangle|w:240,h:200,shape:rectangle]
-  // Uses greedy attrs + required closing bracket so attrs are never empty.
+  // Strip duplicate leading brackets from resizable shape tokens anywhere in the line.
   fixedSyntax = fixedSyntax.replace(/\[{2,}([a-zA-Z0-9_ \-]+)\|([^\]]*)\]/g, (_match, label, attrs) => {
     return `[${label.trim()}|${attrs}]`;
   });
   
-  // Per-line fixups
   const lines = fixedSyntax.split('\n');
   const fixedLines: string[] = [];
 
@@ -56,19 +70,16 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     const line = lines[i].trim();
     if (!line) continue;
 
-    // Fix missing closing bracket at end: [Rectangle|w:240,h:200,shape:rectangle -> [Rectangle|w:240,h:200,shape:rectangle]
     let fixedLine = line;
     if (fixedLine.match(/^\[[^\]]+\|/) && !fixedLine.endsWith(']')) {
       fixedLine += ']';
     }
 
-    // Check if this looks like a continuation of an extended format (attribute-only line)
     const isAttrLine = fixedLine.match(/^\[(w:|h:|shape:)[^\]]*\]$/);
     const lastLine = fixedLines[fixedLines.length - 1];
     const isBrokenExtended = lastLine && isAttrLine && lastLine.match(/\[[^|]+\|[^\]]*$/);
 
     if (isBrokenExtended) {
-      // Merge attr continuation into previous line
       const attrContent = fixedLine.slice(1, -1);
       fixedLines[fixedLines.length - 1] = fixedLines[fixedLines.length - 1].replace(/\]$/, '') + ',' + attrContent + ']';
     } else {
@@ -76,10 +87,7 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
     }
   }
   
-  // Fix 2: Handle the case where the entire extended format was broken across lines
-  // [Label|w:120], [h:80], [shape:rectangle]] -> [Label|w:120,h:80,shape:rectangle]
-  const rejoined = fixedLines.map((line, index) => {
-    // If this is an attribute-only line, skip it (it was already merged above)
+  const rejoined = fixedLines.map((line) => {
     if (line.match(/^\[(w:|h:|shape:)[^\]]*\]$/)) {
       return null;
     }
@@ -90,137 +98,67 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
+  // Helper to extract full node info from raw bracket formats (supports double brackets, parentheses, braces)
+  const extractNodeInfo = (raw: string): { label: string; width?: number; height?: number; shape?: string; type?: string } => {
+    let cleaned = raw.trim();
+    // Recursively clean leading/trailing braces, brackets, parentheses
+    while (
+      (cleaned.startsWith('[') && cleaned.endsWith(']')) ||
+      (cleaned.startsWith('{') && cleaned.endsWith('}')) ||
+      (cleaned.startsWith('(') && cleaned.endsWith(')'))
+    ) {
+      cleaned = cleaned.slice(1, -1).trim();
+    }
+
+    const pipeIndex = cleaned.indexOf('|');
+    let label = pipeIndex >= 0 ? cleaned.slice(0, pipeIndex) : cleaned;
+    label = label.trim();
+    if (!label) label = 'Node';
+
+    let width: number | undefined;
+    let height: number | undefined;
+    let shape: string | undefined;
+
+    if (pipeIndex >= 0) {
+      let attrsStr = cleaned.slice(pipeIndex + 1);
+      attrsStr = attrsStr.replace(/\|shape:/, ',shape:');
+      const attrs = attrsStr.split(',');
+      attrs.forEach(attr => {
+        const [key, value] = attr.trim().split(':');
+        if (key === 'w' && value) width = parseInt(value, 10);
+        if (key === 'h' && value) height = parseInt(value, 10);
+        if (key === 'shape' && value) shape = value.trim();
+      });
+    }
+
+    return {
+      label,
+      width,
+      height,
+      shape,
+      type: shape ? 'resizableShape' : 'diagramNode',
+    };
+  };
+
   rejoined.forEach((line) => {
     if (!line) return;
     
-    // Simple node pattern: [Node], {Node}, etc.
-    // Extended: [Label|w:120,h:80,shape:rectangle] for resizable shapes with dimensions
-    // Use non-greedy regex to avoid matching past the first closing bracket
-    const nodeMatch = line.match(/^\[([^\]]*?)\]$/);
-    if (nodeMatch) {
-      const content = nodeMatch[1];
-      // Check if extended format with pipe separator
-      const pipeIndex = content.indexOf('|');
-      let label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
-      // Validate label: should not be empty and should not look like an attribute
-      label = label.replace(/^[\[]+/, '').replace(/[\]]+$/, '').trim();
-      if (!label || label.match(/^(shape|w|h):/)) {
-        label = 'Node'; // Default fallback for malformed labels
-      }
-      const id = label.replace(/\s+/g, '-').toLowerCase() || `node-${nodes.length}`;
-      
-      // Parse extended attributes if present
-      let width: number | undefined;
-      let height: number | undefined;
-      let shape: string | undefined;
-      
-      if (pipeIndex >= 0) {
-        let attrsStr = content.slice(pipeIndex + 1);
-        // Handle old corrupted format with two pipes: [Label|w:140,h:100|shape:rectangle]
-        // Convert to single pipe format by replacing second pipe with comma
-        attrsStr = attrsStr.replace(/\|shape:/, ',shape:');
-        const attrs = attrsStr.split(',');
-        attrs.forEach(attr => {
-          const [key, value] = attr.split(':');
-          if (key === 'w' && value) width = parseInt(value, 10);
-          if (key === 'h' && value) height = parseInt(value, 10);
-          if (key === 'shape' && value) shape = value;
-        });
-      }
-      
-      // Determine node type - if it has a shape attribute, it's resizableShape
-      const isResizableShape = !!shape;
-      const newNode: any = {
-        id,
-        label,
-        position: { x: 100 + nodes.length * 150, y: 100 + nodes.length * 100 },
-        ...(width && { width }),
-        ...(height && { height }),
-        type: isResizableShape ? 'resizableShape' : 'diagramNode',
-        data: { 
-          label, 
-          kind: 'node',
-          ...(shape && { shape }),
-          style: isResizableShape ? {
-            fillColor: '#ffffff',
-            strokeColor: '#000000',
-            strokeWidth: 2,
-            fontSize: 14,
-            color: '#000000',
-          } : undefined,
-        },
-      };
-      nodes.push(newNode);
-      nodeById.set(id, newNode);
-      return;
-    }
-
-    // Edge pattern: [From] --> [To] (handles extended format too)
-    const edgeMatch = line.match(/^(.+?)\s*-->\s*(.+)$/);
+    // 1. Connection line pattern check (handles -->, ==>, -.->, and labeled equivalents)
+    const edgeMatch = line.match(/^(.+?)\s*(?:--\s*(.+?)\s*-->|==\s*(.+?)\s*==>|-\.\s*(.+?)\s*\.->|==>|-\.-\.>|-->)\s*(.+)$/);
+    
     if (edgeMatch) {
       const fromRaw = edgeMatch[1].trim();
-      const toRaw = edgeMatch[2].trim();
+      const toRaw = edgeMatch[edgeMatch.length - 1].trim();
       
-      // Helper to extract full node info from extended format [Label|w:100,h:80,shape:rect]
-      // Use non-greedy regex to avoid capturing extra closing brackets
-      const extractNodeInfo = (raw: string): { label: string; width?: number; height?: number; shape?: string; type?: string } => {
-        // DEBUG: Log parsing of extended format
-        if (raw.includes('shape:')) {
-          console.log('[extractNodeInfo] Parsing:', { raw });
-        }
-        // Match content inside brackets without being greedy (stop at first closing bracket)
-        const bracketMatch = raw.match(/^\[([^\]]*?)\]$/);
-        if (bracketMatch) {
-          const content = bracketMatch[1];
-          const pipeIndex = content.indexOf('|');
-          let label = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
-          // Validate label: should not be empty and should not look like an attribute
-          label = label.replace(/^[\[]+/, '').replace(/[\]]+$/, '').trim();
-          if (!label || label.match(/^(shape|w|h):/)) {
-            console.error('[extractNodeInfo] Invalid label detected:', { raw, content, pipeIndex, label });
-            label = 'Node';
-          }
-          
-          // Parse extended attributes if present
-          let width: number | undefined;
-          let height: number | undefined;
-          let shape: string | undefined;
-          
-          if (pipeIndex >= 0) {
-            let attrsStr = content.slice(pipeIndex + 1);
-            // Handle old corrupted format with two pipes
-            attrsStr = attrsStr.replace(/\|shape:/, ',shape:');
-            const attrs = attrsStr.split(',');
-            attrs.forEach(attr => {
-              const [key, value] = attr.trim().split(':');
-              if (key === 'w' && value) width = parseInt(value, 10);
-              if (key === 'h' && value) height = parseInt(value, 10);
-              if (key === 'shape' && value) shape = value.trim();
-            });
-          }
-          
-          return {
-            label,
-            width,
-            height,
-            shape,
-            type: shape ? 'resizableShape' : 'diagramNode',
-          };
-        }
-        // Fallback: if no brackets or invalid content
-        const cleaned = raw.replace(/^[\[\{\(]+/, '').replace(/[\]\}\)]+$/, '').trim();
-        return { label: cleaned || 'Node' };
-      };
-      
+      const label = (edgeMatch[2] || edgeMatch[3] || edgeMatch[4] || '').trim();
       const fromInfo = extractNodeInfo(fromRaw);
       const toInfo = extractNodeInfo(toRaw);
+      
       const fromId = fromInfo.label.replace(/\s+/g, '-').toLowerCase();
       const toId = toInfo.label.replace(/\s+/g, '-').toLowerCase();
-      
-      // Create or find nodes (with full data including shape/dimensions if present)
+
+      // Ensure 'from' node exists
       let fromNode = nodeById.get(fromId);
-      let toNode = nodeById.get(toId);
-      
       if (!fromNode) {
         const isResizable = !!fromInfo.shape;
         fromNode = {
@@ -229,23 +167,25 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           ...(fromInfo.width && { width: fromInfo.width }),
           ...(fromInfo.height && { height: fromInfo.height }),
           type: fromInfo.type || 'diagramNode',
-          data: { 
-            label: fromInfo.label, 
+          data: {
+            label: fromInfo.label,
             kind: 'node',
             ...(fromInfo.shape && { shape: fromInfo.shape }),
             style: isResizable ? {
-              fillColor: '#ffffff',
-              strokeColor: '#000000',
+              fillColor: '#18181b',
+              strokeColor: '#3f3f46',
               strokeWidth: 2,
               fontSize: 14,
-              color: '#000000',
+              color: '#ffffff',
             } : undefined,
           },
         };
         nodes.push(fromNode);
         nodeById.set(fromId, fromNode);
       }
-      
+
+      // Ensure 'to' node exists
+      let toNode = nodeById.get(toId);
       if (!toNode) {
         const isResizable = !!toInfo.shape;
         toNode = {
@@ -254,29 +194,82 @@ function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
           ...(toInfo.width && { width: toInfo.width }),
           ...(toInfo.height && { height: toInfo.height }),
           type: toInfo.type || 'diagramNode',
-          data: { 
-            label: toInfo.label, 
+          data: {
+            label: toInfo.label,
             kind: 'node',
             ...(toInfo.shape && { shape: toInfo.shape }),
             style: isResizable ? {
-              fillColor: '#ffffff',
-              strokeColor: '#000000',
+              fillColor: '#18181b',
+              strokeColor: '#3f3f46',
               strokeWidth: 2,
               fontSize: 14,
-              color: '#000000',
+              color: '#ffffff',
             } : undefined,
           },
         };
         nodes.push(toNode);
         nodeById.set(toId, toNode);
       }
-      
+
+      // Build style settings depending on connection symbols
+      let style: any = {};
+      if (line.includes('==>')) {
+        style.strokeWidth = 3;
+      } else if (line.includes('-.->') || line.includes('.->')) {
+        style.strokeDasharray = '5 5';
+      }
+
       edges.push({
         id: `${fromId}-${toId}`,
         source: fromId,
         target: toId,
         type: 'smoothstep',
+        style,
+        ...(label && { label }),
       });
+      
+    } else {
+      // 2. Node line pattern check
+      let cleaned = line;
+      let hasBrackets = false;
+      while (
+        (cleaned.startsWith('[') && cleaned.endsWith(']')) ||
+        (cleaned.startsWith('{') && cleaned.endsWith('}')) ||
+        (cleaned.startsWith('(') && cleaned.endsWith(')'))
+      ) {
+        cleaned = cleaned.slice(1, -1).trim();
+        hasBrackets = true;
+      }
+      
+      if (hasBrackets) {
+        const info = extractNodeInfo(line);
+        const id = info.label.replace(/\s+/g, '-').toLowerCase();
+        
+        if (!nodeById.has(id)) {
+          const isResizable = !!info.shape;
+          const newNode: any = {
+            id,
+            position: { x: 100 + nodes.length * 150, y: 100 + nodes.length * 100 },
+            ...(info.width && { width: info.width }),
+            ...(info.height && { height: info.height }),
+            type: info.type || 'diagramNode',
+            data: {
+              label: info.label,
+              kind: 'node',
+              ...(info.shape && { shape: info.shape }),
+              style: isResizable ? {
+                fillColor: '#18181b',
+                strokeColor: '#3f3f46',
+                strokeWidth: 2,
+                fontSize: 14,
+                color: '#ffffff',
+              } : undefined,
+            },
+          };
+          nodes.push(newNode);
+          nodeById.set(id, newNode);
+        }
+      }
     }
   });
 
@@ -310,6 +303,98 @@ export default function DiagramEditorPage() {
   const { user } = useAuthStore();
   const { currentDiagram, loadDiagram, updateDiagram, isLoading } = useDiagramStore();
 
+  // ─── Fine-grained Zustand slices (replace 30+ local useState calls) ──────────
+  // Each selector only re-renders this component when ITS slice changes.
+  // Canvas-only state changes (node drags, selection) do NOT re-render toolbar/panels.
+  const {
+    isExportOpen, setIsExportOpen,
+    isAIOpen, setIsAIOpen,
+    isShareOpen, setIsShareOpen,
+    isCommentsOpen, setIsCommentsOpen,
+    isVersionsOpen, setIsVersionsOpen,
+    isShortcutsOpen, setIsShortcutsOpen,
+    isReviewOpen, setIsReviewOpen,
+    isTradeoffsOpen, setIsTradeoffsOpen,
+    isRequirementsOpen, setIsRequirementsOpen,
+    isInterviewOpen, setIsInterviewOpen,
+    isPaletteVisible, setIsPaletteVisible,
+    currentView, setCurrentView,
+  } = useUIState();
+
+  const {
+    isSaving, setIsSaving,
+    lastSaved, setLastSaved,
+    isOnline, setIsOnline,
+    hasOfflineDraft, setHasOfflineDraft,
+  } = useSaveState();
+
+  const {
+    selectedNodeId, setSelectedNodeId,
+    selectedEdgeId, setSelectedEdgeId,
+    selectedNodeIds, setSelectedNodeIds,
+    selectedEdgeIds, setSelectedEdgeIds,
+    clearSelection,
+  } = useSelectionState();
+
+  const {
+    isAIBusy, setIsAIBusy,
+    aiPrompt, setAIPrompt: setAiPrompt,
+    aiOutput, setAIOutput: setAiOutput,
+  } = useAIState();
+
+  const {
+    canvasPaper, setCanvasPaper,
+    canvasShowGrid, setCanvasShowGrid,
+    canvasShowRuler, setCanvasShowRuler,
+    exportScale, setExportScale,
+    isExportBusy, setIsExportBusy,
+    lastExportUrl, setLastExportUrl,
+  } = useCanvasSettings();
+
+  const {
+    leftPaneWidth, setLeftPaneWidth,
+    rightPaneWidth, setRightPaneWidth,
+    isResizing, setIsResizing,
+  } = useLayoutState();
+
+  const {
+    comments, setComments,
+    newComment, setNewComment,
+    isCommentsBusy, setIsCommentsBusy,
+  } = useEditorStore(useShallow((s) => ({
+    comments: s.comments, setComments: s.setComments,
+    newComment: s.newComment, setNewComment: s.setNewComment,
+    isCommentsBusy: s.isCommentsBusy, setIsCommentsBusy: s.setIsCommentsBusy,
+  })));
+
+  const {
+    versions, setVersions,
+    versionName, setVersionName,
+    isVersionsBusy, setIsVersionsBusy,
+  } = useEditorStore(useShallow((s) => ({
+    versions: s.versions, setVersions: s.setVersions,
+    versionName: s.versionName, setVersionName: s.setVersionName,
+    isVersionsBusy: s.isVersionsBusy, setIsVersionsBusy: s.setIsVersionsBusy,
+  })));
+
+  const {
+    shareUrl, setShareUrl,
+    sharePassword, setSharePassword,
+    shareExpiresAt, setShareExpiresAt,
+    isShareBusy, setIsShareBusy,
+  } = useEditorStore(useShallow((s) => ({
+    shareUrl: s.shareUrl, setShareUrl: s.setShareUrl,
+    sharePassword: s.sharePassword, setSharePassword: s.setSharePassword,
+    shareExpiresAt: s.shareExpiresAt, setShareExpiresAt: s.setShareExpiresAt,
+    isShareBusy: s.isShareBusy, setIsShareBusy: s.setIsShareBusy,
+  })));
+
+  const { canvasStats, setCanvasStats } = useEditorStore(useShallow((s) => ({
+    canvasStats: s.canvasStats,
+    setCanvasStats: s.setCanvasStats,
+  })));
+
+  // ─── Local state (truly component-local, not shared with other UI trees) ─────
   const [syntax, setSyntax] = useState('');
   const syntaxRef = useRef(syntax);
   useEffect(() => {
@@ -317,55 +402,21 @@ export default function DiagramEditorPage() {
   }, [syntax]);
   const [notes, setNotes] = useState<any>(null);
   const [title, setTitle] = useState('Untitled Diagram');
-  const [lastSaved, setLastSaved] = useState<Date | undefined>();
-  const [isSaving, setIsSaving] = useState(false);
-  const [isShareOpen, setIsShareOpen] = useState(false);
-  const [isExportOpen, setIsExportOpen] = useState(false);
-  const [isAIOpen, setIsAIOpen] = useState(false);
-  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [isVersionsOpen, setIsVersionsOpen] = useState(false);
-  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
-  const [shareUrl, setShareUrl] = useState('');
-  const [sharePassword, setSharePassword] = useState('');
-  const [shareExpiresAt, setShareExpiresAt] = useState('');
-  const [isShareBusy, setIsShareBusy] = useState(false);
-  const [exportFormat] = useState<'png'>('png');
-  const [exportScale, setExportScale] = useState<1 | 2 | 4>(2);
-  const [isExportBusy, setIsExportBusy] = useState(false);
-  const [lastExportUrl, setLastExportUrl] = useState('');
-  const [leftPaneWidth, setLeftPaneWidth] = useState(22); // percent
-  const [rightPaneWidth, setRightPaneWidth] = useState(16); // percent
-  const [isPaletteVisible, setIsPaletteVisible] = useState(false);
-  const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
+  // selectedNodeData and selectedEdgeData remain local (only needed by PropertiesPanel which is already in this tree)
+  const [selectedNodeData, setSelectedNodeData] = useState<Node | null>(null);
+  const [selectedEdgeData, setSelectedEdgeData] = useState<Edge | null>(null);
+  const [cursors, setCursors] = useState<{ socketId: string; username: string; x: number; y: number }[]>([]);
+  const [participants, setParticipants] = useState<{ socketId: string; username: string }[]>([]);
+  const [localGraph, setLocalGraph] = useState<{ nodes: Node[]; edges: Edge[] } | null>(null);
+  const [visualOverride, setVisualOverride] = useState(false);
+
   const layoutRef = useRef<HTMLDivElement | null>(null);
   const hydratedDiagramIdRef = useRef<string | null>(null);
   const loadDiagramIdRef = useRef<string | null>(null);
+  const latestGraphRef = useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
   /** When true, diagram text is driven by the code editor — never overwrite it from canvas parse/layout. */
   const codeAuthoritativeRef = useRef(true);
   const codeEditorApiRef = useRef<CodeEditorApi | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
-  const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
-  const [selectedNodeData, setSelectedNodeData] = useState<Node | null>(null);
-  const [selectedEdgeData, setSelectedEdgeData] = useState<Edge | null>(null);
-  const [canvasPaper, setCanvasPaper] = useState('#09090b');
-  const [canvasShowGrid, setCanvasShowGrid] = useState(true);
-  const [canvasShowRuler, setCanvasShowRuler] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [aiOutput, setAiOutput] = useState('');
-  const [isAIBusy, setIsAIBusy] = useState(false);
-  const [comments, setComments] = useState<any[]>([]);
-  const [newComment, setNewComment] = useState('');
-  const [isCommentsBusy, setIsCommentsBusy] = useState(false);
-  const [versions, setVersions] = useState<any[]>([]);
-  const [versionName, setVersionName] = useState('');
-  const [isVersionsBusy, setIsVersionsBusy] = useState(false);
-
-  const [localGraph, setLocalGraph] = useState<{ nodes: Node[]; edges: Edge[] } | null>(null);
-  const [visualOverride, setVisualOverride] = useState(false);
-  const latestGraphRef = useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
-  const [canvasStats, setCanvasStats] = useState({ nodes: 0, edges: 0 });
   const pngExporterRef = useRef<((scale: number) => Promise<string>) | null>(null);
   /** Direct canvas style patcher — mutates node styles in the canvas without roundtripping through syntax. */
   const canvasStylePatcherRef = useRef<((nodeIds: string[], stylePatch: Record<string, unknown>) => void) | null>(null);
@@ -376,6 +427,15 @@ export default function DiagramEditorPage() {
   const paletteShellRef = useRef<HTMLDivElement | null>(null);
   const centerColumnRef = useRef<HTMLDivElement | null>(null);
   const inspectorShellRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset editor store when navigating away
+  const resetEditorStore = useEditorStore((s) => s.reset);
+  useEffect(() => {
+    return () => { resetEditorStore(); };
+  }, [resetEditorStore]);
+
+  // ─── AI generation with cancellation + streaming ───────────────────────────
+  const { generate: aiGenerate, cancel: cancelAIGenerate, isGenerating: isAIStreaming, statusLabel: aiStatusLabel } = useAIGenerate();
 
   // Load diagram — only clear hydration when diagramId actually changes (avoids refetch wiping the editor).
   useEffect(() => {
@@ -453,19 +513,6 @@ export default function DiagramEditorPage() {
         const type = dbNode.type || parsedNode?.type || 'diagramNode';
         const shape = dbShape || parsedNode?.data?.shape;
         const style = cleanData.style || parsedNode?.data?.style;
-        // DEBUG: Check if resizableShape type is being preserved
-        if (dbNode.type === 'resizableShape' || parsedNode?.type === 'resizableShape') {
-          console.log('[Node Merge] Merging resizableShape:', {
-            dbNodeId: dbNode.id,
-            dbNodeType: dbNode.type,
-            dbShape,
-            parsedNodeType: parsedNode?.type,
-            finalType: type,
-            finalShape: shape,
-            width,
-            height
-          });
-        }
         return {
           ...dbNode,
           type,
@@ -560,18 +607,6 @@ export default function DiagramEditorPage() {
         ? normalizeGraphForBackend(graphForSave)
         : { nodes: data.nodes || [], edges: data.edges || [] };
 
-      // DEBUG: Check resizableShape nodes being saved
-      const resizableNodes = normalized.nodes.filter((n: any) => n.type === 'resizableShape' || n.data?.shape);
-      if (resizableNodes.length > 0) {
-        console.log('[handleSave] Saving resizableShape nodes:', resizableNodes.map((n: any) => ({
-          id: n.id,
-          type: n.type,
-          width: n.width,
-          height: n.height,
-          shape: n.data?.shape,
-        })));
-      }
-
       try {
         // Always save with nodes and edges if we have them
         await updateDiagram(diagramId, {
@@ -581,8 +616,19 @@ export default function DiagramEditorPage() {
           edges: normalized.edges.length > 0 ? normalized.edges : undefined,
         });
         setLastSaved(new Date());
+        // Clear local draft if successfully saved
+        localStorage.removeItem(`offline_draft:${diagramId}`);
       } catch (error: any) {
-        toast.error(error?.response?.data?.error?.message || 'Save failed');
+        // Save to offline draft if it fails
+        const draftKey = `offline_draft:${diagramId}`;
+        const draftData = {
+          syntax: data.syntax ?? syntaxRef.current,
+          nodes: normalized.nodes,
+          edges: normalized.edges,
+          updatedAt: Date.now(),
+        };
+        localStorage.setItem(draftKey, JSON.stringify(draftData));
+        toast.error(error?.response?.data?.error?.message || 'Save failed. Saved local offline draft.');
       } finally {
         setIsSaving(false);
       }
@@ -590,13 +636,112 @@ export default function DiagramEditorPage() {
     [diagramId, title, updateDiagram, normalizeGraphForBackend]
   );
 
-  // Auto-save hook with 5s delay and 30s maxWait to avoid rate limits
+  // Auto-save hook with 2.5s delay and 30s maxWait to avoid rate limits
   const { save, saveNow } = useAutoSave({
     onSave: handleSave,
-    delay: 800,
-    maxWait: 5000,
+    delay: 2500,
+    maxWait: 30000,
     enabled: !!diagramId,
   });
+
+  // Monitor network status
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  // Check for offline drafts
+  useEffect(() => {
+    if (!diagramId) return;
+    const draftKey = `offline_draft:${diagramId}`;
+    const draft = localStorage.getItem(draftKey);
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.updatedAt && (!lastSaved || parsed.updatedAt > lastSaved.getTime())) {
+          setHasOfflineDraft(true);
+        }
+      } catch (err) {
+        console.error('Failed to parse offline draft', err);
+      }
+    }
+  }, [diagramId, lastSaved]);
+
+  const handleSyncOfflineDraft = useCallback(async () => {
+    if (!diagramId) return;
+    const draftKey = `offline_draft:${diagramId}`;
+    const draft = localStorage.getItem(draftKey);
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        setSyntax(parsed.syntax);
+        
+        if (parsed.nodes && parsed.nodes.length > 0) {
+          latestGraphRef.current = { nodes: parsed.nodes, edges: parsed.edges || [] };
+          await saveNow({ syntax: parsed.syntax, nodes: parsed.nodes, edges: parsed.edges });
+        } else {
+          await saveNow({ syntax: parsed.syntax });
+        }
+        
+        localStorage.removeItem(draftKey);
+        setHasOfflineDraft(false);
+        toast.success('Synced offline changes!');
+      } catch (err) {
+        console.error('Failed to sync offline draft', err);
+        toast.error('Sync failed. Please check internet connection.');
+      }
+    }
+  }, [diagramId, saveNow]);
+
+  const handleDiscardOfflineDraft = useCallback(() => {
+    if (!diagramId) return;
+    const draftKey = `offline_draft:${diagramId}`;
+    localStorage.removeItem(draftKey);
+    setHasOfflineDraft(false);
+    toast.success('Discarded local changes.');
+  }, [diagramId]);
+
+  // Collaboration / Socket.IO Integration
+  useEffect(() => {
+    if (!diagramId || !user) return;
+
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('token') || '';
+    const socket = socketClient.connect(token);
+
+    if (socket) {
+      socketClient.emit('join-diagram', { diagramId, username: user.name || user.email || 'Anonymous' });
+
+      socketClient.on('participants-updated', (list: any[]) => {
+        setParticipants(list.map(p => ({ socketId: p.socketId, username: p.username })));
+      });
+
+      socketClient.on('cursor-update', (data: { socketId: string; username: string; x: number; y: number }) => {
+        setCursors((prev) => {
+          const filtered = prev.filter((c) => c.socketId !== data.socketId);
+          return [...filtered, data];
+        });
+      });
+
+      socketClient.on('cursor-removed', (socketId: string) => {
+        setCursors((prev) => prev.filter((c) => c.socketId !== socketId));
+      });
+    }
+
+    return () => {
+      socketClient.emit('leave-diagram', {});
+      socketClient.disconnect();
+    };
+  }, [diagramId, user]);
+
+  const handleMouseMoveCanvas = useCallback((pos: { x: number; y: number }) => {
+    socketClient.emit('cursor-move', pos);
+  }, []);
 
   // Manual save function
   const runQuickSave = useCallback(async () => {
@@ -664,14 +809,6 @@ export default function DiagramEditorPage() {
   // Handle syntax change
   const handleSyntaxChange = useCallback(
     (newSyntax: string, source: 'code' | 'visual') => {
-      // DEBUG: Log syntax changes
-      if (newSyntax.includes('shape:')) {
-        console.log('[handleSyntaxChange] Syntax update:', {
-          source,
-          hasShape: true,
-          lines: newSyntax.split('\n').filter(l => l.includes('shape:'))
-        });
-      }
       setSyntax(newSyntax);
       syntaxRef.current = newSyntax;
 
@@ -735,22 +872,6 @@ export default function DiagramEditorPage() {
       let nodeLabel = String(data?.label || '').trim()
       nodeLabel = nodeLabel.replace(/^[\[]+/, '').replace(/[\]]+$/, '').trim()
       const fallbackLabel = n.id?.startsWith('n-') ? 'Node' : String(n.id || 'Node')
-      // DEBUG: Check for label corruption
-      if (nodeLabel.includes('shape:') || nodeLabel.includes('w:') || nodeLabel.includes('h:')) {
-        console.error('[graphToSyntax] CORRUPTED LABEL detected:', {
-          nodeId: n.id,
-          label: nodeLabel,
-          data,
-          type: n.type,
-          width: n.width,
-          height: n.height,
-          fullNode: n
-        })
-      }
-      // DEBUG: Check if resizableShape has proper data
-      if (n.type === 'resizableShape' && !data?.shape) {
-        console.error('[graphToSyntax] resizableShape missing shape:', { nodeId: n.id, data, type: n.type })
-      }
       nodeById.set(n.id, {
         label: nodeLabel || fallbackLabel,
         kind: String(data?.kind ?? 'node'),
@@ -776,18 +897,10 @@ export default function DiagramEditorPage() {
         if (style?.color && style.color !== '#000000') styleParts.push(`color:${style.color}`);
         const stylePart = styleParts.length > 0 ? styleParts.join(',') + ',' : '';
         const result = `[${label}|${dimPart}${stylePart}shape:${shapeAttr}]`;
-        // DEBUG: Check for corrupted output
-        if (label.includes('shape:') || label.includes('w:') || label.includes('h:')) {
-          console.error('[wrap] CORRUPTED OUTPUT:', { label, shapeAttr, dimPart, result, info })
-        }
         return result;
       }
       // For regular nodes with custom styles, serialize them with kind: attribute
       const hasCustomStyle = style && (style.fillColor || style.strokeColor || style.color);
-      // DEBUG: Log style detection for regular nodes
-      if (style && (style.fillColor || style.strokeColor || style.color)) {
-        console.log('[wrap] Regular node with style:', { label, kind, style, hasCustomStyle });
-      }
       if (hasCustomStyle) {
         const styleParts: string[] = [];
         if (style?.fillColor) styleParts.push(`fill:${style.fillColor}`);
@@ -795,7 +908,6 @@ export default function DiagramEditorPage() {
         if (style?.color) styleParts.push(`color:${style.color}`);
         const stylePart = styleParts.join(',');
         const result = `[${label}|${stylePart},kind:${kind}]`;
-        console.log('[wrap] Serialized styled node:', result);
         return result;
       }
       if (kind === 'decision') return `{${label}}`
@@ -816,19 +928,6 @@ export default function DiagramEditorPage() {
       const fromRef = wrap(from)
       const toRef = wrap(to)
       
-      // DEBUG: Log resizable shape syntax generation
-      if (from.type === 'resizableShape' || to.type === 'resizableShape') {
-        console.log('[graphToSyntax] Generating edge syntax:', {
-          from: fromRef,
-          to: toRef,
-          fromType: from.type,
-          toType: to.type,
-          fromWidth: from.width,
-          fromHeight: from.height,
-          fromShape: from.shape,
-        });
-      }
-
       const label = String(e.label ?? '').trim()
       if (label) {
         lines.push(`${fromRef} -- ${label} --> ${toRef}`)
@@ -857,10 +956,6 @@ export default function DiagramEditorPage() {
     })
 
     const result = lines.join('\n')
-    // DEBUG: Check if resizableShape syntax is in output
-    if (result.includes('shape:rectangle') || result.includes('shape:circle')) {
-      console.log('[graphToSyntax] Final syntax contains resizable shapes:', result.substring(0, 500))
-    }
     return result
   }, []);
 
@@ -885,6 +980,62 @@ export default function DiagramEditorPage() {
     },
     [localGraph, handleSyntaxChange, graphToSyntax]
   );
+
+  const handleRegisterPngExporter = useCallback((exporter: any) => {
+    pngExporterRef.current = exporter;
+  }, []);
+
+  const handleRegisterStylePatcher = useCallback((patcher: any) => {
+    canvasStylePatcherRef.current = patcher;
+  }, []);
+
+  const handleSelectionChange = useCallback(({ nodeId, edgeId, nodeIds, edgeIds, selectedNode, selectedEdge }: any) => {
+    setSelectedNodeId(nodeId);
+    setSelectedEdgeId(edgeId);
+    setSelectedNodeIds(nodeIds);
+    setSelectedEdgeIds(edgeIds);
+    setSelectedNodeData(selectedNode);
+    setSelectedEdgeData(selectedEdge);
+  }, [setSelectedNodeId, setSelectedEdgeId, setSelectedNodeIds, setSelectedEdgeIds, setSelectedNodeData, setSelectedEdgeData]);
+
+  const handleGraphChange = useCallback((graph: any) => {
+    latestGraphRef.current = graph;
+    setCanvasStats({ nodes: graph.nodes.length, edges: graph.edges.length });
+    if (codeAuthoritativeRef.current) {
+      save({ 
+        syntax: syntaxRef.current,
+        nodes: graph.nodes,
+        edges: graph.edges,
+      });
+    }
+  }, [save]);
+
+  const handleUserGraphChange = useCallback((graph: any) => {
+    const snapshot = {
+      nodes: graph.nodes.map((n: any) => {
+        const originalData = n?.data || {}
+        const { onDimensionsChange: _dc, onLabelChange: _lc, ...restData } = originalData
+        const safeData = {
+          label: originalData.label || 'Node',
+          shape: originalData.shape,
+          kind: originalData.kind || 'node',
+          style: originalData.style,
+          ...restData,
+        }
+        return { ...n, data: safeData };
+      }),
+      edges: graph.edges.map((e: any) => ({ ...e })),
+    };
+    latestGraphRef.current = snapshot;
+    setLocalGraph(snapshot);
+    if (codeAuthoritativeRef.current) {
+      return;
+    }
+    const nextSyntax = graphToSyntax(snapshot.nodes, snapshot.edges);
+    if (nextSyntax.trim() !== syntaxRef.current.trim()) {
+      handleSyntaxChange(nextSyntax, 'visual');
+    }
+  }, [handleSyntaxChange, graphToSyntax]);
 
   const handleRenameSelectedNode = useCallback(
     (nextLabel: string) => {
@@ -1241,9 +1392,9 @@ export default function DiagramEditorPage() {
   };
 
   // Handle AI assist
-  const handleAIAssist = () => {
+  const handleAIAssist = useCallback(() => {
     setIsAIOpen(true);
-  };
+  }, [setIsAIOpen]);
 
   const handleCommentsOpen = useCallback(async () => {
     if (!diagramId) return;
@@ -1339,28 +1490,34 @@ export default function DiagramEditorPage() {
     }
     setIsAIBusy(true);
     try {
-      const res = await aiAPI.generate({
+      const nextSyntax = await aiGenerate({
         prompt: aiPrompt.trim(),
         diagramType: currentDiagram?.type || 'flowchart',
         diagramId,
       });
-      const nextSyntax = res.data?.data?.syntax || '';
-      if (!nextSyntax) throw new Error('AI returned empty output');
       setAiOutput(nextSyntax);
       handleSyntaxChange(nextSyntax, 'code');
-      toast.success('AI generated diagram syntax');
+      toast.success('AI generated diagram');
     } catch (error: any) {
-      toast.error(error?.response?.data?.error?.message || 'AI generation failed');
+      if (error?.name !== 'AbortError') {
+        toast.error(error?.response?.data?.error?.message || 'AI generation failed');
+      }
     } finally {
       setIsAIBusy(false);
     }
-  }, [aiPrompt, currentDiagram?.type, diagramId, handleSyntaxChange]);
+  }, [aiPrompt, currentDiagram?.type, diagramId, handleSyntaxChange, aiGenerate]);
 
   const runAIExplain = useCallback(async () => {
     if (!diagramId) return;
     setIsAIBusy(true);
     try {
-      const res = await aiAPI.explain({ diagramId });
+      const nodeIds = selectedNodeIds.length > 0
+        ? selectedNodeIds
+        : selectedNodeId
+          ? [selectedNodeId]
+          : [];
+
+      const res = await aiAPI.explain({ diagramId, nodeIds });
       setAiOutput(res.data?.data?.explanation || 'No explanation returned');
       toast.success('Explanation ready');
     } catch (error: any) {
@@ -1368,7 +1525,63 @@ export default function DiagramEditorPage() {
     } finally {
       setIsAIBusy(false);
     }
-  }, [diagramId]);
+  }, [diagramId, selectedNodeId, selectedNodeIds]);
+
+  const handleSaveRequirements = useCallback(async (nextReqs: any[]) => {
+    if (!diagramId) return;
+    try {
+      await updateDiagram(diagramId, { requirements: nextReqs });
+      toast.success('Requirements updated');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to update requirements');
+    }
+  }, [diagramId, updateDiagram]);
+
+  const handleLinkRequirement = useCallback((nodeId: string, reqId: string, linked: boolean) => {
+    updateVisualGraph((prev) => {
+      const nextNodes = prev.nodes.map((n) => {
+        if (n.id !== nodeId) return n;
+        const currentReqs: string[] = n.data?.requirements || [];
+        const nextReqs = linked
+          ? [...currentReqs.filter((id) => id !== reqId), reqId]
+          : currentReqs.filter((id) => id !== reqId);
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            requirements: nextReqs,
+          },
+        };
+      });
+      return {
+        ...prev,
+        nodes: nextNodes,
+      };
+    });
+  }, [updateVisualGraph]);
+
+  const handleToggleNodeView = useCallback((nodeId: string, viewId: string, visible: boolean) => {
+    updateVisualGraph((prev) => {
+      const nextNodes = prev.nodes.map((n) => {
+        if (n.id !== nodeId) return n;
+        const currentViews: string[] = n.data?.views || [];
+        const nextViews = visible
+          ? [...currentViews.filter((v) => v !== viewId), viewId]
+          : currentViews.filter((v) => v !== viewId);
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            views: nextViews,
+          },
+        };
+      });
+      return {
+        ...prev,
+        nodes: nextNodes,
+      };
+    });
+  }, [updateVisualGraph]);
 
   const applyAiOutputToCode = useCallback(
     (mode: 'replace' | 'append') => {
@@ -1471,6 +1684,12 @@ export default function DiagramEditorPage() {
           return;
         }
         void runQuickSave();
+        return;
+      }
+
+      if (key === 'i') {
+        e.preventDefault();
+        setIsAIOpen(true);
         return;
       }
 
@@ -1592,8 +1811,64 @@ export default function DiagramEditorPage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+      <div className="h-screen flex flex-col bg-[#09090b]">
+        {/* Skeleton Toolbar */}
+        <div className="h-[52px] border-b border-white/[0.06] bg-[#0a0a0d] flex items-center justify-between px-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-8 h-8 rounded-lg bg-white/[0.03]" />
+            <div className="h-4 w-px bg-white/[0.06]" />
+            <Skeleton className="w-32 h-5 rounded bg-white/[0.03]" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="w-16 h-8 rounded-lg bg-white/[0.03]" />
+            <Skeleton className="w-24 h-8 rounded-lg bg-white/[0.03]" />
+          </div>
+        </div>
+        {/* Skeleton Editor Panes */}
+        <div className="flex-1 flex overflow-hidden min-h-0">
+          {/* Code panel skeleton */}
+          <div className="w-[28%] border-r border-white/[0.06] bg-[#0d0d10] p-4 space-y-4 shrink-0">
+            <Skeleton className="h-5 w-24 rounded bg-white/[0.03]" />
+            <Skeleton className="h-4 w-full rounded bg-white/[0.02]" />
+            <Skeleton className="h-4 w-[90%] rounded bg-white/[0.02]" />
+            <Skeleton className="h-4 w-[95%] rounded bg-white/[0.02]" />
+            <Skeleton className="h-4 w-[60%] rounded bg-white/[0.02]" />
+          </div>
+          {/* Canvas skeleton */}
+          <div className="flex-1 bg-[#09090b] relative flex items-center justify-center min-w-0">
+            {/* Dot grid pattern mimic */}
+            <div 
+              className="absolute inset-0 opacity-15"
+              style={{
+                backgroundImage: 'radial-gradient(circle, #3f3f46 1px, transparent 1px)',
+                backgroundSize: '24px 24px',
+              }}
+            />
+            <div className="flex flex-col items-center gap-4 relative z-10">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full border border-white/20 animate-ping absolute" />
+                <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center bg-[#0d0d10]">
+                  <Loader2 className="w-5 h-5 animate-spin text-white" />
+                </div>
+              </div>
+              <span className="text-xs text-[#a1a1aa] font-medium tracking-wide animate-pulse">
+                Initializing architectural canvas...
+              </span>
+            </div>
+          </div>
+          {/* Properties panel skeleton */}
+          <div className="w-[22%] border-l border-white/[0.06] bg-[#0d0d10] p-4 space-y-6 shrink-0">
+            <Skeleton className="h-5 w-32 rounded bg-white/[0.03]" />
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-full rounded bg-white/[0.02]" />
+              <Skeleton className="h-9 w-full rounded-lg bg-white/[0.03]" />
+            </div>
+            <div className="space-y-3 pt-4 border-t border-white/[0.06]">
+              <Skeleton className="h-4 w-2/3 rounded bg-white/[0.02]" />
+              <Skeleton className="h-24 w-full rounded-lg bg-white/[0.02]" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1608,7 +1883,7 @@ export default function DiagramEditorPage() {
           </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="px-4 py-2 bg-white text-black hover:bg-white/90 rounded-lg transition-colors font-medium"
           >
             Go to Dashboard
           </button>
@@ -1619,7 +1894,7 @@ export default function DiagramEditorPage() {
 
   return (
     <div ref={editorChromeRef} className="h-screen flex flex-col bg-background">
-      <div ref={toolbarShellRef} className="shrink-0">
+      <div ref={toolbarShellRef} className="shrink-0 relative z-30">
         <Toolbar
           title={title}
           onTitleChange={handleTitleChange}
@@ -1632,8 +1907,46 @@ export default function DiagramEditorPage() {
           onVersions={handleVersionsOpen}
           onShortcuts={() => setIsShortcutsOpen(true)}
           onSave={runQuickSave}
+          onReview={() => setIsReviewOpen(true)}
+          onTradeoffs={() => setIsTradeoffsOpen(true)}
+          onRequirements={() => setIsRequirementsOpen(true)}
+          onInterview={() => setIsInterviewOpen(true)}
+          participants={participants}
         />
       </div>
+
+      {/* Offline sync / local drafts banner */}
+      {!isOnline && (
+        <div className="bg-amber-500/20 border-b border-amber-500/30 px-4 py-2.5 text-xs flex items-center justify-between text-amber-200 backdrop-blur-md animate-pulse">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+            <span>You are offline. Diagram edits are being automatically saved locally to your browser database.</span>
+          </div>
+        </div>
+      )}
+
+      {hasOfflineDraft && (
+        <div className="bg-primary/20 border-b border-primary/30 px-4 py-2 text-xs flex items-center justify-between text-primary backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+            <span>Unsynced local changes found from an offline session.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSyncOfflineDraft}
+              className="px-2.5 py-1 bg-primary/20 hover:bg-primary/45 border border-primary/40 rounded text-[10px] font-extrabold uppercase transition-all"
+            >
+              Sync Changes
+            </button>
+            <button
+              onClick={handleDiscardOfflineDraft}
+              className="px-2.5 py-1 bg-transparent hover:bg-background/20 text-muted-foreground hover:text-foreground rounded text-[10px] font-extrabold uppercase transition-all"
+            >
+              Discard Draft
+            </button>
+          </div>
+        </div>
+      )}
 
       <div ref={layoutRef} className="flex-1 flex overflow-hidden min-h-0">
         {/* Code Editor - Left */}
@@ -1651,7 +1964,7 @@ export default function DiagramEditorPage() {
         <div
           role="separator"
           aria-label="Resize code panel"
-          className={`w-[3px] cursor-col-resize hover:bg-primary/50 transition-colors ${isResizing === 'left' ? 'bg-primary/60' : 'bg-border/40'}`}
+          className={`w-[4px] cursor-col-resize hover:bg-white/40 transition-colors ${isResizing === 'left' ? 'bg-white/60' : 'bg-white/[0.06]'}`}
           onMouseDown={() => setIsResizing('left')}
         />
 
@@ -1697,66 +2010,20 @@ export default function DiagramEditorPage() {
             <div className="flex-1 flex flex-col overflow-hidden">
               <DiagramCanvas
                 syntax={syntax}
+                currentView={currentView}
+                onViewChange={setCurrentView as any}
+                cursors={cursors}
+                onMouseMoveCanvas={handleMouseMoveCanvas}
                 visualData={visualOverride && localGraph ? localGraph : undefined}
                 paperColor={canvasPaper}
                 showGrid={canvasShowGrid}
                 showRuler={canvasShowRuler}
-                onRegisterPngExporter={(exporter) => { pngExporterRef.current = exporter; }}
-                onRegisterStylePatcher={(patcher) => { canvasStylePatcherRef.current = patcher; }}
-                onSelectionChange={({ nodeId, edgeId, nodeIds, edgeIds, selectedNode, selectedEdge }) => {
-                  setSelectedNodeId(nodeId);
-                  setSelectedEdgeId(edgeId);
-                  setSelectedNodeIds(nodeIds);
-                  setSelectedEdgeIds(edgeIds);
-                  setSelectedNodeData(selectedNode);
-                  setSelectedEdgeData(selectedEdge);
-                }}
-                onGraphChange={(graph) => {
-                  latestGraphRef.current = graph;
-                  setCanvasStats({ nodes: graph.nodes.length, edges: graph.edges.length });
-                  // When code is authoritative, save the parsed graph to persist nodes/edges
-                  // Use save (not saveNow) to allow throttling and prevent rate limits
-                  if (codeAuthoritativeRef.current) {
-                    save({ 
-                      syntax: syntaxRef.current,
-                      nodes: graph.nodes,
-                      edges: graph.edges,
-                    });
-                  }
-                }}
+                onRegisterPngExporter={handleRegisterPngExporter}
+                onRegisterStylePatcher={handleRegisterStylePatcher}
+                onSelectionChange={handleSelectionChange}
+                onGraphChange={handleGraphChange}
                 onCanvasUserGesture={onCanvasUserGesture}
-                onUserGraphChange={(graph) => {
-                  // Strip callback functions (onDimensionsChange, onLabelChange) from node data
-                  // before storing anywhere. DiagramCanvas.nodesForReactFlow memo re-injects
-                  // fresh ones on every render. Stale closures caused nodes to lose their type.
-                  const snapshot = {
-                    nodes: graph.nodes.map((n: any) => {
-                      // Defensive: ensure we have valid data object
-                      const originalData = n?.data || {}
-                      const { onDimensionsChange: _dc, onLabelChange: _lc, ...restData } = originalData
-                      // Preserve essential fields that might get lost
-                      const safeData = {
-                        label: originalData.label || 'Node',
-                        shape: originalData.shape,
-                        kind: originalData.kind || 'node',
-                        style: originalData.style,
-                        ...restData,
-                      }
-                      return { ...n, data: safeData };
-                    }),
-                    edges: graph.edges.map((e) => ({ ...e })),
-                  };
-                  // Keep latestGraphRef clean (no callbacks) so updateVisualGraph and saves are safe
-                  latestGraphRef.current = snapshot;
-                  setLocalGraph(snapshot);
-                  if (codeAuthoritativeRef.current) {
-                    return;
-                  }
-                  const nextSyntax = graphToSyntax(snapshot.nodes, snapshot.edges);
-                  if (nextSyntax.trim() !== syntaxRef.current.trim()) {
-                    handleSyntaxChange(nextSyntax, 'visual');
-                  }
-                }}
+                onUserGraphChange={handleUserGraphChange}
               />
             </div>
           </div>
@@ -1765,7 +2032,7 @@ export default function DiagramEditorPage() {
         <div
           role="separator"
           aria-label="Resize properties panel"
-          className={`w-[3px] cursor-col-resize hover:bg-primary/50 transition-colors ${isResizing === 'right' ? 'bg-primary/60' : 'bg-border/40'}`}
+          className={`w-[4px] cursor-col-resize hover:bg-white/40 transition-colors ${isResizing === 'right' ? 'bg-white/60' : 'bg-white/[0.06]'}`}
           onMouseDown={() => setIsResizing('right')}
         />
 
@@ -1800,10 +2067,41 @@ export default function DiagramEditorPage() {
             onMoveToFront={handleMoveToFront}
             onMoveToBack={handleMoveToBack}
             onAlign={handleAlign}
+            requirements={currentDiagram?.requirements || []}
+            onLinkRequirement={handleLinkRequirement}
+            onToggleNodeView={handleToggleNodeView}
           />
         </div>
       </div>
 
+
+      <ArchitectureReviewModal
+        isOpen={isReviewOpen}
+        onClose={() => setIsReviewOpen(false)}
+        diagramId={diagramId || ''}
+      />
+
+      <TradeoffAnalysisModal
+        isOpen={isTradeoffsOpen}
+        onClose={() => setIsTradeoffsOpen(false)}
+        diagramId={diagramId || ''}
+      />
+
+      <RequirementsTraceabilityModal
+        isOpen={isRequirementsOpen}
+        onClose={() => setIsRequirementsOpen(false)}
+        requirements={currentDiagram?.requirements || []}
+        onSaveRequirements={handleSaveRequirements}
+        nodes={localGraph?.nodes || []}
+      />
+
+      <InterviewModeModal
+        isOpen={isInterviewOpen}
+        onClose={() => setIsInterviewOpen(false)}
+        diagramType={currentDiagram?.type || 'flowchart'}
+        diagramId={diagramId || ''}
+        onGenerate={(syntax) => handleSyntaxChange(syntax, 'code')}
+      />
 
       <Modal
         isOpen={isShareOpen}
@@ -1902,97 +2200,25 @@ export default function DiagramEditorPage() {
         </div>
       </Modal>
 
-      <Modal
+      <ExportPanel
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
-        title="Export Assets"
-        description="High-fidelity export for your documents and presentations."
-        size="md"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-6 p-3 rounded-xl bg-primary/5 border border-primary/20">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 text-primary">
-              <LayoutGrid className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-sm font-semibold text-primary">PNG Export</span>
-              <p className="text-[11px] text-muted-foreground">High resolution image</p>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border/40 bg-muted/25 p-3">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-3">
-              <Sparkles className="h-3.5 w-3.5 text-primary" /> PNG Image
-            </div>
-            <p className="text-[11px] leading-relaxed text-muted-foreground/75">
-              Ultra-high resolution raster image. Supports up to 4x scaling for large displays and print.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Export Scale</label>
-            <div className="grid grid-cols-3 gap-2 p-1 rounded-2xl bg-muted/40 border border-border/40">
-              {[1, 2, 4].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setExportScale(s as any)}
-                  className={cn(
-                    'py-2.5 rounded-xl text-xs font-black transition-all',
-                    exportScale === s
-                      ? 'bg-background text-primary shadow-sm'
-                      : 'text-muted-foreground/40 hover:text-foreground/60'
-                  )}
-                >
-                  {s}x
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-1">
-            <Button
-              onClick={runExport}
-              isLoading={isExportBusy}
-              className="h-11 w-full rounded-xl text-xs font-semibold uppercase tracking-wide shadow-md shadow-primary/15"
-            >
-              {isExportBusy ? 'Preparing…' : 'Export'}
-            </Button>
-          </div>
-
-          {lastExportUrl && (
-            <div className="group/dl relative mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 text-center animate-in slide-in-from-bottom-2 duration-300">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary">
-                <Download className="h-5 w-5" />
-              </div>
-              <h4 className="mb-1 text-sm font-semibold text-foreground">Ready</h4>
-              <p className="mb-4 truncate px-2 font-mono text-[10px] text-muted-foreground/70">{lastExportUrl}</p>
-              <div className="flex gap-2">
-                <Button
-                  className="h-10 flex-1 rounded-lg text-xs font-semibold shadow-sm"
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    a.href = lastExportUrl;
-                    a.download = `${title || 'diagram'}.png`;
-                    a.click();
-                  }}
-                >
-                  Download File
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-10 rounded-lg text-xs font-semibold"
-                  onClick={() => {
-                    navigator.clipboard.writeText(lastExportUrl).then(() => toast.success('Link copied'));
-                  }}
-                >
-                  Copy Link
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </Modal>
-
+        diagramTitle={title}
+        diagramCode={syntax}
+        hasSelection={selectedNodeIds.length > 0}
+        onExport={async (options) => {
+          if (!pngExporterRef.current) throw new Error('Canvas exporter not ready');
+          const scaleMap: Record<string, number> = { '1x': 1, '2x': 2, '3x': 3 };
+          const scale = scaleMap[options.quality] || 2;
+          const dataUrl = await pngExporterRef.current(scale);
+          setLastExportUrl(dataUrl);
+          return dataUrl;
+        }}
+        onCopyLink={currentDiagram?.isPublic && currentDiagram?.publicLinkToken ? async () => {
+          await navigator.clipboard.writeText(shareUrl || `${window.location.origin}/public/${currentDiagram.publicLinkToken}`);
+          toast.success('Share link copied');
+        } : undefined}
+      />
       <Modal
         isOpen={isAIOpen}
         onClose={() => setIsAIOpen(false)}
@@ -2025,13 +2251,33 @@ export default function DiagramEditorPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap gap-2.5">
               <button
-                onClick={runAIGenerate}
-                disabled={isAIBusy}
-                className="flex items-center gap-2 rounded-[14px] bg-primary px-5 py-2.5 text-[11px] font-black uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:translate-y-[-1px] active:scale-95 disabled:opacity-50"
+                onClick={isAIStreaming ? cancelAIGenerate : runAIGenerate}
+                disabled={isAIBusy && !isAIStreaming}
+                className={cn(
+                  "flex items-center gap-2 rounded-[14px] px-5 py-2.5 text-[11px] font-black uppercase tracking-widest shadow-lg transition-all hover:translate-y-[-1px] active:scale-95 disabled:opacity-50",
+                  isAIStreaming
+                    ? "bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 shadow-none"
+                    : "bg-primary text-primary-foreground shadow-primary/20 hover:opacity-90"
+                )}
               >
-                <Plus className="w-3.5 h-3.5" />
-                Generate code
+                {isAIStreaming ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Cancel
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-3.5 h-3.5" />
+                    Generate code
+                  </>
+                )}
               </button>
+              {isAIStreaming && aiStatusLabel && (
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground self-center">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                  {aiStatusLabel}
+                </div>
+              )}
               <button
                 onClick={runAIImprove}
                 disabled={isAIBusy}

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 
 import { Card } from '@/components/ui/card'
@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 
 import { diagramAPI, notesAPI } from '@/services/api.service'
+import { cn } from '@/lib/utils'
 
 type SmokeStep = {
   key: string
@@ -22,9 +23,9 @@ export default function DebugPage() {
   const { user, isAuthenticated } = useAuthStore()
   const { currentWorkspace, workspaces, fetchWorkspaces } = useWorkspaceStore()
 
-  const apiBaseUrl = '/api'
+  const apiBaseUrl = '/api/v1'
   const healthUrl = useMemo(() => {
-    // VITE_API_URL is usually ".../api/v1" so health is at ".../health"
+    // Strip /api/v1 to get the root for /health
     return apiBaseUrl.replace(/\/api\/v1\/?$/, '') + '/health'
   }, [apiBaseUrl])
 
@@ -112,7 +113,7 @@ export default function DebugPage() {
 
   const runOAuthStatus = async () => {
     setStep('oauth', { ok: null, detail: undefined, data: undefined })
-    const apiBase = '/api'
+    const apiBase = '/api/v1'
     const statusRes = await fetch(`${apiBase}/auth/providers/status`)
     const json = await statusRes.json().catch(() => ({}))
     const configured =
@@ -144,79 +145,108 @@ export default function DebugPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Diagram Smoke Test</h1>
-          <p className="text-muted-foreground mt-1">
-            Confirms backend connectivity and diagram endpoints (list, get, and notes).
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Badge variant={isAuthenticated ? 'success' : 'warning'}>
-            {isAuthenticated ? 'Authenticated' : 'Not logged in'}
-          </Badge>
-        </div>
-      </div>
-
-      <Card className="p-4 sm:p-6 bg-card/90 border-border/80 shadow-md rounded-2xl mb-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={runHealth} disabled={isRunning} variant="secondary">
-            Check API Health
-          </Button>
-          <Button
-            onClick={() => {
-              void (async () => {
-                const ok = await runHealth()
-                if (ok) await runDiagramFlow()
-              })()
-            }}
-            disabled={isRunning}
-            variant="primary"
-          >
-            Test Diagram Endpoints
-          </Button>
-          <Button onClick={runAll} disabled={isRunning} variant="outline">
-            Run All
-          </Button>
+    <div className="min-h-screen bg-[#09090b] text-white p-4 sm:p-6 lg:p-8 font-sans">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-start justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-2">Diagram Smoke Test</h1>
+            <p className="text-[#a1a1aa] text-sm leading-relaxed max-w-xl">
+              Confirms backend connectivity and diagram endpoints (list, get, and notes).
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              "px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full border",
+              isAuthenticated 
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+            )}>
+              {isAuthenticated ? 'Authenticated' : 'Not logged in'}
+            </span>
+          </div>
         </div>
 
-        <div className="mt-4 text-sm text-muted-foreground">
-          Health URL: <span className="font-mono text-foreground">{healthUrl}</span>
-          <div className="mt-1">
-            Workspace: <span className="font-medium text-foreground">{currentWorkspace?.name || 'None'}</span>
+        <div className="bg-[#0d0d10] border border-white/[0.06] rounded-xl p-6 mb-8">
+          <h2 className="text-[#71717a] text-xs font-bold uppercase tracking-wider mb-4">Controls</h2>
+          <div className="flex flex-wrap items-center gap-3 mb-6">
+            <Button 
+              onClick={runHealth} 
+              disabled={isRunning} 
+              className="bg-[#27272a] text-white hover:bg-[#3f3f46] rounded-xl h-10 font-bold"
+            >
+              Check API Health
+            </Button>
+            <Button
+              onClick={() => {
+                void (async () => {
+                  const ok = await runHealth()
+                  if (ok) await runDiagramFlow()
+                })()
+              }}
+              disabled={isRunning}
+              className="bg-white text-[#18181b] hover:bg-[#e4e4e7] rounded-xl h-10 font-bold"
+            >
+              Test Diagram Endpoints
+            </Button>
+            <Button 
+              onClick={runAll} 
+              disabled={isRunning} 
+              className="bg-transparent border border-white/[0.08] text-white hover:bg-white/[0.02] rounded-xl h-10 font-bold"
+            >
+              Run All
+            </Button>
           </div>
-          <div className="mt-1">
-            User: <span className="font-medium text-foreground">{user?.email || ''}</span>
-          </div>
-          {latestDiagramId && (
-            <div className="mt-1">
-              Latest diagram id: <span className="font-mono text-foreground">{latestDiagramId}</span>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-[#a1a1aa] bg-[#09090b] border border-white/[0.05] rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[#71717a]">Health URL:</span> 
+              <span className="font-mono text-white text-xs">{healthUrl}</span>
             </div>
-          )}
-        </div>
-      </Card>
-
-      <div className="space-y-3">
-        {steps.map((s) => (
-          <Card key={s.key} className="p-4 bg-card/70 border-border/60 shadow-none rounded-2xl">
-            <div className="flex items-center justify-between gap-3">
-              <div className="font-semibold">{s.title}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-[#71717a]">Workspace:</span> 
+              <span className="font-medium text-white">{currentWorkspace?.name || 'None'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[#71717a]">User:</span> 
+              <span className="font-medium text-white">{user?.email || 'N/A'}</span>
+            </div>
+            {latestDiagramId && (
               <div className="flex items-center gap-2">
-                {s.ok === null && <Badge variant="info">Not run</Badge>}
-                {s.ok === true && <Badge variant="success">OK</Badge>}
-                {s.ok === false && <Badge variant="error">Failed</Badge>}
+                <span className="text-[#71717a]">Latest ID:</span> 
+                <span className="font-mono text-white text-xs">{latestDiagramId}</span>
               </div>
-            </div>
-            {s.detail && <div className="mt-2 text-sm text-muted-foreground">{s.detail}</div>}
-            {s.data !== undefined && (
-              <pre className="mt-3 text-xs whitespace-pre-wrap bg-background/80 border border-border rounded-xl p-3 overflow-auto">
-                {JSON.stringify(s.data, null, 2)}
-              </pre>
             )}
-          </Card>
-        ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h2 className="text-[#71717a] text-xs font-bold uppercase tracking-wider mb-4">Results</h2>
+          {steps.map((s) => (
+            <div key={s.key} className="bg-[#0d0d10] border border-white/[0.06] rounded-xl p-5 transition-all hover:border-white/[0.12]">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="font-bold text-white">{s.title}</div>
+                <div className="flex items-center gap-2">
+                  {s.ok === null && <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />}
+                  {s.ok === true && <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />}
+                  {s.ok === false && <span className="w-2.5 h-2.5 rounded-full bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.6)]" />}
+                  <span className="text-xs font-medium text-[#71717a]">
+                    {s.ok === null ? 'Pending' : s.ok ? 'Pass' : 'Fail'}
+                  </span>
+                </div>
+              </div>
+              {s.detail && <div className="text-sm text-[#a1a1aa] mb-3">{s.detail}</div>}
+              {s.data !== undefined && (
+                <div className="bg-[#09090b] border border-white/[0.05] rounded-lg p-3 overflow-x-auto">
+                  <pre className="text-xs font-mono text-[#a1a1aa] whitespace-pre-wrap">
+                    {JSON.stringify(s.data, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
 }
+

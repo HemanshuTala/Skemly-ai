@@ -47,7 +47,7 @@ export function RazorpayCheckoutButton({
       const checkout = openCheckout({
         key: RAZORPAY_KEY_ID,
         subscription_id: subscriptionId,
-        name: 'Skemly',
+        name: 'Schemely',
         description: `Subscribe to ${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan`,
         handler: async (response: RazorpaySuccessResponse) => {
           try {
@@ -72,7 +72,7 @@ export function RazorpayCheckoutButton({
           }
         },
         theme: {
-          color: '#c99367',
+          color: '#7c3aed',
         },
         modal: {
           ondismiss: () => {
@@ -98,7 +98,7 @@ export function RazorpayCheckoutButton({
     <button
       onClick={handleSubscribe}
       disabled={isProcessing || isLoading || !isLoaded}
-      className="w-full h-12 rounded-2xl bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest transition-all hover:shadow-xl hover:shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      className="w-full h-12 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold uppercase tracking-widest transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.2)]"
     >
       {(isProcessing || isLoading) ? (
         <>
@@ -136,7 +136,7 @@ export function useRazorpayCheckout() {
           const checkout = openCheckout({
             key: RAZORPAY_KEY_ID,
             subscription_id: subscriptionId,
-            name: 'Skemly',
+            name: 'Schemely',
             description: `Subscribe to ${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan`,
             handler: async (response: RazorpaySuccessResponse) => {
               try {
@@ -158,7 +158,7 @@ export function useRazorpayCheckout() {
               }
             },
             theme: {
-              color: '#c99367',
+              color: '#7c3aed',
             },
             modal: {
               ondismiss: () => {

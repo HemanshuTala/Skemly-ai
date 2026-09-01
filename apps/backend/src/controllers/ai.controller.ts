@@ -1,4 +1,5 @@
 import { Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import { Diagram } from '../models/diagram.model';
 import { User } from '../models/user.model';
 import { aiService } from '../services/ai.service';
@@ -6,6 +7,8 @@ import { workspaceService } from '../services/workspace.service';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth.middleware';
 import logger from '../utils/logger';
+import { getAIProvider } from '../modules/ai/providers/provider.registry';
+import { DiagramIR, DiagramType } from '../modules/domain/diagram-ir.types';
 
 /**
  * §4.4 AI Features Controller
@@ -18,6 +21,8 @@ import logger from '../utils/logger';
 export const generateDiagram = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { prompt, diagramType = 'flowchart', diagramId } = req.body;
+    const idempotencyKey = req.headers['idempotency-key'] || req.headers['x-request-id'];
+    const operationId = typeof idempotencyKey === 'string' ? idempotencyKey : crypto.randomUUID();
 
     // Validate prompt
     aiService.validatePrompt(prompt);
@@ -34,6 +39,8 @@ export const generateDiagram = async (req: AuthRequest, res: Response, next: Nex
       await workspaceService.assertWorkspaceEditor(diagram.workspaceId.toString(), req.userId!);
       existingSyntax = diagram.syntax;
     }
+
+    logger.info(`Generating diagram with operationId: ${operationId}`);
 
     // Generate diagram
     const { syntax, conversationTurn } = await aiService.generateDiagram(
@@ -122,12 +129,48 @@ export const streamGenerateDiagram = async (req: AuthRequest, res: Response, nex
   }
 };
 
+function mapToDiagramIR(diagram: any): DiagramIR {
+  return {
+    schemaVersion: 1,
+    diagramId: diagram._id.toString(),
+    title: diagram.title,
+    type: (diagram.type || 'system') as DiagramType,
+    metadata: { version: diagram.version },
+    nodes: (diagram.nodes || []).map((n: any) => ({
+      id: n.id,
+      kind: n.type || 'rectangle',
+      label: n.data?.label || '',
+      position: n.position || { x: 0, y: 0 },
+      size: { width: n.width || 160, height: n.height || 50 },
+      style: n.data?.style || {},
+      data: n.data || {},
+      semantic: {},
+      source: 'user' as const,
+    })),
+    edges: (diagram.edges || []).map((e: any) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      kind: e.type || 'default',
+      label: e.label,
+      style: e.style || {},
+      data: {},
+      semantic: {},
+      sourceOrigin: 'user' as const,
+    })),
+    groups: [],
+    annotations: [],
+    layout: { type: 'freeform', viewport: { x: 0, y: 0, zoom: 1 } },
+    theme: { name: 'dark' },
+  };
+}
+
 /**
  * §AI-06 Explain diagram
  */
 export const explainDiagram = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { diagramId, nodeId } = req.body;
+    const { diagramId, nodeId, nodeIds } = req.body;
 
     const diagram = await Diagram.findById(diagramId);
     if (!diagram) {
@@ -135,11 +178,26 @@ export const explainDiagram = async (req: AuthRequest, res: Response, next: Next
     }
     await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId!);
 
-    const explanation = await aiService.explainDiagram(req.userId!, diagram, nodeId);
+    let focusNodeIds: string[] = [];
+    if (Array.isArray(nodeIds)) {
+      focusNodeIds = nodeIds;
+    } else if (typeof nodeId === 'string' && nodeId.trim() !== '') {
+      focusNodeIds = [nodeId];
+    }
+
+    const ir = mapToDiagramIR(diagram);
+    const requestId = req.headers['x-request-id'] as string || crypto.randomUUID();
+
+    const response = await getAIProvider().explainDiagram({
+      diagram: ir,
+      focusNodeIds,
+      userId: req.userId!,
+      operationId: requestId,
+    });
 
     res.json({
       success: true,
-      data: { explanation },
+      data: { explanation: response.summary, details: response },
     });
   } catch (err) {
     next(err);
@@ -213,6 +271,81 @@ export const codeToDiagram = async (req: AuthRequest, res: Response, next: NextF
       success: true,
       data: result,
       message: 'Code converted to diagram successfully',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Review diagram architecture
+ */
+export const reviewDiagram = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { diagramId } = req.body;
+    if (!diagramId) {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'diagramId is required');
+    }
+
+    const diagram = await Diagram.findById(diagramId);
+    if (!diagram) {
+      throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
+    }
+    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId!);
+
+    // Map Mongoose diagram to DiagramIR
+    const ir = mapToDiagramIR(diagram);
+
+    const requestId = req.headers['x-request-id'] as string || crypto.randomUUID();
+    const reviewResponse = await getAIProvider().reviewDiagram({
+      diagram: ir,
+      userId: req.userId!,
+      operationId: requestId,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        scorecard: reviewResponse.scorecard,
+        findings: reviewResponse.findings,
+        summary: reviewResponse.summary,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Perform tradeoff analysis on architecture choices
+ */
+export const tradeoffAnalysis = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { diagramId } = req.body;
+    if (!diagramId) {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'diagramId is required');
+    }
+
+    const diagram = await Diagram.findById(diagramId);
+    if (!diagram) {
+      throw new ApiError(404, 'NOT_FOUND', 'Diagram not found');
+    }
+    await workspaceService.assertWorkspaceAccess(diagram.workspaceId.toString(), req.userId!);
+
+    const ir = mapToDiagramIR(diagram);
+    const requestId = req.headers['x-request-id'] as string || crypto.randomUUID();
+
+    const response = await getAIProvider().tradeoffAnalysis({
+      diagram: ir,
+      userId: req.userId!,
+      operationId: requestId,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        tradeoffs: response.tradeoffs,
+      },
     });
   } catch (err) {
     next(err);

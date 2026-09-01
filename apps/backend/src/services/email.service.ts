@@ -1,13 +1,17 @@
-import nodemailer from 'nodemailer';
+﻿import nodemailer from 'nodemailer';
 import logger from '../utils/logger';
 
 /**
- * §6.4 and §4.10 Transactional Email Service
+ * Â§6.4 and Â§4.10 Transactional Email Service
  * Supports Nodemailer + generic SMTP or dedicated providers like Resend.
  */
 class EmailService {
   private transporter: nodemailer.Transporter;
   private isConfigured: boolean = false;
+
+  private getFrontendUrl(): string {
+    return process.env.FRONTEND_URL || "http://localhost:5173";
+  }
 
   constructor() {
     const emailHost = process.env.EMAIL_HOST;
@@ -31,7 +35,7 @@ class EmailService {
         },
       });
       this.isConfigured = true;
-      logger.info('✅ Email service initialized');
+      logger.info('âœ… Email service initialized');
     } else {
       // Fallback to console logging for development
       this.transporter = nodemailer.createTransport({
@@ -39,7 +43,7 @@ class EmailService {
         newline: 'unix',
         buffer: true,
       });
-      logger.warn('⚠️  Email not configured - emails will be logged to console');
+      logger.warn('âš ï¸  Email not configured - emails will be logged to console');
     }
   }
 
@@ -57,19 +61,19 @@ class EmailService {
         logger.info(`[EMAIL] (DEV) To: ${to}, From: ${from}, Subject: ${subject}`);
         logger.debug(`[EMAIL BODY] ${html}`);
       } else {
-        logger.info(`✅ Email sent to ${to}: ${subject}`);
+        logger.info(`âœ… Email sent to ${to}: ${subject}`);
       }
 
       return true;
     } catch (err) {
-      logger.error('❌ Failed to send email:', err);
+      logger.error('âŒ Failed to send email:', err);
       return false;
     }
   }
 
-  // §4.1 AUTH-01/04 Email verification
+  // Â§4.1 AUTH-01/04 Email verification
   async sendVerificationEmail(to: string, token: string): Promise<boolean> {
-    const link = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+    const link = `${this.getFrontendUrl()}/verify-email?token=${token}`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -103,7 +107,7 @@ class EmailService {
                 <div class="link-box">${link}</div>
               </div>
               <div class="footer">
-                <p>© ${new Date().getFullYear()} Skemly. Premium Diagramming for Professionals.</p>
+                <p>Â© ${new Date().getFullYear()} Skemly. Premium Diagramming for Professionals.</p>
               </div>
             </div>
           </div>
@@ -113,9 +117,9 @@ class EmailService {
     return this.sendMail(to, 'Verify your email - Skemly', html);
   }
 
-  // §4.1 AUTH-05 Password reset
+  // Â§4.1 AUTH-05 Password reset
   async sendPasswordResetEmail(to: string, token: string): Promise<boolean> {
-    const link = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    const link = `${this.getFrontendUrl()}/reset-password?token=${token}`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -152,7 +156,7 @@ class EmailService {
                 <div class="link-box">${link}</div>
               </div>
               <div class="footer">
-                <p>© ${new Date().getFullYear()} Skemly. All rights reserved.</p>
+                <p>Â© ${new Date().getFullYear()} Skemly. All rights reserved.</p>
               </div>
             </div>
           </div>
@@ -162,9 +166,9 @@ class EmailService {
     return this.sendMail(to, 'Reset your password - Skemly', html);
   }
 
-  // §4.10 NOTIF-02 Workspace invitation
+  // Â§4.10 NOTIF-02 Workspace invitation
   async sendWorkspaceInvite(to: string, workspaceName: string, inviteToken: string, inviterName: string): Promise<boolean> {
-    const link = `${process.env.FRONTEND_URL}/invite?token=${inviteToken}`;
+    const link = `${this.getFrontendUrl()}/invite?token=${inviteToken}`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -189,7 +193,7 @@ class EmailService {
           <div class="wrapper">
             <div class="container">
               <div class="header">
-                <h1>You're Invited! 🎉</h1>
+                <h1>You're Invited! ðŸŽ‰</h1>
               </div>
               <div class="content">
                 <p>Hi there,</p>
@@ -210,7 +214,7 @@ class EmailService {
                 <div class="link-box">${link}</div>
               </div>
               <div class="footer">
-                <p>© ${new Date().getFullYear()} Skemly. All rights reserved.</p>
+                <p>Â© ${new Date().getFullYear()} Skemly. All rights reserved.</p>
               </div>
             </div>
           </div>
@@ -220,7 +224,7 @@ class EmailService {
     return this.sendMail(to, `Invite to join ${workspaceName} - Skemly`, html);
   }
 
-  // §4.10 NOTIF-03 Digest notifications
+  // Â§4.10 NOTIF-03 Digest notifications
   async sendDigestEmail(to: string, notifications: any[]): Promise<boolean> {
     const notificationItems = notifications.map(n => `
       <div style="background: white; border-left: 4px solid #09090b; padding: 12px; margin: 10px 0;">
@@ -253,12 +257,12 @@ class EmailService {
               <p>Here's what happened in your workspaces:</p>
               ${notificationItems}
               <p style="text-align: center;">
-                <a href="${process.env.FRONTEND_URL}/notifications" class="button">View All Notifications</a>
+                <a href="${this.getFrontendUrl()}/notifications" class="button">View All Notifications</a>
               </p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Skemly. All rights reserved.</p>
-              <p><a href="${process.env.FRONTEND_URL}/settings/notifications" style="color: #6b7280;">Manage notification preferences</a></p>
+              <p>Â© ${new Date().getFullYear()} Skemly. All rights reserved.</p>
+              <p><a href="${this.getFrontendUrl()}/settings/notifications" style="color: #6b7280;">Manage notification preferences</a></p>
             </div>
           </div>
         </body>
@@ -269,3 +273,4 @@ class EmailService {
 }
 
 export const emailService = new EmailService();
+

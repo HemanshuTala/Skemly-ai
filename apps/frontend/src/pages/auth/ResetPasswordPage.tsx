@@ -6,15 +6,15 @@ import { authService } from '@/services/auth.service'
 import toast from 'react-hot-toast'
 
 const T = {
-  bg: '#080808',
-  surface: '#111111',
-  surfaceHi: '#161616',
-  border: '#1f1f1f',
-  text: '#f2f0eb',
-  textSub: '#8a8680',
-  textMuted: '#3d3d3b',
-  accent: '#c9b89a',
-  font: "'DM Sans', -apple-system, sans-serif",
+  bg: '#09090b',
+  surface: '#0e0e11',
+  surfaceHi: '#18181b',
+  border: 'rgba(255,255,255,0.06)',
+  text: '#ffffff',
+  textSub: '#a1a1aa',
+  textMuted: '#71717a',
+  accent: '#ffffff',
+  font: '"Inter", -apple-system, sans-serif',
 }
 
 const SP_SOFT = { type: 'spring', stiffness: 100, damping: 20 }
@@ -77,7 +77,7 @@ export default function ResetPasswordPage() {
             <div style={{ width: 36, height: 36, borderRadius: 8, background: T.surface, border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: 18, color: T.accent, fontWeight: 700 }}>S</span>
             </div>
-            <span style={{ fontSize: 20, fontWeight: 700, color: T.text }}>Skemly</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: T.text }}>Schemely</span>
           </motion.div>
         </div>
 

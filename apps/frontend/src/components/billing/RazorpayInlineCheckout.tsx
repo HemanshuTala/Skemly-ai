@@ -52,7 +52,7 @@ export async function openRazorpayCheckout({
     checkoutInstance = new window.Razorpay({
       key: KEY,
       subscription_id: subscriptionId,
-      name: 'Skemly',
+      name: 'Schemely',
       description: `${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan Subscription`,
       handler: async (response: any) => {
         toast.loading('Verifying payment...', { id: 'razorpay-verify' });
@@ -78,7 +78,7 @@ export async function openRazorpayCheckout({
         }
       },
       theme: {
-        color: '#18181b',
+        color: '#7c3aed',
       },
       modal: {
         ondismiss: () => {

@@ -1,4 +1,4 @@
-﻿import { Fragment, ReactNode, useEffect } from 'react';
+import { Fragment, ReactNode, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '../../lib/utils';
 import { X } from 'lucide-react';
@@ -68,7 +68,7 @@ export function Modal({
     <div className="fixed inset-0 flex items-center justify-center p-3 animate-in fade-in duration-300" style={{ zIndex: Z_BACKDROP }}>
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-[#09090b]/80 backdrop-blur-[6px] transition-opacity cursor-pointer"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity cursor-pointer"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -76,7 +76,7 @@ export function Modal({
       {/* Panel */}
       <div
         className={cn(
-          'group/modal relative flex max-h-[min(88vh,48rem)] w-full flex-col overflow-hidden rounded-2xl border border-[#3f3f46] bg-[#27272a]/98 backdrop-blur-3xl text-white shadow-[0_32px_80px_-16px_rgba(0,0,0,0.7)] pointer-events-auto outline-none animate-in zoom-in-95 slide-in-from-bottom-6 duration-500 ease-out',
+          'group/modal relative flex max-h-[min(88vh,48rem)] w-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0d0d10] text-white shadow-2xl pointer-events-auto outline-none animate-in zoom-in-95 slide-in-from-bottom-2 duration-500 ease-out',
           sizes[size],
           size === 'full' && 'max-h-[min(94vh,56rem)]',
           className
@@ -87,11 +87,11 @@ export function Modal({
         aria-labelledby={title ? 'modal-title' : undefined}
       >
         {/* Decorative elements */}
-        <div className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-white/10 blur-[80px]" />
-        <div className="pointer-events-none absolute -left-20 -bottom-20 h-40 w-40 rounded-full bg-[#3f3f46]/20 blur-[60px]" />
+        <div className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-white/5 blur-[80px]" />
+        <div className="pointer-events-none absolute -left-20 -bottom-20 h-40 w-40 rounded-full bg-white/5 blur-[60px]" />
 
         {(title || showCloseButton) && (
-          <div className="relative shrink-0 border-b border-[#3f3f46] px-6 py-5 sm:px-8">
+          <div className="relative shrink-0 border-b border-white/[0.05] px-6 py-5 sm:px-8">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0 space-y-1">
                 {title && (
@@ -112,7 +112,7 @@ export function Modal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="shrink-0 flex h-10 w-10 items-center justify-center rounded-xl border border-[#3f3f46] bg-[#18181b] text-[#a1a1aa] transition-all hover:bg-[#27272a] hover:text-white hover:scale-110 active:scale-90"
+                  className="shrink-0 flex h-10 w-10 items-center justify-center rounded-lg text-[#71717a] transition-all hover:bg-white/[0.04] hover:text-white"
                   aria-label="Close"
                 >
                   <X className="h-5 w-5" strokeWidth={2.5} />

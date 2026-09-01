@@ -1,8 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Send, X, Copy, Check, Wand2, Code2 } from 'lucide-react';
+import { Sparkles, Send, X, Copy, Check, Wand2, Code2, Terminal, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { AI_PROMPT_TEMPLATES, SUGGESTED_PROMPTS } from '@/lib/aiPrompts';
 import type { AIPromptTemplate } from '@/lib/aiPrompts';
 import { aiAPI } from '@/services/api.service';
@@ -133,10 +132,8 @@ export function AIAssistant({ onGenerate }: AIAssistantProps) {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      toast.success('Code converted to diagram successfully', {
-        duration: 5000,
-      });
-      setCodeInput(''); // Clear code input after successful conversion
+      toast.success('Code converted to diagram successfully');
+      setCodeInput(''); 
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message || 'Failed to convert code');
       const errorMessage: Message = {
@@ -175,113 +172,119 @@ export function AIAssistant({ onGenerate }: AIAssistantProps) {
   return (
     <>
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
         onClick={() => setIsOpen(true)}
         className={cn(
-          'fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl',
-          'bg-white text-[#18181b] font-semibold text-sm shadow-2xl',
-          'hover:shadow-white/30 transition-all',
+          'fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl',
+          'bg-white text-[#09090b] font-bold text-xs shadow-2xl tracking-wide uppercase',
+          'hover:bg-[#e4e4e7] transition-all duration-200 select-none border border-transparent',
           isOpen && 'hidden'
         )}
       >
-        <Sparkles className="w-4 h-4" />
-        <span>AI Assistant</span>
+        <Sparkles className="w-3.5 h-3.5" />
+        <span>AI Copilot</span>
       </motion.button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 w-[400px] rounded-2xl border border-[#3f3f46] bg-[#18181b] shadow-2xl overflow-hidden"
+            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed bottom-6 right-6 z-50 w-[420px] rounded-2xl border border-white/[0.08] bg-[#0d0d10] shadow-2xl shadow-black/80 overflow-hidden flex flex-col max-h-[600px]"
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#27272a]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-[#0a0a0d] shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-white" />
+                <div className="w-8 h-8 rounded-lg bg-white/[0.07] border border-white/[0.10] flex items-center justify-center">
+                  <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm text-white">AI Assistant</h3>
-                  <p className="text-[10px] text-[#71717a]">Generate diagrams with AI</p>
+                  <h3 className="font-semibold text-xs text-white">AI Copilot</h3>
+                  <p className="text-[10px] text-[#52525b]">System Design Assistant</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a]"
+                className="p-1.5 rounded-lg text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-colors"
+                aria-label="Close Assistant"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-[#27272a] bg-[#09090b]">
+            <div className="flex border-b border-white/[0.05] bg-[#0a0a0d] shrink-0 p-1">
               <button
                 onClick={() => setActiveTab('prompt')}
                 className={cn(
-                  'flex-1 px-4 py-2.5 text-xs font-medium transition-colors',
+                  'flex-1 py-1.5 rounded-lg text-xs font-semibold tracking-wide uppercase transition-all duration-150',
                   activeTab === 'prompt'
-                    ? 'text-white border-b-2 border-white'
-                    : 'text-[#71717a] hover:text-white'
+                    ? 'bg-white/[0.08] text-white'
+                    : 'text-[#52525b] hover:text-[#a1a1aa] hover:bg-white/[0.03]'
                 )}
               >
-                <Sparkles className="w-3.5 h-3.5 inline mr-1.5" />
                 Text Prompt
               </button>
               <button
                 onClick={() => setActiveTab('code')}
                 className={cn(
-                  'flex-1 px-4 py-2.5 text-xs font-medium transition-colors',
+                  'flex-1 py-1.5 rounded-lg text-xs font-semibold tracking-wide uppercase transition-all duration-150',
                   activeTab === 'code'
-                    ? 'text-white border-b-2 border-white'
-                    : 'text-[#71717a] hover:text-white'
+                    ? 'bg-white/[0.08] text-white'
+                    : 'text-[#52525b] hover:text-[#a1a1aa] hover:bg-white/[0.03]'
                 )}
               >
-                <Code2 className="w-3.5 h-3.5 inline mr-1.5" />
                 Code to Diagram
               </button>
             </div>
 
-            <div className="h-[280px] overflow-y-auto px-4 py-3 space-y-3 scrollbar-thin">
+            {/* Messages Feed */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 custom-scrollbar min-h-0 bg-[#0d0d10]">
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={cn(
-                    'flex flex-col gap-2',
+                    'flex flex-col gap-1.5',
                     message.role === 'user' ? 'items-end' : 'items-start'
                   )}
                 >
                   <div
                     className={cn(
-                      'max-w-[90%] rounded-2xl px-3.5 py-2.5 text-sm',
+                      'max-w-[85%] rounded-xl px-3 py-2 text-[13px] leading-relaxed',
                       message.role === 'user'
-                        ? 'bg-white text-[#18181b] rounded-br-md'
-                        : 'bg-[#27272a] text-white border border-[#3f3f46] rounded-bl-md'
+                        ? 'bg-white text-[#09090b] font-medium'
+                        : 'bg-white/[0.03] text-[#a1a1aa] border border-white/[0.06]'
                     )}
                   >
-                    <p className="leading-relaxed">{message.content}</p>
+                    <p>{message.content}</p>
                   </div>
 
                   {message.code && (
-                    <div className="w-full bg-[#09090b] rounded-xl border border-[#27272a] overflow-hidden">
-                      <div className="flex items-center justify-between px-3 py-2 border-b border-[#27272a] bg-[#18181b]">
-                        <span className="text-[10px] font-medium text-[#71717a] uppercase">Diagram Code</span>
+                    <div className="w-full bg-[#070709] rounded-xl border border-white/[0.06] overflow-hidden mt-1 shadow-lg">
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.05] bg-white/[0.02]">
+                        <span className="text-[10px] font-mono text-[#52525b] tracking-wider uppercase">Generated Syntax</span>
                         <button
                           onClick={() => handleCopyCode(message.code!, message.id)}
-                          className="p-1 rounded-md text-[#71717a] hover:text-white hover:bg-[#27272a]"
+                          className="p-1 rounded-md text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-colors"
+                          aria-label="Copy code"
                         >
-                          {copiedId === message.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedId === message.id ? <Check className="w-3 h-3 text-[#4ade80]" /> : <Copy className="w-3 h-3" />}
                         </button>
                       </div>
-                      <pre className="p-3 text-[11px] font-mono text-[#a1a1aa] max-h-[100px] overflow-y-auto">
+                      <pre className="p-3 text-[11px] font-mono text-[#a1a1aa] max-h-[140px] overflow-y-auto custom-scrollbar">
                         {message.code}
                       </pre>
-                      <div className="px-3 py-2 border-t border-[#27272a] bg-[#18181b]">
-                        <Button size="sm" onClick={() => handleApplyCode(message.code!)} className="w-full">
-                          <Wand2 className="w-3.5 h-3.5 mr-2" />
-                          Apply to Editor
-                        </Button>
+                      <div className="px-3 py-2 border-t border-white/[0.05] bg-white/[0.01]">
+                        <button
+                          onClick={() => handleApplyCode(message.code!)}
+                          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white/[0.06] text-white text-[12px] font-semibold hover:bg-white hover:text-[#09090b] transition-all border border-white/[0.08] hover:border-white"
+                        >
+                          <Wand2 className="w-3.5 h-3.5" />
+                          Apply to Canvas
+                        </button>
                       </div>
                     </div>
                   )}
@@ -289,49 +292,55 @@ export function AIAssistant({ onGenerate }: AIAssistantProps) {
               ))}
 
               {isGenerating && (
-                <div className="flex items-center gap-3 text-[#71717a]">
+                <div className="flex items-center gap-2.5 text-[#52525b]">
                   <div className="flex gap-1">
-                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-2 h-2 rounded-full bg-white" />
-                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-2 h-2 rounded-full bg-white" />
-                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="w-2 h-2 rounded-full bg-white" />
+                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.8 }} className="w-1.5 h-1.5 rounded-full bg-[#52525b]" />
+                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.25 }} className="w-1.5 h-1.5 rounded-full bg-[#52525b]" />
+                    <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.5 }} className="w-1.5 h-1.5 rounded-full bg-[#52525b]" />
                   </div>
-                  <span className="text-xs">Generating...</span>
+                  <span className="text-[11px] font-medium tracking-wide uppercase">AI is thinking…</span>
                 </div>
               )}
             </div>
 
-            {showTemplates && (
-              <div className="border-t border-[#27272a] bg-[#09090b] p-3 max-h-[180px] overflow-y-auto">
-                <p className="text-[10px] font-semibold text-[#71717a] uppercase mb-2">Templates</p>
-                <div className="grid grid-cols-2 gap-2">
+            {/* Template selector pane */}
+            {showTemplates && activeTab === 'prompt' && (
+              <div className="border-t border-white/[0.06] bg-[#070709] p-3 max-h-[160px] overflow-y-auto shrink-0 custom-scrollbar">
+                <p className="text-[9px] font-bold text-[#52525b] uppercase tracking-[0.08em] mb-2">Prompt Presets</p>
+                <div className="grid grid-cols-2 gap-1.5">
                   {AI_PROMPT_TEMPLATES.slice(0, 4).map((template) => (
                     <button
                       key={template.id}
                       onClick={() => handleTemplateSelect(template)}
-                      className="text-left p-2.5 rounded-lg bg-[#18181b] border border-[#27272a] hover:border-[#3f3f46] transition-colors"
+                      className="text-left p-2 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.10] hover:bg-white/[0.04] transition-all"
                     >
-                      <p className="text-xs font-medium text-white">{template.name}</p>
-                      <p className="text-[10px] text-[#71717a] line-clamp-1">{template.description}</p>
+                      <p className="text-[11px] font-semibold text-white">{template.name}</p>
+                      <p className="text-[9px] text-[#52525b] line-clamp-1 mt-0.5">{template.description}</p>
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="p-3 border-t border-[#27272a] bg-[#18181b]">
+            {/* Actions area */}
+            <div className="p-3 border-t border-white/[0.06] bg-[#0a0a0d] shrink-0">
               {activeTab === 'prompt' ? (
-                <>
-                  {!showTemplates && SUGGESTED_PROMPTS.slice(0, 2).map((prompt) => (
-                    <button
-                      key={prompt}
-                      onClick={() => handleSuggestedPrompt(prompt)}
-                      className="w-full text-left px-3 py-2 text-xs text-[#71717a] hover:text-white hover:bg-[#27272a] rounded-lg transition-colors mb-1 truncate"
-                    >
-                      {prompt}
-                    </button>
-                  ))}
+                <div className="space-y-2">
+                  {!showTemplates && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full custom-scrollbar">
+                      {SUGGESTED_PROMPTS.slice(0, 2).map((prompt) => (
+                        <button
+                          key={prompt}
+                          onClick={() => handleSuggestedPrompt(prompt)}
+                          className="shrink-0 text-[10px] text-[#52525b] hover:text-[#a1a1aa] bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] hover:border-white/[0.10] px-2.5 py-1 rounded-md transition-all truncate max-w-[200px]"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-                  <div className="flex items-end gap-2 mt-2">
+                  <div className="flex items-end gap-2">
                     <textarea
                       ref={textareaRef}
                       value={input}
@@ -342,35 +351,36 @@ export function AIAssistant({ onGenerate }: AIAssistantProps) {
                           handleGenerate();
                         }
                       }}
-                      placeholder="Describe your diagram..."
-                      className="flex-1 min-h-[44px] max-h-[120px] px-3 py-2.5 text-sm bg-[#27272a] border border-[#3f3f46] rounded-xl text-white placeholder:text-[#71717a] focus:outline-none focus:border-white resize-none"
+                      placeholder="Ask copilot to draw something…"
+                      className="flex-1 min-h-[38px] max-h-[120px] px-3 py-2 text-[13px] bg-white/[0.03] border border-white/[0.07] rounded-xl text-white placeholder:text-[#3f3f46] outline-none focus:border-white/[0.15] focus:bg-white/[0.05] transition-all resize-none custom-scrollbar"
                       rows={1}
                     />
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1.5">
                       <button
                         onClick={() => setShowTemplates(!showTemplates)}
-                        className="px-2 py-1 text-[10px] font-medium text-[#71717a] hover:text-white transition-colors"
+                        className="text-[9px] font-bold text-[#52525b] hover:text-white uppercase tracking-[0.08em] transition-colors py-0.5 select-none"
                       >
-                        {showTemplates ? 'Hide' : 'Templates'}
+                        {showTemplates ? 'Close' : 'Presets'}
                       </button>
                       <button
                         onClick={handleGenerate}
                         disabled={!input.trim() || isGenerating}
-                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white text-[#18181b] hover:bg-[#e4e4e7] disabled:opacity-40 transition-colors"
+                        className="w-9 h-9 flex items-center justify-center rounded-xl bg-white text-[#09090b] hover:bg-[#e4e4e7] disabled:opacity-40 transition-colors shrink-0 shadow-lg"
                       >
-                        <Send className="w-4 h-4" />
+                        <Send className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
-                </>
+                </div>
               ) : (
-                <>
-                  <div className="space-y-2 mb-3">
-                    <div className="flex gap-2">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-[#52525b] uppercase tracking-[0.08em]">Language</label>
                       <select
                         value={language}
                         onChange={(e) => setLanguage(e.target.value)}
-                        className="flex-1 px-3 py-2 text-xs bg-[#27272a] border border-[#3f3f46] rounded-lg text-white focus:outline-none focus:border-white"
+                        className="w-full px-2 py-1.5 text-[11px] bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:outline-none focus:border-white/[0.15] transition-all"
                       >
                         <option value="javascript">JavaScript</option>
                         <option value="typescript">TypeScript</option>
@@ -379,13 +389,14 @@ export function AIAssistant({ onGenerate }: AIAssistantProps) {
                         <option value="csharp">C#</option>
                         <option value="go">Go</option>
                         <option value="rust">Rust</option>
-                        <option value="php">PHP</option>
-                        <option value="ruby">Ruby</option>
                       </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-[#52525b] uppercase tracking-[0.08em]">Diagram Type</label>
                       <select
                         value={diagramType}
                         onChange={(e) => setDiagramType(e.target.value)}
-                        className="flex-1 px-3 py-2 text-xs bg-[#27272a] border border-[#3f3f46] rounded-lg text-white focus:outline-none focus:border-white"
+                        className="w-full px-2 py-1.5 text-[11px] bg-white/[0.03] border border-white/[0.07] rounded-lg text-white focus:outline-none focus:border-white/[0.15] transition-all"
                       >
                         <option value="flowchart">Flowchart</option>
                         <option value="sequence">Sequence</option>
@@ -397,18 +408,18 @@ export function AIAssistant({ onGenerate }: AIAssistantProps) {
                     ref={codeTextareaRef}
                     value={codeInput}
                     onChange={(e) => setCodeInput(e.target.value)}
-                    placeholder="Paste your code here..."
-                    className="w-full h-[120px] px-3 py-2.5 text-xs font-mono bg-[#27272a] border border-[#3f3f46] rounded-xl text-white placeholder:text-[#71717a] focus:outline-none focus:border-white resize-none mb-2"
+                    placeholder="Paste code snippet here…"
+                    className="w-full h-[100px] px-3 py-2 text-[11px] font-mono bg-white/[0.03] border border-white/[0.07] rounded-xl text-white placeholder:text-[#3f3f46] outline-none focus:border-white/[0.15] focus:bg-white/[0.05] transition-all resize-none custom-scrollbar"
                   />
-                  <Button
+                  <button
                     onClick={handleCodeToDiagram}
                     disabled={!codeInput.trim() || isGenerating}
-                    className="w-full"
-                    size="sm"
+                    className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-white text-[#09090b] text-[12px] font-bold hover:bg-[#e4e4e7] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
                   >
-                    {isGenerating ? 'Converting...' : 'Convert to Diagram'}
-                  </Button>
-                </>
+                    <Terminal className="w-3.5 h-3.5" />
+                    Convert code to diagram
+                  </button>
+                </div>
               )}
             </div>
           </motion.div>

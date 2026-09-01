@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -6,6 +6,7 @@ import Link from '@tiptap/extension-link'
 import TextStyle from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import { Bold, Italic, List, Code, Link2, FileText } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface NotesChangePayload {
   content: any
@@ -31,8 +32,7 @@ export function NotesEditor({ value, onChange }: NotesEditorProps) {
     extensions: [
       StarterKit,
       Placeholder.configure({
-        placeholder:
-          'Add notes about this diagram... (bold, lists, links, code blocks)',
+        placeholder: 'Add architecture documentation and description notes here…',
         emptyNodeClass: 'is-editor-empty',
       }),
       TextStyle,
@@ -40,14 +40,14 @@ export function NotesEditor({ value, onChange }: NotesEditorProps) {
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: 'text-primary underline underline-offset-4',
+          class: 'text-white underline underline-offset-4 font-semibold',
         },
       }),
     ],
     content: content || undefined,
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none text-sm leading-6',
+        class: 'prose prose-invert max-w-none focus:outline-none text-[13px] leading-relaxed text-[#a1a1aa] min-h-[120px]',
       },
     },
     onUpdate: ({ editor }) => {
@@ -74,69 +74,71 @@ export function NotesEditor({ value, onChange }: NotesEditorProps) {
   const toggleBulletList = () => editor?.chain().focus().toggleBulletList().run()
   const toggleCodeBlock = () => editor?.chain().focus().toggleCodeBlock().run()
   const toggleLink = () => {
-    const url = window.prompt('Enter a URL')
+    const url = window.prompt('Enter documentation URL')
     if (!url) return
     editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
   }
 
   return (
-    <div className="border-t border-border bg-card">
-      <div className="h-10 border-b border-border bg-muted/50 flex items-center px-4 justify-between gap-3">
+    <div className="border-t border-white/[0.05] bg-[#0d0d10]">
+      {/* Editor toolbar */}
+      <div className="h-10 border-b border-white/[0.05] bg-[#0a0a0d] flex items-center px-4 justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-muted-foreground">Notes</span>
+          <FileText className="w-3.5 h-3.5 text-[#52525b]" />
+          <span className="text-[11px] font-bold text-white uppercase tracking-wider">Architecture Notes</span>
         </div>
 
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={toggleBold}
-            className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            className="p-1.5 rounded-lg text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-colors"
             disabled={!editor}
             aria-label="Bold"
           >
-            <Bold className="w-4 h-4" />
+            <Bold className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={toggleItalic}
-            className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            className="p-1.5 rounded-lg text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-colors"
             disabled={!editor}
             aria-label="Italic"
           >
-            <Italic className="w-4 h-4" />
+            <Italic className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={toggleBulletList}
-            className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            className="p-1.5 rounded-lg text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-colors"
             disabled={!editor}
             aria-label="Bullet list"
           >
-            <List className="w-4 h-4" />
+            <List className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={toggleCodeBlock}
-            className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            className="p-1.5 rounded-lg text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-colors"
             disabled={!editor}
             aria-label="Code block"
           >
-            <Code className="w-4 h-4" />
+            <Code className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={toggleLink}
-            className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            className="p-1.5 rounded-lg text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-colors"
             disabled={!editor}
             aria-label="Link"
           >
-            <Link2 className="w-4 h-4" />
+            <Link2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      <div className="p-4">
+      {/* Editor surface */}
+      <div className="p-4 bg-[#0d0d10]">
         <EditorContent editor={editor} />
       </div>
     </div>

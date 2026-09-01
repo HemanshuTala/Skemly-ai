@@ -1,4 +1,4 @@
-﻿import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import gsap from 'gsap';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Input } from '../ui/input';
@@ -32,10 +32,14 @@ import {
 } from 'lucide-react';
 import type { Edge, Node } from 'reactflow';
 import { cn } from '@/lib/utils';
+import { Requirement } from '@/services/api.service';
+import { ClipboardList, Eye } from 'lucide-react';
 
 
 interface PropertiesPanelProps {
   selectedNode?: Node | null;
+  requirements?: Requirement[];
+  onLinkRequirement?: (nodeId: string, reqId: string, linked: boolean) => void;
   selectedEdge?: Edge | null;
   selectedNodeCount: number;
   selectedEdgeCount: number;
@@ -83,15 +87,16 @@ interface PropertiesPanelProps {
   onMoveToFront?: () => void;
   onMoveToBack?: () => void;
   onAlign?: (mode: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => void;
+  onToggleNodeView?: (nodeId: string, view: string, visible: boolean) => void;
 }
 
 // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Palette presets ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 
-const PAPER_PRESETS = ['#09090b', '#f8f4ef', '#eef6ff', '#ffffff', '#e8e4df', '#1a1510', '#120d0a'];
-const NODE_FILL_PRESETS = ['#120d0a', '#15100d', '#1e3a2f', '#1e2d4a', '#3d2914', '#f4e7db', '#ffffff', '#c99367'];
-const NODE_STROKE_PRESETS = ['#c99367', '#d7a780', '#8f5c38', '#64748b', '#38bdf8', '#a78bfa', '#f4e7db', '#ffffff'];
-const NODE_TEXT_PRESETS = ['#000000', '#f4e7db', '#ffffff', '#120d0a', '#c99367', '#94a3b8', '#fde68a'];
-const EDGE_LINE_PRESETS = ['#c99367', '#d7a780', '#38bdf8', '#a78bfa', '#34d399', '#f472b6', '#f4e7db', '#64748b'];
+const PAPER_PRESETS = ['#09090b', '#0c0a09', '#020617', '#022c22', '#0f172a', '#18181b'];
+const NODE_FILL_PRESETS = ['#18181b', '#27272a', '#3f3f46', '#0284c7', '#059669', '#dc2626', '#7c3aed', '#ea580c'];
+const NODE_STROKE_PRESETS = ['#27272a', '#3f3f46', '#52525b', '#a1a1aa', '#ffffff', '#38bdf8', '#34d399', '#f87171'];
+const NODE_TEXT_PRESETS = ['#ffffff', '#e4e4e7', '#a1a1aa', '#38bdf8', '#34d399', '#f87171'];
+const EDGE_LINE_PRESETS = ['#ffffff', '#52525b', '#38bdf8', '#34d399', '#f87171', '#fbbf24', '#818cf8', '#fb7185'];
 
 const FONT_OPTIONS = [
   { value: 'inherit', label: 'Theme default' },
@@ -283,6 +288,9 @@ export function PropertiesPanel({
   onMoveToFront,
   onMoveToBack,
   onAlign,
+  requirements,
+  onLinkRequirement,
+  onToggleNodeView,
 }: PropertiesPanelProps) {
   const [activeTab, setActiveTab] = useState('selection');
   const [draftLabel, setDraftLabel] = useState('');
@@ -824,6 +832,72 @@ export function PropertiesPanel({
                     )}
                   </InspectorSection>
 
+                  {/* Requirements Traceability */}
+                  {requirements && requirements.length > 0 && (
+                    <InspectorSection title="Requirements Link" icon={ClipboardList}>
+                      <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                        {requirements.map((req) => {
+                          const linkedReqs: string[] = (selectedNode.data as any)?.requirements || [];
+                          const isLinked = linkedReqs.includes(req.id);
+                          return (
+                            <label
+                              key={req.id}
+                              className="flex items-start gap-2.5 rounded-lg border border-border/40 bg-[#27272a]/20 p-2 hover:border-border/70 hover:bg-[#27272a]/40 cursor-pointer select-none transition-all"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isLinked}
+                                onChange={(e) => onLinkRequirement?.(selectedNode.id, req.id, e.target.checked)}
+                                className="mt-0.5 h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary shrink-0"
+                              />
+                              <div className="space-y-0.5 min-w-0">
+                                <div className="text-[11px] font-bold text-foreground leading-none flex items-center gap-1.5">
+                                  <span className="text-[9px] px-1 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary uppercase font-black shrink-0">{req.id}</span>
+                                  <span className="truncate">{req.title}</span>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground leading-normal line-clamp-1">
+                                  {req.description}
+                                </p>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </InspectorSection>
+                  )}
+
+                  {/* Multiple Diagram Views */}
+                  {onToggleNodeView && (
+                    <InspectorSection title="View Visibility" icon={Eye}>
+                      <div className="space-y-2 pr-1">
+                        {[
+                          { id: 'infrastructure', name: 'Infrastructure View' },
+                          { id: 'data', name: 'Data View' },
+                          { id: 'security', name: 'Security View' },
+                        ].map((view) => {
+                          const activeViews: string[] = (selectedNode.data as any)?.views || [];
+                          const isChecked = activeViews.includes(view.id);
+                          return (
+                            <label
+                              key={view.id}
+                              className="flex items-center gap-2.5 rounded-lg border border-border/40 bg-[#27272a]/20 p-2 hover:border-border/70 hover:bg-[#27272a]/40 cursor-pointer select-none transition-all"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => onToggleNodeView(selectedNode.id, view.id, e.target.checked)}
+                                className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <span className="text-[11px] font-bold text-foreground leading-none">{view.name}</span>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </InspectorSection>
+                  )}
+
                   {/* Arrange & Layers */}
                   <InspectorSection title="Arrange & Layers" icon={Layers}>
                     <div className="grid grid-cols-2 gap-2">
@@ -1010,25 +1084,22 @@ export function PropertiesPanel({
               ) : (
 
                 /* EMPTY STATE */
-                <div className="flex flex-col items-center justify-center gap-6 px-6 py-20 text-center">
-                  <div className="relative">
-                    <div className="absolute inset-0 rounded-full bg-primary/10 blur-xl scale-150" />
-                    <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-background border border-primary/20 shadow-xl">
-                      <MousePointer2 className="h-8 w-8 text-primary/70" />
-                    </div>
+                <div className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/10 border border-violet-500/20 text-violet-400 shadow-inner">
+                    <MousePointer2 className="h-5 w-5" />
                   </div>
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-bold text-foreground/80">
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
                       Select an element
                     </h4>
-                    <p className="max-w-[200px] text-xs leading-relaxed text-muted-foreground/60">
-                      Click any <span className="text-primary font-medium">node</span> or{' '}
-                      <span className="text-primary font-medium">connection</span> on the canvas to edit its properties
+                    <p className="max-w-[200px] text-[11px] leading-relaxed text-[#71717a]">
+                      Click any <span className="text-violet-400 font-semibold">node</span> or{' '}
+                      <span className="text-violet-400 font-semibold">edge</span> on the canvas to customize its properties
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground/40">
-                    <span className="px-2 py-1 rounded bg-muted/50 border border-border/30">Tip</span>
-                    <span>Hold Shift to multi-select</span>
+                  <div className="flex items-center gap-1.5 text-[10px] text-[#52525b] mt-2">
+                    <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-[#71717a] font-mono">Shift + Click</span>
+                    <span>to multi-select</span>
                   </div>
                 </div>
               )}

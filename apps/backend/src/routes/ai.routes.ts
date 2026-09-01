@@ -11,6 +11,8 @@ router.post('/code-to-diagram', authenticateToken, aiRateLimiter, AIController.c
 router.post('/explain', authenticateToken, aiRateLimiter, AIController.explainDiagram);
 router.post('/improve', authenticateToken, aiRateLimiter, AIController.improveDiagram);
 router.post('/autofix', authenticateToken, aiRateLimiter, AIController.autofixSyntax);
+router.post('/review', authenticateToken, aiRateLimiter, AIController.reviewDiagram);
+router.post('/tradeoffs', authenticateToken, aiRateLimiter, AIController.tradeoffAnalysis);
 router.get('/usage', authenticateToken, AIController.getAIUsage);
 
 export default router;

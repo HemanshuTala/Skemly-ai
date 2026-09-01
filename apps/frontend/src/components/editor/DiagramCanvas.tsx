@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, memo, type DragEvent } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { Modal } from '../ui/modal';
 import { ResizableShapeNode } from '../nodes/ResizableShapeNode';
 import { ImageNode } from '../nodes/ImageNode';
+import { CollaborativeCursors } from './CollaborativeCursors';
 import { Button } from '../ui/button';
 import {
   Plus, Maximize2, MousePointer2, Hand, ZoomIn, ZoomOut,
@@ -72,6 +73,12 @@ interface DiagramCanvasProps {
   onEdgesChange?: (edges: Edge[]) => void;
   onGraphChange?: (graph: { nodes: Node[]; edges: Edge[] }) => void;
   onUserGraphChange?: (graph: { nodes: Node[]; edges: Edge[] }) => void;
+  /**
+   * Fired once when a drag operation ENDS (onNodeDragStop / onSelectionDragStop).
+   * Use this for expensive operations (syntax serialization, save) instead of
+   * onUserGraphChange which fires at ~35fps during drag.
+   */
+  onDragCommit?: (graph: { nodes: Node[]; edges: Edge[] }) => void;
   /** Fired when the user edits the canvas (drag, connect, drop, ...) so the parent can treat the graph as authoritative over code. */
   onCanvasUserGesture?: () => void;
   paperColor?: string;
@@ -93,607 +100,13 @@ interface DiagramCanvasProps {
   onRegisterStylePatcher?: (
     patcher: ((nodeIds: string[], stylePatch: Record<string, unknown>) => void) | null
   ) => void;
+  currentView?: string;
+  onViewChange?: (view: string) => void;
+  cursors?: any[];
+  onMouseMoveCanvas?: (pos: { x: number; y: number }) => void;
 }
 
-type CanvasNodeStyle = {
-  fillColor?: string;
-  strokeColor?: string;
-  strokeWidth?: number;
-  fontSize?: number;
-  fontWeight?: number | string;
-  fontStyle?: 'normal' | 'italic';
-  textDecoration?: string;
-  textAlign?: 'left' | 'center' | 'right';
-  width?: number;
-  height?: number;
-  fontFamily?: string;
-  color?: string;
-  borderRadius?: number;
-  iconColor?: string;
-};
-
-// Map node kinds to Lucide icons for canvas rendering
-const NODE_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
-  // UI Components
-  'ui': Box,
-  'button': Box,
-  'input': Search,
-  'card': LayoutDashboard,
-  'modal': Maximize2,
-  'navbar': Menu,
-  'sidebar-nav': Grid,
-  'avatar': User,
-  'badge': Tag,
-  'toggle': ToggleRight,
-  // Cloud & DevOps
-  'cloud': Cloud,
-  'docker': Container,
-  'kubernetes': Layers,
-  'aws': Cloud,
-  'azure': Cloud,
-  'gcp': Cloud,
-  'github': Github,
-  'git': GitBranch,
-  'ci-cd': RefreshCw,
-  'terraform': Settings,
-  'monitoring': Activity,
-  'log': FileText,
-  // Security
-  'security': Lock,
-  'lock': Lock,
-  'shield': Shield,
-  'key': Key,
-  'oauth': Globe,
-  'jwt': Fingerprint,
-  'vault': Database,
-  // Mobile
-  'mobile': Smartphone,
-  'smartphone': Smartphone,
-  'tablet': Tablet,
-  'touch': MousePointer,
-  'notification-mobile': Bell,
-  'biometric': Fingerprint,
-  // Analytics
-  'analytics': BarChart3,
-  'chart-bar': BarChart3,
-  'chart-line': LineChart,
-  'chart-pie': PieChart,
-  'dashboard': LayoutDashboard,
-  'metric': Target,
-  // Communication
-  'communication': MessageSquare,
-  'chat': MessageSquare,
-  'email': Mail,
-  'video-call': Video,
-  'sms': MessageCircle,
-  // Media
-  'media': Image,
-  'image': Image,
-  'video': Video,
-  'audio': Music,
-  'camera': Camera,
-  // Location
-  'location': MapPin,
-  'map': MapIcon,
-  'gps': Navigation,
-  'directions': ArrowRight,
-  // ERD / Data shapes
-  'entity': Box,
-  'database': Database,
-  'db': Database,
-  'queue': Layers,
-  'cache': Database,
-  'service': Settings,
-  'function': Code,
-  'cdn': Globe,
-  'actor': User,
-  'system': Monitor,
-  // Flowchart shapes
-  'start': Circle,
-  'proc': Box,
-  'decision': Diamond,
-  'data': FileText,
-  'note': FileText,
-  'document': FileText,
-  'delay': Clock,
-  'storage': Database,
-  'manual': Hand,
-  // Legacy kinds (only unique ones)
-  'server': Server,
-  'user': User,
-  'users': Users,
-  'file': FileText,
-  'folder': Grid,
-  'wifi': Wifi,
-  'bluetooth': Bluetooth,
-  'battery': Battery,
-  'credit': CreditCard,
-};
-
-function getNodeStyle(data: any, kind: string): Required<CanvasNodeStyle> {
-  const base =
-    kind === 'decision'
-      ? { width: 132, height: 132 }
-      : kind === 'startend'
-        ? { width: 140, height: 52 }
-        : kind === 'database'
-          ? { width: 168, height: 64 }
-          : kind === 'entity'
-            ? { width: 176, height: 80 }
-            : kind === 'actor'
-              ? { width: 152, height: 56 }
-              : kind === 'queue'
-                ? { width: 168, height: 52 }
-                : kind === 'io'
-                  ? { width: 172, height: 52 }
-                  : { width: 160, height: 52 };
-  // Get style from data or use defaults
-  const style = data?.style || {};
-  
-  return {
-    fillColor: String(style.fillColor || '#27272a'),
-    strokeColor: String(style.strokeColor || '#ffffff'),
-    strokeWidth: Number(style.strokeWidth || 2),
-    fontSize: Number(style.fontSize || 12),
-    fontWeight: style.fontWeight || 600,
-    fontStyle: (style.fontStyle as 'normal' | 'italic') || 'normal',
-    textDecoration: String(style.textDecoration || 'none'),
-    textAlign: (style.textAlign as 'left' | 'center' | 'right') || 'center',
-    width: Number(style.width || base.width),
-    height: Number(style.height || base.height),
-    fontFamily: String(style.fontFamily || 'inherit'),
-    color: String(style.color || '#ffffff'),
-    iconColor: String(style.iconColor || style.strokeColor || '#ffffff'),
-    borderRadius:
-      Number(style.borderRadius) > 0
-        ? Number(style.borderRadius)
-        : kind === 'startend'
-          ? 9999
-          : kind === 'decision'
-            ? 4
-            : kind === 'entity'
-              ? 8
-              : kind === 'actor'
-                ? 8
-                : kind === 'queue'
-                  ? 8
-                  : kind === 'io'
-                    ? 4
-                    : 10,
-  };
-}
-
-function FlowchartNode(props: NodeProps) {
-  const { setNodes } = useReactFlow();
-  const label = String(props.data?.label ?? '');
-  const kind = String(props.data?.kind ?? 'node');
-  const style = getNodeStyle(props.data, kind);
-  const isSelected = props.selected;
-
-  // Connection handles - always visible but subtle, larger for easier connection
-  const handleClass = "!w-4 !h-4 !rounded-full !border-2 !border-[#18181b] !bg-white/80 !opacity-60 hover:!opacity-100 !transition-all !shadow-md !cursor-crosshair";
-
-  if (kind === 'decision') {
-    return (
-      <div
-        className={cn("group/node relative flex items-center justify-center select-none", isSelected && "ring-2 ring-primary/60 ring-offset-2 ring-offset-transparent rounded-sm")}
-        style={{ width: style.width, height: style.height }}
-      >
-        <Handle id="top" type="target" position={Position.Top} className={handleClass} style={{ top: '10%' }} />
-        <Handle id="left" type="target" position={Position.Left} className={handleClass} />
-        <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full" aria-hidden style={{ filter: isSelected ? 'drop-shadow(0 0 12px rgba(var(--color-primary),0.4))' : 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}>
-          <polygon
-            points="50,6 94,50 50,94 6,50"
-            fill={style.fillColor}
-            stroke={style.strokeColor}
-            strokeWidth={style.strokeWidth + (isSelected ? 1 : 0)}
-          />
-        </svg>
-        <div
-          className="relative z-10 px-2 text-center leading-tight select-none"
-          style={{
-            fontSize: style.fontSize,
-            fontFamily: style.fontFamily === 'inherit' ? undefined : style.fontFamily,
-            fontWeight: style.fontWeight as any,
-            fontStyle: style.fontStyle,
-            textDecoration: style.textDecoration as any,
-            textAlign: style.textAlign,
-            color: style.color || 'var(--color-foreground)',
-            maxWidth: '90px',
-          }}
-        >
-          {label}
-        </div>
-        <Handle id="right" type="source" position={Position.Right} className={handleClass} />
-        <Handle id="bottom" type="source" position={Position.Bottom} className={handleClass} style={{ bottom: '10%' }} />
-      </div>
-    );
-  }
-
-  if (kind === 'startend') {
-    return (
-      <div
-        className="group/node relative select-none"
-        style={{
-          minWidth: style.width,
-          minHeight: style.height,
-          borderRadius: style.borderRadius,
-          border: `${style.strokeWidth + (isSelected ? 1 : 0)}px solid ${style.strokeColor}`,
-          background: style.fillColor,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '10px 20px',
-          boxShadow: isSelected
-            ? `0 0 0 3px color-mix(in oklab, var(--color-primary) 30%, transparent), 0 4px 16px rgba(0,0,0,0.25)`
-            : '0 2px 10px rgba(0,0,0,0.2)',
-        }}
-      >
-        <Handle id="left" type="target" position={Position.Left} className={handleClass} />
-        <div
-          className="text-center leading-snug select-none"
-          style={{
-            fontSize: style.fontSize,
-            fontFamily: style.fontFamily === 'inherit' ? undefined : style.fontFamily,
-            fontWeight: style.fontWeight as any,
-            fontStyle: style.fontStyle,
-            textDecoration: style.textDecoration as any,
-            textAlign: style.textAlign,
-            color: style.color || 'var(--color-foreground)',
-          }}
-        >
-          {label}
-        </div>
-        <Handle id="right" type="source" position={Position.Right} className={handleClass} />
-      </div>
-    );
-  }
-
-  if (kind === 'database') {
-    const w = style.width;
-    const h = style.height;
-    return (
-      <div className="group/node relative flex flex-col items-center justify-center select-none" style={{ width: w, height: h }}>
-        <Handle id="left" type="target" position={Position.Left} className={cn(handleClass, "!z-20")} />
-        <Handle id="right" type="source" position={Position.Right} className={cn(handleClass, "!z-20")} />
-        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="absolute inset-0 z-0" aria-hidden
-          style={{ filter: isSelected ? 'drop-shadow(0 0 10px rgba(var(--color-primary),0.4))' : 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
-        >
-          {/* Cylinder body */}
-          <path 
-            d={`M0,12 L0,${h-12} C0,${h+2} ${w},${h+2} ${w},${h-12} L${w},12 Z`} 
-            fill={style.fillColor} stroke={style.strokeColor} strokeWidth={style.strokeWidth} 
-          />
-          {/* Cylinder lid (top ellipse) */}
-          <ellipse cx={w/2} cy="12" rx={w/2} ry="12" fill={style.fillColor} stroke={style.strokeColor} strokeWidth={style.strokeWidth} />
-          {/* Decorative faint ring */}
-          <ellipse cx={w/2} cy="22" rx={w/2} ry="8" fill="transparent" stroke={style.strokeColor} strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
-        </svg>
-        <div
-          className="relative z-10 max-w-[85%] px-1 text-center font-semibold leading-tight select-none"
-          style={{
-            fontSize: Math.min(style.fontSize, 12),
-            fontFamily: style.fontFamily === 'inherit' ? undefined : style.fontFamily,
-            color: style.color || 'var(--color-foreground)',
-          }}
-        >
-          {label}
-        </div>
-      </div>
-    );
-  }
-
-  if (kind === 'entity') {
-    const lines = label.split('\n');
-    const header = lines[0] || 'Entity';
-    const fields = lines.slice(1);
-    
-    // Auto-expand height
-    const dynamicHeight = Math.max(style.height, 42 + fields.length * 26 + 8);
-    
-    return (
-      <div
-        className="group/node relative flex flex-col overflow-hidden select-none"
-        style={{
-          width: Math.max(style.width, 180),
-          minHeight: dynamicHeight,
-          borderRadius: style.borderRadius,
-          border: `${style.strokeWidth + (isSelected ? 1 : 0)}px solid ${style.strokeColor}`,
-          background: style.fillColor,
-          boxShadow: isSelected
-            ? `0 0 0 3px color-mix(in oklab, var(--color-primary) 25%, transparent), 0 8px 30px rgba(0,0,0,0.4)`
-            : '0 4px 14px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
-        }}
-      >
-        <Handle id="left" type="target" position={Position.Left} className={cn(handleClass, "!top-1/2 !z-20")} />
-        <Handle id="right" type="source" position={Position.Right} className={cn(handleClass, "!top-1/2 !z-20")} />
-        
-        {/* Entity Header */}
-        <div
-          className="shrink-0 border-b border-black/30 px-3 py-2 flex items-center justify-between"
-          style={{ background: style.strokeColor }}
-        >
-          <span className="text-[11px] font-black uppercase tracking-wider text-white shadow-sm">
-            {header}
-          </span>
-          <span className="text-[8px] tracking-widest font-bold text-white/50 bg-black/20 px-1.5 py-0.5 rounded flex items-center">
-            TABLE
-          </span>
-        </div>
-        
-        {/* Entity Fields */}
-        <div
-          className="flex flex-col flex-1 px-1.5 py-1.5 text-left select-none relative"
-          style={{
-            color: style.color || 'var(--color-foreground)',
-            fontFamily: style.fontFamily === 'inherit' ? 'var(--font-mono, monospace)' : style.fontFamily,
-          }}
-        >
-          {fields.map((f, i) => {
-            // Split field by colon or space to highlight types if user added them
-            const parts = f.split(':');
-            const colName = parts[0];
-            const colType = parts.slice(1).join(':');
-
-            return (
-              <div 
-                key={i} 
-                className="flex items-center group/field gap-2 px-1.5 py-1.5 font-medium text-[10.5px] leading-none border-b border-white/5 last:border-0 hover:bg-white/5 rounded-sm transition-colors"
-                title={f || ''}
-              >
-                <div className="w-1.5 h-1.5 rounded-sm rotate-45 shrink-0 bg-primary/40 group-hover/field:bg-primary transition-colors" />
-                <span className="truncate flex-1">{colName || '\u00A0'}</span>
-                {colType && (
-                  <span className="text-[9px] text-muted-foreground/60 tracking-tight shrink-0">{colType}</span>
-                )}
-              </div>
-            );
-          })}
-          {fields.length === 0 && (
-            <div className="text-[10px] italic text-muted-foreground/30 text-center py-4">
-              Add fields...
-            </div>
-          )}
-        </div>
-        
-        {/* Quick Add Column Button */}
-        {isSelected && (
-          <button
-            autoFocus={false}
-            className="absolute bottom-1 right-1 w-[22px] h-[22px] bg-primary/10 hover:bg-primary hover:text-primary-foreground text-primary rounded-md flex items-center justify-center opacity-0 group-hover/node:opacity-100 transition-all shadow-sm z-30"
-            title="Add field"
-            onPointerDown={(e) => {
-              e.stopPropagation(); // Preempt dragging
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              setNodes((nds) => nds.map((n) => {
-                if (n.id === props.id) {
-                  const newLines = [...lines, `col_${lines.length}: string`];
-                  return {
-                    ...n,
-                    data: { ...n.data, label: newLines.join('\n') }
-                  };
-                }
-                return n;
-              }));
-            }}
-          >
-            <Plus className="w-3 h-3" />
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  if (kind === 'actor') {
-    return (
-      <div
-        className="group/node relative select-none"
-        style={{
-          minWidth: style.width,
-          minHeight: style.height,
-          borderRadius: style.borderRadius,
-          border: `${style.strokeWidth}px dashed ${style.strokeColor}`,
-          background: style.fillColor,
-          padding: '8px 12px',
-          boxShadow: isSelected ? `0 0 0 2px color-mix(in oklab, var(--color-primary) 40%, transparent)` : '',
-        }}
-      >
-        <Handle id="left" type="target" position={Position.Left} className={handleClass} />
-        <div className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-1">Actor</div>
-        <div
-          className="text-center select-none"
-          style={{
-            fontSize: style.fontSize,
-            fontFamily: style.fontFamily === 'inherit' ? undefined : style.fontFamily,
-            color: style.color || 'var(--color-foreground)',
-          }}
-        >
-          {label}
-        </div>
-        <Handle id="right" type="source" position={Position.Right} className={handleClass} />
-      </div>
-    );
-  }
-
-  if (kind === 'queue') {
-    return (
-      <div
-        className="group/node relative overflow-hidden select-none"
-        style={{
-          minWidth: style.width,
-          minHeight: style.height,
-          borderRadius: style.borderRadius,
-          border: `${style.strokeWidth}px solid ${style.strokeColor}`,
-          background: style.fillColor,
-          padding: '8px 12px 8px 18px',
-          boxShadow: isSelected ? `0 0 0 2px color-mix(in oklab, var(--color-primary) 40%, transparent)` : '0 2px 8px rgba(0,0,0,0.2)',
-        }}
-      >
-        <Handle id="left" type="target" position={Position.Left} className={handleClass} />
-        <div
-          className="absolute inset-y-0 left-0 w-2.5 opacity-40"
-          style={{ background: `repeating-linear-gradient(-45deg, ${style.strokeColor}, ${style.strokeColor} 2px, transparent 2px, transparent 5px)` }}
-        />
-        <div
-          className="relative text-center select-none"
-          style={{
-            fontSize: style.fontSize,
-            fontFamily: style.fontFamily === 'inherit' ? undefined : style.fontFamily,
-            fontWeight: style.fontWeight as any,
-            color: style.color || 'var(--color-foreground)',
-          }}
-        >
-          {label}
-        </div>
-        <Handle id="right" type="source" position={Position.Right} className={handleClass} />
-      </div>
-    );
-  }
-
-  if (kind === 'io') {
-    return (
-      <div className="group/node relative select-none" style={{ width: style.width, height: style.height }}>
-        <Handle id="left" type="target" position={Position.Left} className={cn(handleClass, "!z-20")} />
-        <Handle id="right" type="source" position={Position.Right} className={cn(handleClass, "!z-20")} />
-        <div
-          className="absolute inset-0 flex items-center justify-center"
-          style={{
-            transform: 'skewX(-12deg)',
-            border: `${style.strokeWidth}px solid ${style.strokeColor}`,
-            background: style.fillColor,
-            borderRadius: style.borderRadius,
-            boxShadow: isSelected ? `0 0 0 2px color-mix(in oklab, var(--color-primary) 40%, transparent), 0 4px 12px rgba(0,0,0,0.25)` : '0 2px 8px rgba(0,0,0,0.2)',
-          }}
-        >
-          <div
-            className="max-w-[85%] px-2 text-center select-none"
-            style={{
-              transform: 'skewX(12deg)',
-              fontSize: style.fontSize,
-              fontFamily: style.fontFamily === 'inherit' ? undefined : style.fontFamily,
-              fontWeight: style.fontWeight as any,
-              color: style.color || 'var(--color-foreground)',
-            }}
-          >
-            {label}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // process / default — enhanced node with icon and better styling
-  const dataIcon = props.data?.icon as string | undefined;
-  // Try to find icon: first by kind, then by data icon, then by label match
-  let IconComponent = NODE_ICONS[kind] || (dataIcon && NODE_ICONS[dataIcon]) || null;
-  // If still no icon, try to match label to icon
-  if (!IconComponent && label) {
-    const labelKey = label.toLowerCase().replace(/[^a-z0-9]/g, '');
-    IconComponent = NODE_ICONS[labelKey] || null;
-  }
-  const hasIcon = !!IconComponent;
-  
-  // Get category color based on node kind
-  const getCategoryColor = (k: string) => {
-    if (['ui', 'button', 'input', 'card', 'modal', 'navbar', 'sidebar-nav', 'avatar', 'badge', 'toggle'].includes(k)) 
-      return 'rgba(59, 130, 246, 0.15)'; // Blue
-    if (['cloud', 'docker', 'kubernetes', 'aws', 'azure', 'gcp', 'github', 'git', 'ci-cd', 'terraform', 'monitoring', 'log'].includes(k)) 
-      return 'rgba(16, 185, 129, 0.15)'; // Green
-    if (['security', 'lock', 'shield', 'key', 'oauth', 'jwt', 'vault'].includes(k)) 
-      return 'rgba(239, 68, 68, 0.15)'; // Red
-    if (['mobile', 'smartphone', 'tablet', 'touch', 'notification-mobile', 'biometric'].includes(k)) 
-      return 'rgba(139, 92, 246, 0.15)'; // Purple
-    if (['analytics', 'chart-bar', 'chart-line', 'chart-pie', 'dashboard', 'metric'].includes(k)) 
-      return 'rgba(245, 158, 11, 0.15)'; // Amber
-    if (['communication', 'chat', 'email', 'video-call', 'sms'].includes(k)) 
-      return 'rgba(14, 165, 233, 0.15)'; // Sky
-    if (['media', 'image', 'video', 'audio', 'camera'].includes(k)) 
-      return 'rgba(236, 72, 153, 0.15)'; // Pink
-    if (['location', 'map', 'gps', 'directions'].includes(k)) 
-      return 'rgba(34, 197, 94, 0.15)'; // Green
-    return 'rgba(201, 147, 103, 0.1)'; // Default tan/brown tint
-  };
-
-  const categoryBg = getCategoryColor(kind);
-  
-  return (
-    <div
-      className="group/node relative select-none"
-      style={{
-        minWidth: hasIcon ? Math.max(style.width, 160) : style.width,
-        minHeight: hasIcon ? Math.max(style.height, 80) : style.height,
-        borderRadius: style.borderRadius,
-        border: `${style.strokeWidth + (isSelected ? 1 : 0)}px solid ${style.strokeColor}`,
-        background: `linear-gradient(135deg, ${style.fillColor} 0%, ${style.fillColor} 70%, ${categoryBg} 100%)`,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: hasIcon ? '12px 16px' : '10px 16px',
-        gap: hasIcon ? '6px' : '0',
-        boxShadow: isSelected
-          ? `0 0 0 3px color-mix(in oklab, var(--color-primary) 28%, transparent), 0 8px 24px rgba(0,0,0,0.35)`
-          : '0 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)',
-        transition: 'all 0.2s ease',
-      }}
-    >
-      <Handle id="top" type="target" position={Position.Top} className={handleClass} />
-      <Handle id="left" type="target" position={Position.Left} className={handleClass} />
-      
-      {/* Icon - larger like palette */}
-      {IconComponent && (
-        <div 
-          className="flex items-center justify-center mb-1"
-          style={{ 
-            color: style.iconColor || style.strokeColor,
-            opacity: 0.95,
-          }}
-        >
-          <IconComponent 
-            className="w-8 h-8" 
-            style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.3))' }}
-          />
-        </div>
-      )}
-      
-      {/* Label */}
-      <div
-        className="text-center leading-snug select-none"
-        style={{
-          fontSize: style.fontSize,
-          fontFamily: style.fontFamily === 'inherit' ? undefined : style.fontFamily,
-          fontWeight: style.fontWeight as any,
-          fontStyle: style.fontStyle,
-          textDecoration: style.textDecoration as any,
-          textAlign: style.textAlign,
-          color: style.color || 'var(--color-foreground)',
-        }}
-      >
-        {label}
-      </div>
-      
-      {/* Kind badge */}
-      {hasIcon && (
-        <div 
-          className="text-[8px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded"
-          style={{ 
-            background: 'rgba(0,0,0,0.2)',
-            color: style.iconColor || style.strokeColor,
-            opacity: 0.7,
-          }}
-        >
-          {kind}
-        </div>
-      )}
-      
-      <Handle id="right" type="source" position={Position.Right} className={handleClass} />
-      <Handle id="bottom" type="source" position={Position.Bottom} className={handleClass} />
-    </div>
-  );
-}
+import { FlowchartNode, getNodeStyle } from '../nodes/FlowchartNode';
 
 // nodeTypes MUST be defined outside the component to avoid ReactFlow remounting nodes on every render
 const nodeTypes = { diagramNode: FlowchartNode, resizableShape: ResizableShapeNode, image: ImageNode };
@@ -724,7 +137,7 @@ function QuickAddHandles({
   const tx = node.position.x * zoom + viewport.x;
   const ty = node.position.y * zoom + viewport.y;
 
-  const btnClass = "absolute flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white shadow-lg hover:scale-125 hover:bg-primary-foreground hover:text-primary transition-all cursor-pointer z-[60]";
+  const btnClass = "absolute flex items-center justify-center w-5 h-5 rounded-full bg-white text-zinc-950 border border-zinc-200 shadow-lg hover:scale-125 hover:bg-zinc-900 hover:text-white transition-all cursor-pointer z-[60]";
 
   return (
     <div
@@ -771,6 +184,7 @@ function DiagramCanvasInner({
   onEdgesChange,
   onGraphChange,
   onUserGraphChange,
+  onDragCommit,
   onCanvasUserGesture,
   paperColor = '#09090b',
   showGrid = true,
@@ -778,6 +192,10 @@ function DiagramCanvasInner({
   onSelectionChange,
   onRegisterPngExporter,
   onRegisterStylePatcher,
+  currentView = 'all',
+  onViewChange,
+  cursors = [],
+  onMouseMoveCanvas,
 }: DiagramCanvasProps) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -795,6 +213,16 @@ function DiagramCanvasInner({
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const isParsingRef = useRef(false);
+  const lastEmitRef = useRef(0);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!onMouseMoveCanvas || !reactFlowInstance) return;
+    const now = Date.now();
+    if (now - lastEmitRef.current > 50) {
+      lastEmitRef.current = now;
+      const pos = reactFlowInstance.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      onMouseMoveCanvas(pos);
+    }
+  };
   const isInternalChangeRef = useRef(false);
   const suppressHistoryRef = useRef(false);
 
@@ -854,6 +282,12 @@ function DiagramCanvasInner({
       setIsExportingSnapshot(true);
       setSelectedNodeId(null);
       setInteractionMode('pan');
+
+      // Temporarily clear react-flow selection to hide resize and selection handles in export
+      const originalNodes = reactFlowInstance.getNodes();
+      const originalEdges = reactFlowInstance.getEdges();
+      reactFlowInstance.setNodes(originalNodes.map(n => ({ ...n, selected: false })));
+      reactFlowInstance.setEdges(originalEdges.map(e => ({ ...e, selected: false })));
 
       // Get the flow container and viewport elements
       const flowContainer = root.querySelector('.react-flow') as HTMLElement | null;
@@ -958,6 +392,8 @@ function DiagramCanvasInner({
       });
 
       // Restore previous state
+      reactFlowInstance.setNodes(originalNodes);
+      reactFlowInstance.setEdges(originalEdges);
       setSelectedNodeId(previousSelectedNodeId);
       setInteractionMode(previousMode);
       setIsExportingSnapshot(false);
@@ -1270,15 +706,26 @@ function DiagramCanvasInner({
   const handleNodeLabelChangeRef = useRef(handleNodeLabelChange);
   useEffect(() => { handleNodeLabelChangeRef.current = handleNodeLabelChange; }, [handleNodeLabelChange]);
 
-  // Inject fresh callbacks into resizable shape nodes on every render.
-  // This is the ONLY place callbacks live — never stored permanently in node data.
+  // Inject fresh callbacks and apply view-based visibility on every render.
   const nodesForReactFlow = useMemo(() =>
     nodes.map((n) => {
-      if (n.type !== 'resizableShape') return n;
-      return {
+      const nodeViews: string[] = n.data?.views || [];
+      const isHidden =
+        currentView !== 'all' &&
+        nodeViews.length > 0 &&
+        !nodeViews.includes(currentView);
+
+      const baseNode = {
         ...n,
+        hidden: isHidden,
+      };
+
+      if (baseNode.type !== 'resizableShape') return baseNode;
+
+      return {
+        ...baseNode,
         data: {
-          ...n.data,
+          ...baseNode.data,
           onDimensionsChange: (id: string, w: number, h: number) =>
             handleNodeDimensionsChangeRef.current(id, w, h),
           onLabelChange: (id: string, label: string) =>
@@ -1286,8 +733,28 @@ function DiagramCanvasInner({
         },
       };
     }),
-    [nodes]
+    [nodes, currentView]
   );
+
+  const edgesForReactFlow = useMemo(() => {
+    // Hide edges if the source or target node is hidden
+    const hiddenNodeIds = new Set(
+      nodes
+        .filter((n) => {
+          const nodeViews: string[] = n.data?.views || [];
+          return currentView !== 'all' && nodeViews.length > 0 && !nodeViews.includes(currentView);
+        })
+        .map((n) => n.id)
+    );
+
+    return edges.map((e) => {
+      const isHidden = hiddenNodeIds.has(e.source) || hiddenNodeIds.has(e.target);
+      return {
+        ...e,
+        hidden: isHidden,
+      };
+    });
+  }, [edges, nodes, currentView]);
 
   const relayNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -1550,8 +1017,11 @@ function DiagramCanvasInner({
     });
 
     const sortedLevels = Array.from(levels.keys()).sort((a, b) => a - b);
-    const cellX = 280;
-    const cellY = 180;
+    const maxLevel = Math.max(...sortedLevels, 0);
+    const isLinearPipeline = maxLevel >= 3 && sortedLevels.every((l) => (levels.get(l)?.length ?? 0) <= 2);
+
+    const cellX = isLinearPipeline ? 260 : 260;
+    const cellY = isLinearPipeline ? 120 : 160;
 
     const nextNodes = nodes.map((n) => ({ ...n, position: { ...n.position } }));
     sortedLevels.forEach((levelIndex, i) => {
@@ -1564,14 +1034,18 @@ function DiagramCanvasInner({
         .forEach((node, idx) => {
           const target = nextNodes.find((x) => x.id === node.id);
           if (!target) return;
-          target.position = { x: i * cellX + 80, y: idx * cellY + 60 };
+          if (isLinearPipeline) {
+            target.position = { x: idx * cellX + 120, y: i * cellY + 60 };
+          } else {
+            target.position = { x: i * cellX + 80, y: idx * cellY + 60 };
+          }
         });
     });
 
     suppressHistoryRef.current = false;
     setNodes(nextNodes);
     setTimeout(() => {
-      reactFlowInstance?.fitView({ padding: 0.2, duration: 800 });
+      reactFlowInstance?.fitView({ padding: 0.15, minZoom: 0.7, maxZoom: 1.2, duration: 800 });
     }, 100);
   }, [edges, nodes, reactFlowInstance, setNodes, onCanvasUserGesture]);
 
@@ -1584,34 +1058,27 @@ function DiagramCanvasInner({
   const handleDrop = useCallback(
     (event: DragEvent) => {
       event.preventDefault();
-      console.log('[Canvas] Drop event received');
       
       const raw = event.dataTransfer.getData('application/x-diagram-snippet');
-      console.log('[Canvas] Drop data:', raw);
       
       if (!raw) {
-        console.warn('[Canvas] No drop data received');
         return;
       }
       if (!reactFlowInstance) {
-        console.warn('[Canvas] ReactFlow instance not ready');
         return;
       }
 
       try {
         onCanvasUserGesture?.();
         const payload = JSON.parse(raw) as { kind?: string; label?: string; snippet?: string; color?: string; icon?: string; id?: string; shape?: string; width?: number; height?: number; fillColor?: string; strokeColor?: string };
-        console.log('[Canvas] Parsed payload:', payload);
         
         const pos = reactFlowInstance.screenToFlowPosition({
           x: event.clientX,
           y: event.clientY,
         });
-        console.log('[Canvas] Drop position:', pos);
 
         // Use the snippet system to handle complex items (like mini flows)
         const subgraph = parseSyntaxToGraph(payload.snippet || '');
-        console.log('[Canvas] Parsed subgraph:', subgraph);
         
         if (subgraph.nodes.length > 0) {
           // Offset the subgraph to drop position
@@ -1640,7 +1107,6 @@ function DiagramCanvasInner({
           setEdges((eds: Edge[]) => [...eds, ...newEdges]);
         } else {
           // Individual node fallback
-          console.log('[Canvas] Using individual node fallback, kind:', payload.kind);
           const k = payload.kind;
           const kind =
             k === 'decision' ||
@@ -1678,11 +1144,11 @@ function DiagramCanvasInner({
                 label,
                 shape,
                 style: {
-                  fillColor: payload.fillColor || '#ffffff',
-                  strokeColor: payload.strokeColor || '#000000',
+                  fillColor: payload.fillColor || '#18181b',
+                  strokeColor: payload.strokeColor || '#3f3f46',
                   strokeWidth: 2,
                   fontSize: 14,
-                  color: '#000000',
+                  color: '#ffffff',
                 },
               },
             };
@@ -1919,18 +1385,44 @@ function DiagramCanvasInner({
             <Maximize2 className="w-3 h-3" />
             Auto Layout
           </button>
+
+          {onViewChange && (
+            <div className="flex items-center gap-1.5 ml-1 border-l border-border/40 pl-3">
+              <span className="text-[10px] font-bold text-muted-foreground/60 uppercase">Active View:</span>
+              <select
+                value={currentView}
+                onChange={(e) => onViewChange(e.target.value)}
+                className="h-7 rounded-lg border border-border/60 bg-background/50 px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground outline-none focus:border-primary/50 transition-all cursor-pointer"
+              >
+                <option value="all">Logical View (All)</option>
+                <option value="infrastructure">Infrastructure View</option>
+                <option value="data">Data View</option>
+                <option value="security">Security View</option>
+              </select>
+            </div>
+          )}
         </span>
       </div>
 
-      <div className="flex-1 relative w-full h-full overflow-hidden group/canvas">
+      <div
+        onMouseMove={handleMouseMove}
+        className="flex-1 relative w-full h-full overflow-hidden group/canvas"
+      >
+        <CollaborativeCursors cursors={cursors} />
         <ReactFlow
           style={{ width: '100%', height: '100%' }}
           nodes={nodesForReactFlow}
-          edges={edges}
+          edges={edgesForReactFlow}
           onNodesChange={relayNodesChange}
           onEdgesChange={relayEdgesChange}
           onConnect={onConnect}
           onNodeDragStart={() => onCanvasUserGesture?.()}
+          onNodeDragStop={() => {
+            if (onDragCommit) onDragCommit({ nodes, edges });
+          }}
+          onSelectionDragStop={() => {
+            if (onDragCommit) onDragCommit({ nodes, edges });
+          }}
           onInit={setReactFlowInstance}
           nodeTypes={nodeTypes}
           onSelectionChange={handleSelectionChange}
@@ -2022,15 +1514,15 @@ function DiagramCanvasInner({
           {/* Floating Controls Overlay */}
           {!isExportingSnapshot && <div ref={floatingBarRef} className="export-ignore absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Tool Picker */}
-            <div className="flex items-center gap-1 p-1.5 rounded-2xl bg-card/60 border border-border/40 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+            <div className="flex items-center gap-1 p-1.5 rounded-2xl bg-[#0d0d10]/90 border border-white/[0.08] backdrop-blur-2xl shadow-xl">
               <button
                 type="button"
                 onClick={() => setInteractionMode('select')}
                 className={cn(
-                  "p-2.5 rounded-xl transition-all duration-300",
+                  "p-2.5 rounded-xl transition-all duration-200",
                   interactionMode === 'select'
-                    ? "bg-primary text-white shadow-[0_0_15px_rgba(var(--color-primary),0.4)] scale-110"
-                    : "text-muted-foreground/60 hover:text-primary hover:bg-primary/10"
+                    ? "bg-white/[0.14] text-white border border-white/[0.18] shadow-sm"
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.06]"
                 )}
                 title="Select Tool (V)"
               >
@@ -2039,10 +1531,10 @@ function DiagramCanvasInner({
               <button
                 onClick={() => setInteractionMode('pan')}
                 className={cn(
-                  "p-2.5 rounded-xl transition-all duration-300",
+                  "p-2.5 rounded-xl transition-all duration-200",
                   interactionMode === 'pan'
-                    ? "bg-primary text-white shadow-[0_0_15px_rgba(var(--color-primary),0.4)] scale-110"
-                    : "text-muted-foreground/60 hover:text-primary hover:bg-primary/10"
+                    ? "bg-white/[0.14] text-white border border-white/[0.18] shadow-sm"
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.06]"
                 )}
                 title="Pan Tool (H)"
               >
@@ -2051,26 +1543,26 @@ function DiagramCanvasInner({
             </div>
 
             {/* Zoom & View Controls */}
-            <div className="flex items-center gap-1 p-1.5 rounded-2xl bg-card/60 border border-border/40 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+            <div className="flex items-center gap-1 p-1.5 rounded-2xl bg-[#0d0d10]/90 border border-white/[0.08] backdrop-blur-2xl shadow-xl">
               <button
                 onClick={() => reactFlowInstance?.zoomOut()}
-                className="p-2 rounded-xl text-muted-foreground/60 hover:text-primary hover:bg-primary/10 transition-all"
+                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all"
               >
                 <ZoomOut className="w-4 h-4" />
               </button>
-              <div className="px-3 text-[11px] font-black tabular-nums text-foreground/80 min-w-[3.5rem] text-center tracking-tighter">
+              <div className="px-3 text-[11px] font-semibold tabular-nums text-white min-w-[3.5rem] text-center tracking-tighter">
                 {Math.round(viewport.zoom * 100)}%
               </div>
               <button
                 onClick={() => reactFlowInstance?.zoomIn()}
-                className="p-2 rounded-xl text-muted-foreground/60 hover:text-primary hover:bg-primary/10 transition-all"
+                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all"
               >
                 <ZoomIn className="w-4 h-4" />
               </button>
-              <div className="w-px h-5 bg-border/40 mx-1" />
+              <div className="w-px h-5 bg-white/[0.08] mx-1" />
               <button
                 onClick={() => reactFlowInstance?.fitView({ duration: 800 })}
-                className="p-2 rounded-xl text-muted-foreground/60 hover:text-primary hover:bg-primary/10 transition-all"
+                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all"
                 title="Fit View"
               >
                 <Maximize2 className="w-4 h-4" />
@@ -2081,19 +1573,19 @@ function DiagramCanvasInner({
           {!isExportingSnapshot && <MiniMap
             className="export-ignore"
             style={{
-              backgroundColor: 'var(--color-card)',
-              borderRadius: '1.25rem',
-              border: '1px solid var(--color-border)',
+              backgroundColor: '#0d0d10',
+              borderRadius: '1rem',
+              border: '1px solid rgba(255,255,255,0.08)',
               overflow: 'hidden',
               bottom: 24,
               right: 24,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-              width: 140,
-              height: 100
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              width: 130,
+              height: 90
             }}
-            maskColor="rgba(0,0,0,0.3)"
-            nodeColor={(n: Node) => (n.data as any)?.style?.fillColor || 'var(--color-primary)'}
-            nodeStrokeWidth={3}
+            maskColor="rgba(0,0,0,0.6)"
+            nodeColor={(n: Node) => (n.data as any)?.style?.fillColor || '#3f3f46'}
+            nodeStrokeWidth={2}
             zoomable
             pannable
           />}
@@ -2189,13 +1681,13 @@ function DiagramCanvasInner({
  * don't need to manage the provider themselves. This fixes the
  * "[React Flow]: Seems like you have not used zustand provider" error.
  */
-export function DiagramCanvas(props: DiagramCanvasProps) {
+export const DiagramCanvas = memo(function DiagramCanvas(props: DiagramCanvasProps) {
   return (
     <ReactFlowProvider>
       <DiagramCanvasInner {...props} />
     </ReactFlowProvider>
   );
-}
+});
 
 
 function slugifyId(input: string) {

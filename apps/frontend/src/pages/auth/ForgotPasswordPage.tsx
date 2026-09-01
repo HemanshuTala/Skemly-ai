@@ -6,16 +6,16 @@ import toast from 'react-hot-toast'
 import SkemlyLogo from '../../assets/Skemly.png'
 
 const T = {
-  bg: '#080808',
-  surface: '#111111',
-  surfaceHi: '#161616',
-  border: '#1f1f1f',
-  text: '#f2f0eb',
-  textSub: '#8a8680',
-  textMuted: '#3d3d3b',
-  accent: '#c9b89a',
-  font: "'DM Sans', -apple-system, sans-serif",
-  fontSerif: "'Cormorant Garamond', Georgia, serif",
+  bg: '#09090b',
+  surface: '#0e0e11',
+  surfaceHi: '#18181b',
+  border: 'rgba(255,255,255,0.06)',
+  text: '#ffffff',
+  textSub: '#a1a1aa',
+  textMuted: '#71717a',
+  accent: '#ffffff',
+  font: '"Inter", -apple-system, sans-serif',
+  fontSerif: '"Outfit", "Inter", sans-serif',
 }
 
 const SP_SOFT = { type: 'spring', stiffness: 100, damping: 20 }
@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <motion.div whileHover={{ scale: 1.02 }} style={{ display: 'inline-flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => window.location.href = '/'}>
             <img src={SkemlyLogo} alt="Skemly" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
-            <span style={{ fontSize: 22, fontWeight: 700, color: T.text }}>Skemly</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: T.text }}>Schemely</span>
           </motion.div>
         </div>
 

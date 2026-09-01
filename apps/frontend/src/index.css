@@ -3,36 +3,42 @@
 @plugin "tailwindcss-animate";
 @custom-variant dark (&:where(.dark, .dark *));
 
+
+
+
 /*
  * ═══════════════════════════════════════════════════════════════════════════════
- *  ZINC + WHITE — PROFESSIONAL DARK THEME (DiagramMaker)
+ *  SCHEMELY AI — PROFESSIONAL ZINC DARK THEME
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- *  Core Palette:
- *  ─────────────
- *  canvasBg:    #09090b   (near-black canvas)
- *  appBg:       #18181b   (main app shell)
- *  surfaceBg:   #27272a   (cards, nodes, inputs)
- *  raisedBg:    #3f3f46   (elevated elements)
- *  accent:      #ffffff   (pure white brand accent)
- *  accentFg:    #18181b   (text on white accent)
+ *  Background Layers:
+ *  ──────────────────
+ *  canvas:      #09090b   (near-black canvas background)
+ *  shell:       #0a0a0d   (sidebar, topbar, shell)
+ *  panel:       #0d0d10   (cards, modals, panels)
+ *  surface:     #0e0e11   (elevated panels)
+ *  raised:      #18181b   (hover states, selected)
+ *  node:        #27272a   (node fills)
  *
- *  Text Scale:
- *  ───────────
- *  textPrimary:     #ffffff   (headings, node titles)
- *  textSecondary:   #a1a1aa   (body text, sidebar items)
- *  textMuted:       #71717a   (subtitles, placeholders)
- *  textDisabled:    #52525b   (disabled states)
+ *  Text Hierarchy:
+ *  ───────────────
+ *  primary:     #ffffff
+ *  secondary:   #a1a1aa
+ *  muted:       #71717a
+ *  disabled:    #52525b
  *
  *  Borders:
  *  ────────
- *  borderDefault:   #27272a   (panel dividers)
- *  borderSubtle:    #3f3f46   (node borders, input outlines)
- *  borderStrong:    #52525b   (emphasis, hover border)
+ *  subtle:      rgba(255,255,255,0.05)   (shell dividers)
+ *  default:     rgba(255,255,255,0.08)   (card borders)
+ *  emphasized:  rgba(255,255,255,0.15)   (hover/focus borders)
+ *
+ *  Accent:
+ *  ───────
+ *  violet:  #7c3aed   indigo: #6366f1   gradient: from-violet-600 to-indigo-600
  *
  *  Semantic:
  *  ─────────
- *  success:   #4ade80   successBg: #14532d
  *  warning:   #fbbf24   warningBg: #78350f
  *  danger:    #f87171   dangerBg:  #7f1d1d
  *  info:      #60a5fa   infoBg:    #1e3a5f
@@ -48,10 +54,12 @@
 
   /* ── Core Backgrounds ─────────────────────────────────────────────────────── */
   --color-canvas:            #09090b;   /* near-black canvas */
-  --color-background:        #18181b;   /* main app shell */
-  --color-surface:           #27272a;   /* cards, nodes, inputs */
-  --color-raised:            #3f3f46;   /* elevated elements, selected bg */
-  --color-elevated:          #52525b;   /* highest elevation */
+  --color-background:        #09090b;   /* main app shell — matches canvas */
+  --color-shell:             #0a0a0d;   /* sidebar / topbar */
+  --color-panel:             #0d0d10;   /* cards, modals, panels */
+  --color-surface:           #0d0d10;   /* cards, nodes, inputs */
+  --color-raised:            #18181b;   /* elevated elements, hover states */
+  --color-elevated:          #27272a;   /* highest elevation, selected bg */
 
   /* ── Text Colors ────────────────────────────────────────────────────────── */
   --color-foreground:        #ffffff;   /* primary text */
@@ -69,11 +77,17 @@
   --color-input:             var(--color-surface);
   --color-ring:              var(--color-elevated);
 
-  /* ── Accent / Primary (White) ───────────────────────────────────────────── */
-  --color-primary:           #ffffff;
-  --color-primary-foreground:#18181b;
-  --color-accent:            var(--color-raised);
-  --color-accent-foreground: var(--color-foreground);
+  /* ── Accent / Primary ─────────────────────────────────────────────────────── */
+  --color-primary:               #7c3aed;
+  --color-primary-foreground:    #ffffff;
+  --color-accent:                var(--color-raised);
+  --color-accent-foreground:     var(--color-foreground);
+
+  /* ── Violet / Indigo Brand Accent ───────────────────────────────────────── */
+  --color-violet:                #7c3aed;
+  --color-violet-foreground:     #ffffff;
+  --color-indigo:                #6366f1;
+  --color-indigo-foreground:     #ffffff;
 
   /* ── Semantic Colors ───────────────────────────────────────────────────── */
   --color-destructive:       #f87171;
@@ -141,16 +155,16 @@
   --edge-selected-stroke:    #ffffff;
 
   /* Topbar */
-  --topbar-bg:               #18181b;
-  --topbar-border:           #27272a;
+  --topbar-bg:               #0a0a0d;
+  --topbar-border:           rgba(255,255,255,0.05);
   --topbar-height:           44px;
   --topbar-icon:             #a1a1aa;
   --topbar-icon-hover:       #ffffff;
 
   /* Sidebar */
-  --sidebar-bg:              #18181b;
-  --sidebar-border:          #27272a;
-  --sidebar-width:             200px;
+  --sidebar-bg:              #0a0a0d;
+  --sidebar-border:          rgba(255,255,255,0.05);
+  --sidebar-width:           200px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -387,7 +401,7 @@ body {
 
 @keyframes shimmer {
   0%   { transform: translateX(-100%); }
-  100% { transform: translateX(200%); }
+  100% { transform: translateX(220%); }
 }
 
 @keyframes shimmer-slide {

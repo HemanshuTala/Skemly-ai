@@ -33,13 +33,13 @@ import { Server } from 'socket.io';
 
 
 import { connectDB } from './config/database';
-
 import { connectRedis } from './config/redis';
+import { seedTemplates } from './config/seed-templates';
 
 import { errorHandler } from './middleware/errorHandler';
-
 import { rateLimiter } from './middleware/rateLimiter';
-
+import { requestIdMiddleware } from './middleware/requestId.middleware';
+import { idempotencyMiddleware } from './middleware/idempotency.middleware';
 import logger from './utils/logger';
 
 
@@ -112,6 +112,8 @@ initSocketHandlers(io);
 
 app.use(helmet());
 
+app.use(requestIdMiddleware);
+
 app.use(cookieParser());
 
 
@@ -155,6 +157,7 @@ app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) }
 app.use(passport.initialize());
 
 app.use(rateLimiter);
+app.use(idempotencyMiddleware);
 
 
 
@@ -215,7 +218,7 @@ async function bootstrap() {
   try {
 
     await connectDB();
-
+    await seedTemplates();
     await connectRedis();
 
     httpServer.listen(PORT, () => {

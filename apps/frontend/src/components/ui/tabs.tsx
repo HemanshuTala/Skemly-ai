@@ -1,4 +1,5 @@
-﻿import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
 
 interface TabsContextValue {
@@ -51,8 +52,10 @@ export interface TabsListProps {
 export function TabsList({ children, className }: TabsListProps) {
   return (
     <div
+      role="tablist"
       className={cn(
-        'inline-flex items-center gap-1 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg',
+        'inline-flex items-center gap-0.5 p-1 rounded-lg',
+        'bg-white/[0.03] border border-white/[0.06]',
         className
       )}
     >
@@ -65,24 +68,37 @@ export interface TabsTriggerProps {
   value: string;
   children: ReactNode;
   className?: string;
+  disabled?: boolean;
 }
 
-export function TabsTrigger({ value, children, className }: TabsTriggerProps) {
+export function TabsTrigger({ value, children, className, disabled }: TabsTriggerProps) {
   const { activeTab, setActiveTab } = useTabsContext();
   const isActive = activeTab === value;
 
   return (
     <button
-      onClick={() => setActiveTab(value)}
+      role="tab"
+      aria-selected={isActive}
+      disabled={disabled}
+      onClick={() => !disabled && setActiveTab(value)}
       className={cn(
-        'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+        'relative px-3 py-1.5 text-[13px] font-medium rounded-md transition-all duration-200',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30',
+        'disabled:opacity-40 disabled:cursor-not-allowed',
         isActive
-          ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-sm'
-          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100',
+          ? 'bg-white/[0.08] text-white shadow-sm'
+          : 'text-[#71717a] hover:text-[#a1a1aa] hover:bg-white/[0.04]',
         className
       )}
     >
       {children}
+      {isActive && (
+        <motion.div
+          layoutId="tab-indicator"
+          className="absolute inset-0 bg-white/[0.08] rounded-md -z-10"
+          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+        />
+      )}
     </button>
   );
 }
@@ -98,5 +114,14 @@ export function TabsContent({ value, children, className }: TabsContentProps) {
 
   if (activeTab !== value) return null;
 
-  return <div className={className}>{children}</div>;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
 }

@@ -1,5 +1,3 @@
-﻿import { Button } from '../ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '../ui/tooltip';
 import {
   Download,
@@ -13,16 +11,34 @@ import {
   Pencil,
   X,
   ChevronRight,
-  Wifi,
-  WifiOff,
   Loader2,
-  Zap,
+  ShieldAlert,
+  Scale,
+  ClipboardList,
+  ChevronDown,
+  Layers,
+  Check,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import gsap from 'gsap';
-import skemlyLogo from '@/assets/Skemly.png'
+import skemlyLogo from '@/assets/Skemly.png';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '../ui/dropdown-menu';
+
+function getUsernameColor(username: string): string {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash % 360);
+  return `hsl(${h}, 80%, 65%)`;
+}
+
 export interface ToolbarProps {
   title: string;
   onTitleChange: (title: string) => void;
@@ -35,6 +51,11 @@ export interface ToolbarProps {
   onVersions: () => void;
   onShortcuts?: () => void;
   onSave?: () => void;
+  onReview?: () => void;
+  onTradeoffs?: () => void;
+  onRequirements?: () => void;
+  onInterview?: () => void;
+  participants?: { socketId: string; username: string }[];
 }
 
 export function Toolbar({
@@ -48,14 +69,16 @@ export function Toolbar({
   onComments,
   onVersions,
   onShortcuts,
-  onSave,
+  onReview,
+  onTradeoffs,
+  onRequirements,
+  onInterview,
+  participants = [],
 }: ToolbarProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
   const [justSaved, setJustSaved] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
-  const saveRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setEditedTitle(title);
@@ -76,33 +99,6 @@ export function Toolbar({
     }
   }, [isEditingTitle]);
 
-  // GSAP entrance
-  useLayoutEffect(() => {
-    if (!toolbarRef.current) return;
-    const ctx = gsap.context(() => {
-      gsap.fromTo(toolbarRef.current!,
-        { y: -56, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.55, ease: 'power3.out' }
-      );
-      gsap.fromTo('.toolbar-action',
-        { opacity: 0, scale: 0.85 },
-        { opacity: 1, scale: 1, stagger: 0.04, duration: 0.35, ease: 'back.out(1.7)', delay: 0.2 }
-      );
-    }, toolbarRef.current);
-    return () => ctx.revert();
-  }, []);
-
-  // Animate save badge
-  useEffect(() => {
-    if (!saveRef.current) return;
-    if (justSaved) {
-      gsap.fromTo(saveRef.current,
-        { scale: 0.7, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.35, ease: 'back.out(2)' }
-      );
-    }
-  }, [justSaved]);
-
   const handleTitleSave = () => {
     if (editedTitle.trim()) {
       onTitleChange(editedTitle.trim());
@@ -121,45 +117,43 @@ export function Toolbar({
   };
 
   return (
-    <div
-      ref={toolbarRef}
-      className="shrink-0 border-b border-[#27272a] bg-[#18181b]/95 backdrop-blur-2xl"
-      style={{ boxShadow: '0 1px 0 rgba(255,255,255,0.02), 0 4px 24px rgba(0,0,0,0.2)' }}
-    >
+    <div className="shrink-0 border-b border-white/[0.05] bg-[#0a0a0d]/80 backdrop-blur-xl z-20">
       <div className="h-[52px] flex items-center justify-between px-4 gap-2">
 
-        {/* ── LEFT ───────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 min-w-0">
-          {/* Back */}
+        {/* ── LEFT ── */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Back to dashboard */}
           <TooltipProvider delayDuration={500}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link to="/dashboard" className="toolbar-action">
+                <Link to="/dashboard">
                   <button
                     type="button"
-                    className="flex items-center justify-center h-8 w-8 rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a] transition-all active:scale-95 shrink-0"
+                    className="flex items-center justify-center h-8 w-8 rounded-lg text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-all active:scale-95 shrink-0"
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </button>
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs bg-[#27272a] border-[#3f3f46] text-white">Back to Dashboard</TooltipContent>
+              <TooltipContent side="bottom" className="text-xs bg-white text-black font-semibold">
+                Back to Dashboard
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
-          <ChevronRight className="w-3.5 h-3.5 text-[#3f3f46] shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-white/[0.08] shrink-0" />
 
           {/* Logo mark */}
-          <div className="w-7 h-7 flex items-center justify-center shrink-0">
+          <div className="w-6 h-6 flex items-center justify-center shrink-0">
             <img src={skemlyLogo} alt="Skemly" className="w-full h-full object-contain" />
           </div>
 
-          <ChevronRight className="w-3.5 h-3.5 text-[#3f3f46] shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-white/[0.08] shrink-0" />
 
-          {/* Title */}
-          <div className="flex items-center gap-1.5 min-w-0 group/title toolbar-action">
+          {/* Edit title inline */}
+          <div className="flex items-center gap-1.5 min-w-0">
             {isEditingTitle ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <input
                   ref={inputRef}
                   type="text"
@@ -167,19 +161,19 @@ export function Toolbar({
                   onChange={(e) => setEditedTitle(e.target.value)}
                   onBlur={handleTitleSave}
                   onKeyDown={handleTitleKeyDown}
-                  className="px-3 py-1.5 text-sm font-bold bg-[#27272a] border border-[#3f3f46] rounded-lg focus:outline-none focus:border-white focus:ring-1 focus:ring-white/20 w-[220px] transition-all text-white"
+                  className="px-2.5 py-1 text-xs font-bold bg-[#0d0d10] border border-white/[0.15] rounded-lg focus:outline-none focus:ring-1 focus:ring-white/20 w-[180px] transition-all text-white"
                 />
                 <button
                   type="button"
                   onClick={handleTitleSave}
-                  className="p-1.5 rounded-lg text-white hover:bg-[#3f3f46] transition-colors"
+                  className="p-1 rounded-lg text-white hover:bg-white/[0.06] transition-colors"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => { setEditedTitle(title); setIsEditingTitle(false); }}
-                  className="p-1.5 rounded-lg text-[#71717a] hover:bg-[#27272a] transition-colors"
+                  className="p-1 rounded-lg text-[#52525b] hover:bg-white/[0.06] transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -188,31 +182,31 @@ export function Toolbar({
               <button
                 type="button"
                 onClick={() => setIsEditingTitle(true)}
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg max-w-[200px] hover:bg-[#27272a] transition-all cursor-text group/btn"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-lg max-w-[200px] hover:bg-white/[0.04] transition-all cursor-text group/btn"
                 title="Click to rename"
               >
-                <h1 className="font-bold text-sm tracking-tight truncate text-white/90">
+                <h1 className="font-bold text-[13px] tracking-tight truncate text-white/90">
                   {title || 'Untitled Diagram'}
                 </h1>
-                <Pencil className="w-3 h-3 text-[#71717a]/0 group-hover/btn:text-[#71717a] transition-all shrink-0" />
+                <Pencil className="w-3 h-3 text-[#52525b] opacity-0 group-hover/btn:opacity-100 transition-opacity shrink-0" />
               </button>
             )}
           </div>
 
-          {/* Save status */}
-          <div ref={saveRef} className="shrink-0 ml-2 toolbar-action">
+          {/* Sync save badge */}
+          <div className="shrink-0 ml-1">
             {isSaving ? (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#78350f]/30 border border-[#fbbf24]/20">
-                <Loader2 className="w-3 h-3 animate-spin text-[#fbbf24]" />
-                <span className="text-[10px] font-bold text-[#fbbf24] tracking-wide">Saving</span>
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#fbbf24]/10 border border-[#fbbf24]/20">
+                <Loader2 className="w-2.5 h-2.5 animate-spin text-[#fbbf24]" />
+                <span className="text-[9px] font-bold text-[#fbbf24] uppercase tracking-wide">Saving</span>
               </div>
             ) : justSaved ? (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#14532d]/30 border border-[#4ade80]/20">
-                <CheckCircle2 className="w-3 h-3 text-[#4ade80]" />
-                <span className="text-[10px] font-bold text-[#4ade80] tracking-wide">Saved</span>
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#4ade80]/10 border border-[#4ade80]/20">
+                <Check className="w-2.5 h-2.5 text-[#4ade80]" />
+                <span className="text-[9px] font-bold text-[#4ade80] uppercase tracking-wide">Saved</span>
               </div>
             ) : lastSaved ? (
-              <div className="flex items-center gap-1 text-[10px] text-[#71717a]">
+              <div className="flex items-center gap-1 text-[10px] text-[#52525b]">
                 <Clock className="w-3 h-3" />
                 <span className="hidden sm:inline font-medium">
                   {new Date(lastSaved).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -222,9 +216,9 @@ export function Toolbar({
           </div>
         </div>
 
-        {/* ── RIGHT ───────────────────────────────────────────────────────── */}
+        {/* ── RIGHT ── */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Shortcuts */}
+          {/* Shortcuts info */}
           {onShortcuts && (
             <TooltipProvider delayDuration={400}>
               <Tooltip>
@@ -232,85 +226,171 @@ export function Toolbar({
                   <button
                     type="button"
                     onClick={onShortcuts}
-                    className="toolbar-action h-8 w-8 flex items-center justify-center rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a] transition-all"
+                    className="h-8 w-8 flex items-center justify-center rounded-lg text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-all"
                   >
                     <HelpCircle className="w-4 h-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs bg-[#27272a] border-[#3f3f46] text-white">Shortcuts (?)</TooltipContent>
+                <TooltipContent side="bottom" className="text-xs bg-white text-black font-semibold">
+                  Keyboard Shortcuts (?)
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
 
-          <div className="h-5 w-px bg-[#27272a] mx-1" />
+          {/* Collab cursors info */}
+          {participants && participants.length > 0 && (
+            <div className="flex items-center -space-x-1.5 mr-1.5">
+              {participants.map((p) => {
+                const initial = p.username.charAt(0).toUpperCase();
+                const color = getUsernameColor(p.username);
+                return (
+                  <TooltipProvider key={p.socketId} delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          style={{
+                            backgroundColor: color,
+                            border: '1.5px solid #09090b',
+                          }}
+                          className="h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-black text-[#09090b] uppercase select-none shadow-md"
+                        >
+                          {initial}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs bg-white text-black font-semibold">
+                        {p.username}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+              })}
+            </div>
+          )}
 
-          {/* Comments */}
+          <div className="h-4 w-px bg-white/[0.08] mx-1" />
+
+          {/* Comments trigger */}
           <TooltipProvider delayDuration={400}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={onComments}
-                  className="toolbar-action flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-[#27272a] transition-all text-xs font-medium"
+                  className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.06] transition-all text-[12px] font-medium"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   <span className="hidden md:inline">Comments</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs bg-[#27272a] border-[#3f3f46] text-white">Comments</TooltipContent>
+              <TooltipContent side="bottom" className="text-xs bg-white text-black font-semibold">
+                Discussion thread
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
-          {/* History */}
+          {/* Version history trigger */}
           <TooltipProvider delayDuration={400}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={onVersions}
-                  className="toolbar-action flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-[#27272a] transition-all text-xs font-medium"
+                  className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.06] transition-all text-[12px] font-medium"
                 >
                   <History className="w-3.5 h-3.5" />
                   <span className="hidden md:inline">History</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs bg-[#27272a] border-[#3f3f46] text-white">Version History (Ctrl+H)</TooltipContent>
+              <TooltipContent side="bottom" className="text-xs bg-white text-black font-semibold">
+                Version History (Ctrl+H)
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
-          <div className="h-5 w-px bg-[#27272a] mx-1" />
+          <div className="h-4 w-px bg-white/[0.08] mx-1" />
 
-          {/* AI Assist */}
+          {/* AI Copilot toggle */}
           <TooltipProvider delayDuration={400}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={onAIAssist}
-                  className="toolbar-action flex items-center gap-1.5 h-8 px-3 rounded-lg text-[#18181b] bg-white hover:bg-[#e4e4e7] border border-white transition-all text-xs font-bold"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onAIAssist();
+                  }}
+                  className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 transition-all text-[11px] font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(124,58,237,0.3)] hover:shadow-[0_0_16px_rgba(124,58,237,0.5)] border border-violet-500/20 active:scale-95 duration-200 cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">AI</span>
+                  <span>AI Copilot</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs bg-[#27272a] border-[#3f3f46] text-white">AI Diagram Assistant (Ctrl+I)</TooltipContent>
+              <TooltipContent side="bottom" className="text-xs bg-white text-black font-semibold">
+                AI diagram assistant (Ctrl+I)
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
-          {/* Export */}
+          {/* Architectural insights dropdown */}
+          {(onReview || onTradeoffs || onRequirements || onInterview) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 h-8 px-2.5 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.06] transition-all text-[12px] font-medium"
+                >
+                  <Layers className="w-3.5 h-3.5 text-white/70" />
+                  <span className="hidden sm:inline">Insights</span>
+                  <ChevronDown className="w-3 h-3 text-[#52525b]" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[180px] p-1">
+                {onReview && (
+                  <DropdownMenuItem onClick={onReview} className="flex items-center gap-2 cursor-pointer text-xs">
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    Review Scorecard
+                  </DropdownMenuItem>
+                )}
+                {onTradeoffs && (
+                  <DropdownMenuItem onClick={onTradeoffs} className="flex items-center gap-2 cursor-pointer text-xs">
+                    <Scale className="w-3.5 h-3.5" />
+                    Tradeoffs Analysis
+                  </DropdownMenuItem>
+                )}
+                {onRequirements && (
+                  <DropdownMenuItem onClick={onRequirements} className="flex items-center gap-2 cursor-pointer text-xs">
+                    <ClipboardList className="w-3.5 h-3.5" />
+                    Requirements Map
+                  </DropdownMenuItem>
+                )}
+                {onInterview && (
+                  <DropdownMenuItem onClick={onInterview} className="flex items-center gap-2 cursor-pointer text-xs">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Interactive Interview
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Export triggers */}
           <TooltipProvider delayDuration={400}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={onExport}
-                  className="toolbar-action flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-[#27272a] transition-all text-xs font-medium"
+                  className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[#a1a1aa] hover:text-white hover:bg-white/[0.06] transition-all text-[12px] font-medium"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span className="hidden md:inline">Export</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs bg-[#27272a] border-[#3f3f46] text-white">Export Assets (Ctrl+E)</TooltipContent>
+              <TooltipContent side="bottom" className="text-xs bg-white text-black font-semibold">
+                Export Options (Ctrl+E)
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>

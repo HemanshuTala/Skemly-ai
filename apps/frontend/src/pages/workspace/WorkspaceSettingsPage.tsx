@@ -1,9 +1,4 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import { useAuthStore } from '@/stores/authStore';
 import {
   Users,
   Settings,
@@ -11,64 +6,72 @@ import {
   Calendar,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
 
 export default function WorkspaceSettingsPage() {
-  const { user } = useAuthStore();
   const { currentWorkspace } = useWorkspaceStore();
 
   if (!currentWorkspace) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
-        <div className="w-16 h-16 rounded-3xl bg-muted/20 flex items-center justify-center">
-          <Users className="w-8 h-8 text-muted-foreground/40" />
+      <div className="max-w-[900px] mx-auto px-6 py-20 flex flex-col items-center justify-center text-center">
+        <div className="w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto mb-5">
+          <Users className="w-6 h-6 text-[#52525b]" />
         </div>
-        <div>
-          <h3 className="text-lg font-bold text-foreground/80">No Workspace Selected</h3>
-          <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-            Please select a workspace from the dashboard to manage its settings.
-          </p>
-        </div>
+        <h3 className="text-[15px] font-semibold text-white mb-1.5">No workspace selected</h3>
+        <p className="text-[13px] text-[#52525b]">Select a workspace from the sidebar to view settings</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-20 px-4 pt-4">
+    <div className="max-w-[900px] mx-auto px-6 py-8 space-y-6">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-primary font-black uppercase tracking-[0.2em] text-[10px]">
-            <Settings className="w-3 h-3" />
-            Workspace Administration
-          </div>
-          <h1 className="text-3xl font-black tracking-tight text-foreground/90">
-            {currentWorkspace.name}
-          </h1>
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <Calendar className="w-3.5 h-3.5" />
-            Created {format(new Date(currentWorkspace.createdAt || Date.now()), 'MMMM d, yyyy')}
-          </p>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="space-y-1.5"
+      >
+        <div className="flex items-center gap-1.5 text-[#52525b] font-bold uppercase tracking-wider text-[10px]">
+          <Settings className="w-3.5 h-3.5" />
+          <span>Workspace Settings</span>
         </div>
-      </div>
+        <h1 className="text-[22px] font-bold text-white tracking-[-0.02em]">
+          {currentWorkspace.name}
+        </h1>
+        <p className="text-[12px] text-[#52525b] flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5" />
+          Created {format(new Date(currentWorkspace.createdAt || Date.now()), 'MMMM d, yyyy')}
+        </p>
+      </motion.div>
 
-      <div className="space-y-8">
-        {/* Workspace Overview */}
-        <Card className="p-6 rounded-3xl border-border/40 bg-card/30 backdrop-blur-sm">
-          <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 px-1">Workspace Overview</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/10 border border-border/20">
-                <div className="flex items-center gap-3 text-sm font-bold text-foreground/70">
-                  <Building2 className="w-4 h-4 text-primary/60" />
-                  Type
-                </div>
-                <Badge variant={currentWorkspace.type === 'team' ? 'info' : 'default'} className="uppercase text-[9px] font-black">
-                  {currentWorkspace.type}
-                </Badge>
-              </div>
+      {/* Workspace Overview */}
+      <div className="rounded-xl border border-white/[0.06] bg-[#0d0d10] p-5 space-y-4">
+        <div className="flex items-center gap-2 pb-3 border-b border-white/[0.04]">
+          <Building2 className="w-4 h-4 text-[#52525b]" />
+          <h3 className="text-[13px] font-semibold text-white">General Information</h3>
+        </div>
+        
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+            <div className="flex flex-col">
+              <span className="text-[12px] font-semibold text-white">Workspace Type</span>
+              <span className="text-[10px] text-[#52525b] mt-0.5">Defines collaboration capabilities</span>
             </div>
+            <Badge variant={currentWorkspace.type === 'team' ? 'info' : 'default'} size="sm">
+              {currentWorkspace.type === 'team' ? 'Team Workspace' : 'Personal Workspace'}
+            </Badge>
           </div>
-        </Card>
+
+          <div className="flex items-center justify-between p-3.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+            <div className="flex flex-col">
+              <span className="text-[12px] font-semibold text-white">Workspace Name</span>
+              <span className="text-[10px] text-[#52525b] mt-0.5">Display name for your workspace</span>
+            </div>
+            <span className="text-[12px] font-bold text-white">{currentWorkspace.name}</span>
+          </div>
+        </div>
       </div>
     </div>
   );

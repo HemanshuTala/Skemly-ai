@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '../../lib/utils';
 
 export interface SearchBarProps {
@@ -38,18 +38,18 @@ export function SearchBar({ placeholder = 'Search...', onSearch, className }: Se
       <button
         onClick={() => setIsOpen(true)}
         className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-lg',
-          'bg-neutral-100 dark:bg-neutral-800',
-          'text-neutral-500 dark:text-neutral-400',
-          'hover:bg-neutral-200 dark:hover:bg-neutral-700',
-          'transition-colors',
+          'flex items-center gap-2 pl-10 pr-4 py-2.5 rounded-xl border border-white/[0.08]',
+          'bg-white/[0.02] text-white',
+          'text-sm placeholder:text-[#52525b]',
+          'hover:border-white/[0.20] hover:bg-white/[0.03] focus:border-white/[0.20] focus:bg-white/[0.03]',
+          'transition-all relative',
           className
         )}
       >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#52525b]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
-        <span className="text-sm">Search...</span>
+        <span className="text-sm text-[#52525b]">Search...</span>
         <kbd className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-neutral-900 rounded border border-neutral-300 dark:border-neutral-700">
           Ã¢Å’ËœK
         </kbd>
@@ -63,10 +63,10 @@ export function SearchBar({ placeholder = 'Search...', onSearch, className }: Se
             onClick={() => setIsOpen(false)}
           />
           <div className="fixed top-20 left-1/2 -translate-x-1/2 w-full max-w-2xl z-50 px-4">
-            <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl overflow-hidden">
+            <div className="bg-[#0d0d10] border border-white/[0.08] rounded-xl shadow-xl overflow-hidden">
               <form onSubmit={handleSearch}>
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-200 dark:border-neutral-800">
-                  <svg className="w-5 h-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.08]">
+                  <svg className="w-5 h-5 text-[#52525b]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                   <input
@@ -82,7 +82,7 @@ export function SearchBar({ placeholder = 'Search...', onSearch, className }: Se
                     onClick={() => setIsOpen(false)}
                     className="text-neutral-400 hover:text-neutral-600"
                   >
-                    <kbd className="px-2 py-1 text-xs font-mono bg-neutral-100 dark:bg-neutral-800 rounded">ESC</kbd>
+                    <kbd className="px-2 py-1 text-xs font-mono bg-white/[0.04] text-[#a1a1aa] rounded">ESC</kbd>
                   </button>
                 </div>
               </form>

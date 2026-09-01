@@ -38,12 +38,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     
     const variants = {
       primary: 'bg-white text-[#18181b] shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:shadow-[0_0_25px_rgba(255,255,255,0.25)] hover:bg-[#e4e4e7] hover:-translate-y-0.5 transition-all',
-      secondary: 'bg-[#27272a] text-white hover:bg-[#3f3f46] shadow-sm border border-[#3f3f46]',
-      ghost: 'text-[#a1a1aa] hover:bg-[#27272a] hover:text-white',
+      secondary: 'bg-white/[0.04] text-white hover:bg-white/[0.08] shadow-sm border border-white/[0.06] transition-colors',
+      ghost: 'text-[#a1a1aa] hover:bg-white/[0.04] hover:text-white transition-colors',
       danger: 'bg-[#f87171] text-white shadow-md hover:opacity-90 hover:-translate-y-0.5',
       success: 'bg-[#4ade80] text-[#14532d] shadow-md hover:opacity-90 hover:-translate-y-0.5',
-      outline: 'border border-[#3f3f46] bg-transparent text-white hover:bg-[#27272a] hover:border-[#52525b]',
-      gradient: 'bg-gradient-to-r from-[#27272a] via-[#3f3f46] to-[#27272a] bg-[length:200%_auto] text-white shadow-lg shadow-white/5 hover:shadow-white/10 hover:-translate-y-0.5',
+      outline: 'border border-white/[0.08] bg-transparent text-white hover:bg-white/[0.04] hover:border-white/20 transition-all',
+      gradient: 'bg-gradient-to-r from-zinc-900 to-zinc-800 text-white border border-white/[0.06] shadow-lg hover:border-white/20 transition-all',
       glow: 'bg-white text-[#18181b] shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:bg-[#e4e4e7] hover:-translate-y-1 transition-all duration-500',
     };
     

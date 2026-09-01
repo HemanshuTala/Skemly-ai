@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Badge } from './ui/badge';
+import { Bell, Check, Inbox } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface Notification {
   id: string;
@@ -12,11 +14,11 @@ export interface Notification {
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications] = useState<Notification[]>([
+  const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: '1',
-      title: 'Welcome to Skemly',
-      message: 'Start creating your first diagram',
+      title: 'Welcome to Schemely AI',
+      message: 'Start creating your first system architecture diagram',
       type: 'info',
       read: false,
       createdAt: new Date().toISOString(),
@@ -25,17 +27,23 @@ export function NotificationBell() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const handleMarkAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
   return (
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+        className={cn(
+          "relative p-2 rounded-lg transition-colors duration-150 focus:outline-none",
+          isOpen ? "bg-white/[0.08] text-white" : "text-[#52525b] hover:text-white hover:bg-white/[0.05]"
+        )}
+        aria-label="Open notifications"
       >
-        <svg className="w-5 h-5 text-neutral-700 dark:text-neutral-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
+        <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-2 h-2 bg-error-500 rounded-full" />
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#4ade80] rounded-full" />
         )}
       </button>
 
@@ -44,48 +52,49 @@ export function NotificationBell() {
           <div
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
+            aria-hidden="true"
           />
-          <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 z-50">
-            <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">
-                  Notifications
-                </h3>
-                {unreadCount > 0 && (
-                  <Badge variant="primary" size="sm">
-                    {unreadCount} new
-                  </Badge>
-                )}
-              </div>
+          <div className="absolute right-0 mt-2 w-80 rounded-xl border border-white/[0.08] bg-[#0d0d10] shadow-2xl shadow-black/80 z-50 overflow-hidden">
+            {/* Header */}
+            <div className="p-4 border-b border-white/[0.05] bg-[#0a0a0d] flex items-center justify-between">
+              <span className="text-[12px] font-semibold text-white tracking-wide">Notifications</span>
+              {unreadCount > 0 && (
+                <Badge variant="success" size="sm">
+                  {unreadCount} new
+                </Badge>
+              )}
             </div>
             
-            <div className="max-h-96 overflow-y-auto">
+            {/* List */}
+            <div className="max-h-80 overflow-y-auto custom-scrollbar bg-[#0d0d10] divide-y divide-white/[0.04]">
               {notifications.length === 0 ? (
-                <div className="p-8 text-center text-neutral-500">
-                  No notifications
+                <div className="p-8 text-center flex flex-col items-center justify-center">
+                  <Inbox className="w-5 h-5 text-[#52525b] mb-2" />
+                  <span className="text-xs text-[#52525b]">No notifications</span>
                 </div>
               ) : (
                 notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-4 border-b border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer ${
-                      !notification.read ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''
-                    }`}
+                    className={cn(
+                      "p-3.5 hover:bg-white/[0.02] cursor-pointer transition-colors relative",
+                      !notification.read && "bg-white/[0.01]"
+                    )}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                    <div className="flex items-start gap-2.5">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-white truncate">
                           {notification.title}
                         </p>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                        <p className="text-[11px] text-[#52525b] mt-0.5 leading-relaxed">
                           {notification.message}
                         </p>
-                        <p className="text-xs text-neutral-500 mt-2">
-                          {new Date(notification.createdAt).toLocaleString()}
+                        <p className="text-[9px] text-[#3f3f46] mt-2 font-mono">
+                          {new Date(notification.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                       {!notification.read && (
-                        <div className="w-2 h-2 bg-primary-500 rounded-full mt-1" />
+                        <div className="w-1.5 h-1.5 bg-white rounded-full mt-1.5 shrink-0" />
                       )}
                     </div>
                   </div>
@@ -93,9 +102,14 @@ export function NotificationBell() {
               )}
             </div>
             
-            {notifications.length > 0 && (
-              <div className="p-3 border-t border-neutral-200 dark:border-neutral-800">
-                <button className="w-full text-sm text-primary-600 hover:text-primary-700 font-medium">
+            {/* Actions */}
+            {notifications.length > 0 && unreadCount > 0 && (
+              <div className="p-2.5 border-t border-white/[0.05] bg-[#0a0a0d]">
+                <button
+                  onClick={handleMarkAllRead}
+                  className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white/[0.04] text-[11px] text-[#a1a1aa] font-medium hover:text-white hover:bg-white/[0.08] transition-all"
+                >
+                  <Check className="w-3.5 h-3.5" />
                   Mark all as read
                 </button>
               </div>

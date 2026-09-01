@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import Lenis from 'lenis'
 
@@ -15,7 +15,9 @@ export function useLenis() {
  */
 export function SmoothScrollProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
-  const disabled = pathname.startsWith('/diagram/') || pathname.startsWith('/dashboard')
+  // Lenis is only enabled for full-window landing & docs pages.
+  // App routes use inner app shell containers with native overflow-y-auto.
+  const disabled = pathname !== '/' && !pathname.startsWith('/landing') && !pathname.startsWith('/docs')
   const [lenis, setLenis] = useState<Lenis | null>(null)
 
   useEffect(() => {

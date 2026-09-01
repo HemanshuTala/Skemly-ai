@@ -39,47 +39,37 @@ export function PlanCard({
 
   return (
     <Card className={cn(
-      "relative flex flex-col p-4 border transition-all bg-[#18181b]",
-      isCurrent
-        ? "border-[#52525b]"
-        : isPopular
-          ? "border-[#3f3f46] hover:border-[#52525b]"
-          : "border-[#27272a] hover:border-[#3f3f46]"
+      "relative flex flex-col p-6 bg-[#0d0d10] border rounded-2xl transition-all",
+      isPopular 
+        ? "border-violet-500/30 hover:border-violet-500/50 shadow-[0_0_15px_rgba(139,92,246,0.1)]" 
+        : "border-white/[0.06] hover:border-white/[0.12]"
     )}>
-      {isCurrent && (
-        <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-[#27272a] text-[10px] font-medium text-white border border-[#3f3f46]">
-          Current
-        </div>
-      )}
       {isPopular && (
-        <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-[#27272a] text-[10px] font-medium text-white border border-[#52525b]">
-          Popular
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap">
+          POPULAR
         </div>
       )}
 
       <div className="mb-3">
-        <div className={cn(
-          "w-10 h-10 rounded-lg flex items-center justify-center mb-2 bg-[#27272a] text-[#a1a1aa]",
-          isCurrent && "bg-[#3f3f46] text-white"
-        )}>
-          <Icon className="w-4 h-4" />
-        </div>
-        <h3 className="text-base font-medium text-white">{plan.name}</h3>
-        <div className="mt-0.5 flex items-baseline gap-1">
-          <span className="text-xl font-semibold">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-[#71717a] mb-3">
+          {plan.name}
+        </h3>
+        <div className="flex items-baseline gap-1">
+          <span className="text-4xl font-bold text-white">
             {isFree ? 'Free' : `₹${plan.price}`}
           </span>
-          {!isFree && <span className="text-xs text-[#71717a]">/mo</span>}
+          {!isFree && <span className="text-sm text-[#71717a]">/mo</span>}
         </div>
       </div>
 
-      <div className="flex-1 space-y-1.5 mb-4">
+      <div className="text-[#a1a1aa] text-sm leading-relaxed my-4">
+        {plan.name} plan includes everything you need to get started.
+      </div>
+
+      <div className="flex-1 space-y-2 mb-6">
         {plan.features.map((feature, i) => (
-          <div key={i} className="flex items-start gap-1.5 text-xs text-[#a1a1aa]">
-            <Check className={cn(
-              "w-3.5 h-3.5 mt-0.5 shrink-0",
-              isCurrent ? "text-white" : "text-[#52525b]"
-            )} />
+          <div key={i} className="flex items-start gap-2 text-sm text-[#a1a1aa] py-1">
+            <Check className="w-4 h-4 mt-0.5 shrink-0 text-emerald-400" />
             <span>{feature}</span>
           </div>
         ))}
@@ -88,8 +78,11 @@ export function PlanCard({
       <Button
         variant={isCurrent ? 'secondary' : 'primary'}
         className={cn(
-          "w-full h-9 text-sm",
-          !isCurrent && "bg-white text-[#18181b] hover:bg-[#e4e4e7] border-0"
+          "w-full mt-6 h-11 rounded-xl font-bold transition-all",
+          isCurrent && "bg-[#27272a] text-[#a1a1aa] hover:bg-[#3f3f46]",
+          isFree && !isCurrent && "bg-transparent border border-white/[0.08] text-white hover:bg-white/[0.02]",
+          isPopular && !isCurrent && "bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-0 hover:opacity-90 shadow-[0_0_20px_rgba(139,92,246,0.2)]",
+          !isFree && !isPopular && !isCurrent && "bg-white text-[#18181b] hover:bg-[#e4e4e7]"
         )}
         disabled={isCurrent || isBusy}
         isLoading={isBusy}
@@ -99,7 +92,7 @@ export function PlanCard({
           }
         }}
       >
-        {isCurrent ? 'Active' : isFree ? 'Start' : 'Subscribe'}
+        {isCurrent ? 'Active' : isFree ? 'Start for free' : 'Subscribe'}
       </Button>
     </Card>
   );

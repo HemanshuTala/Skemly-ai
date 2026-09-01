@@ -6,7 +6,7 @@ export interface IDiagramNode {
   id: string;
   type: string;
   position: { x: number; y: number };
-  data: { label: string; style?: Record<string, unknown> };
+  data: { label: string; style?: Record<string, unknown>; requirements?: string[] };
   width?: number;
   height?: number;
   selected?: boolean;
@@ -45,6 +45,12 @@ export interface IDiagramCollaborator {
   addedBy: Types.ObjectId;
 }
 
+export interface IRequirement {
+  id: string;
+  title: string;
+  description: string;
+}
+
 // ─── Main interface ───────────────────────────────────────────────────────────
 
 export interface IDiagram extends Document {
@@ -58,6 +64,7 @@ export interface IDiagram extends Document {
   nodes: IDiagramNode[];
   edges: IDiagramEdge[];
   viewport: IDiagramViewport;
+  requirements: IRequirement[];
 
   // AI conversation context (keep last 10 turns – §AI-05)
   aiConversation: IAIConversationTurn[];
@@ -124,6 +131,7 @@ const NodeSchema = new Schema<IDiagramNode>(
     data: {
       label: { type: String, default: '(unnamed)' }, // §16.1 node with no label
       style: { type: Schema.Types.Mixed, default: {} },
+      requirements: { type: [String], default: [] },
     },
     width: Number,
     height: Number,
@@ -188,6 +196,14 @@ const DiagramSchema = new Schema<IDiagram>(
       x: { type: Number, default: 0 },
       y: { type: Number, default: 0 },
       zoom: { type: Number, default: 1, min: 0.1, max: 10 },
+    },
+    requirements: {
+      type: [{
+        id: { type: String, required: true },
+        title: { type: String, required: true },
+        description: { type: String, default: '' }
+      }],
+      default: []
     },
 
     // AI – keep max 10 turns (§AI-05); overflow truncated in service layer

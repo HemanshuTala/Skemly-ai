@@ -3,10 +3,9 @@ import { useParams, Link } from 'react-router-dom'
 import { Loader2, Lock, RefreshCw, Wifi, WifiOff, Eye, ExternalLink } from 'lucide-react'
 import { DiagramCanvas } from '@/components/editor/DiagramCanvas'
 import api from '@/lib/api'
-import { Button } from '../components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '../components/ui/tooltip'
 import { io, type Socket } from 'socket.io-client'
+import { motion } from 'framer-motion'
 
 const SOCKET_URL = '/'
 const SESSION_KEY = (token: string) => `public_pw_${token}`
@@ -29,12 +28,9 @@ export default function PublicDiagramPage() {
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false)
   const [isLive, setIsLive] = useState(false)
   const [liveUpdates, setLiveUpdates] = useState(0)
-  const [cursors, setCursors] = useState<any[]>([])
-  const [selections, setSelections] = useState<any[]>([])
   const [collaborators, setCollaborators] = useState<any[]>([])
   const socketRef = useRef<Socket | null>(null)
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ fetch Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const fetchPublicDiagram = useCallback(
     async (opts?: { password?: string; cancelled?: { value: boolean } }) => {
       if (!token) return
@@ -54,7 +50,6 @@ export default function PublicDiagramPage() {
           nodes: raw?.nodes || [],
           edges: raw?.edges || [],
         })
-        // Cache the unlocked password so refresh doesn't ask again
         if (opts?.password && token) {
           sessionStorage.setItem(SESSION_KEY(token), opts.password)
         }
@@ -75,7 +70,6 @@ export default function PublicDiagramPage() {
     [token]
   )
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ initial load (uses cached password if any) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   useEffect(() => {
     if (!token) return
     const cancelled = { value: false }
@@ -86,7 +80,6 @@ export default function PublicDiagramPage() {
     }
   }, [token, fetchPublicDiagram])
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ real-time socket (read-only public watcher) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   useEffect(() => {
     if (!diagram?.id || !token) return
 
@@ -100,102 +93,18 @@ export default function PublicDiagramPage() {
 
     sock.on('connect', () => {
       setIsLive(true)
-      sock.emit('diagram:public-join', { diagramId: diagram.id, token })
+      sock.emit('join-diagram', { diagramId: diagram.id, isPublic: true })
     })
 
-    sock.on('disconnect', () => setIsLive(false))
-
-    // Listen for live diagram changes emitted by an editor
-    sock.on('diagram:change', (change: { type: string; data: any; userId: string }) => {
-      setDiagram((prev) => {
-        if (!prev) return prev
-        if (change.type === 'syntax') return { ...prev, syntax: change.data }
-        if (change.type === 'title') return { ...prev, title: change.data }
-        if (change.type === 'graph') {
-          return {
-            ...prev,
-            nodes: change.data.nodes || prev.nodes,
-            edges: change.data.edges || prev.edges,
-            syntax: change.data.syntax || prev.syntax
-          }
-        }
-        return prev
-      })
-
-      if (change.type === 'selection') {
-        const { nodeIds, edgeIds, userInfo } = change.data;
-        setSelections((prev) => {
-          const next = [...prev];
-          const idx = next.findIndex((s) => s.userId === change.userId);
-          if (nodeIds.length === 0 && edgeIds.length === 0) {
-            return next.filter((s) => s.userId !== change.userId);
-          }
-          const selection = {
-            userId: change.userId,
-            userName: userInfo?.name || 'Collaborator',
-            color: userInfo?.color || '#3b82f6',
-            nodeIds,
-            edgeIds,
-          };
-          if (idx >= 0) {
-            next[idx] = selection;
-          } else {
-            next.push(selection);
-          }
-          return next;
-        });
-      }
-
-      setLiveUpdates((n) => n + 1)
+    sock.on('disconnect', () => {
+      setIsLive(false)
     })
 
-    // Listen for cursor updates
-    sock.on('cursor:update', (data: { socketId: string; x: number; y: number; userInfo: any }) => {
-      setCursors((prev) => {
-        const next = [...prev]
-        const idx = next.findIndex((c) => c.userId === data.socketId)
-        const cursor = {
-          userId: data.socketId,
-          userName: data.userInfo?.name || 'Collaborator',
-          color: data.userInfo?.color || '#3b82f6',
-          position: { x: data.x, y: data.y },
-        }
-        if (idx >= 0) {
-          next[idx] = cursor
-        } else {
-          next.push(cursor)
-        }
-        return next
-      })
+    sock.on('collaborators-update', (users: any[]) => {
+      setCollaborators(users.filter((u) => u.userId !== 'public-viewer'))
     })
 
-    sock.on('user:left', (data: { socketId: string }) => {
-      setCursors((prev) => prev.filter((c) => c.userId !== data.socketId))
-      setCollaborators((prev) => prev.filter((c) => c.userId !== data.socketId))
-    })
-
-    sock.on('user:joined', (data: { socketId: string; userId: string; userInfo: any }) => {
-      setCollaborators((prev) => {
-        if (prev.find((c) => c.userId === data.socketId)) return prev;
-        return [...prev, {
-          userId: data.socketId,
-          userName: data.userInfo?.name || 'Collaborator',
-          color: data.userInfo?.color || '#3b82f6',
-        }];
-      });
-    })
-
-    sock.on('presence:update', (data: { collaborators: any[] }) => {
-      setCollaborators(data.collaborators.map(c => ({
-        userId: c.userId,
-        userName: c.userName,
-        color: c.color,
-        avatar: c.avatar
-      })));
-    })
-
-    // Full sync if the editor sends one
-    sock.on('diagram:full-sync', (payload: { syntax: string; nodes: any[]; edges: any[] }) => {
+    sock.on('diagram-updated', (payload: any) => {
       setDiagram((prev) => {
         if (!prev) return prev
         return {
@@ -215,33 +124,35 @@ export default function PublicDiagramPage() {
     }
   }, [diagram?.id, token])
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ loading Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-[#09090b]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
-          <p className="text-sm text-muted-foreground">Loading diagram...</p>
+          <Loader2 className="w-6 h-6 animate-spin text-white" />
+          <p className="text-[11px] font-bold text-[#52525b] uppercase tracking-widest animate-pulse">Loading shared system…</p>
         </div>
       </div>
     )
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ password gate Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   if (requiresPassword && !diagram) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
-        <div className="w-full max-w-sm">
-          <div className="rounded-2xl border border-border/60 bg-card shadow-xl p-8 space-y-5">
-            <div className="flex flex-col items-center gap-3 text-center mb-2">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <Lock className="w-5 h-5 text-primary" />
-              </div>
-              <h1 className="text-xl font-bold">Password Required</h1>
-              <p className="text-sm text-muted-foreground">This shared diagram is password protected.</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#09090b] p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#0d0d10] p-8 shadow-2xl shadow-black/80 space-y-6"
+        >
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white">
+              <Lock className="w-4 h-4" />
             </div>
+            <h1 className="text-[18px] font-bold text-white tracking-tight">Password Required</h1>
+            <p className="text-xs text-[#52525b] leading-relaxed">This shared diagram is password protected.</p>
+          </div>
+
+          <div className="space-y-4">
             <input
               autoFocus
               type="password"
@@ -254,17 +165,19 @@ export default function PublicDiagramPage() {
                   void fetchPublicDiagram({ password }).finally(() => setIsSubmittingPassword(false))
                 }
               }}
-              placeholder="Enter link password"
-              className="w-full rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/25 transition-all"
+              placeholder="Enter access password"
+              className="w-full h-10 px-3 rounded-lg border border-white/[0.06] bg-white/[0.02] text-xs text-white placeholder:text-[#3f3f46] outline-none focus:border-white/[0.15] transition-all"
             />
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {error && <p className="text-[11px] text-[#f87171] text-center font-medium">{error}</p>}
+            
             <div className="flex gap-2">
               <Link to="/" className="flex-1">
-                <Button variant="outline" className="w-full">Cancel</Button>
+                <button className="w-full h-9 rounded-lg bg-white/[0.04] border border-white/[0.06] text-white text-[11px] font-semibold hover:bg-white/[0.08] transition-colors">
+                  Cancel
+                </button>
               </Link>
-              <Button
-                className="flex-1"
-                isLoading={isSubmittingPassword}
+              <button
+                disabled={!password || isSubmittingPassword}
                 onClick={async () => {
                   if (!password) return
                   setIsSubmittingPassword(true)
@@ -274,135 +187,144 @@ export default function PublicDiagramPage() {
                     setIsSubmittingPassword(false)
                   }
                 }}
+                className="flex-1 h-9 rounded-lg bg-white text-[#09090b] text-[11px] font-bold uppercase tracking-wider hover:bg-[#e4e4e7] disabled:opacity-40 transition-colors"
               >
-                Unlock
-              </Button>
+                {isSubmittingPassword ? 'Unlocking…' : 'Unlock'}
+              </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     )
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ error Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   if (error || !diagram) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-            <WifiOff className="w-7 h-7 text-destructive" />
+      <div className="min-h-screen flex items-center justify-center bg-[#09090b] p-6">
+        <div className="text-center max-w-sm space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#f87171]/10 border border-[#f87171]/20 flex items-center justify-center mx-auto">
+            <WifiOff className="w-6 h-6 text-[#f87171]" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Link unavailable</h1>
-          <p className="text-muted-foreground mb-6">{error || 'Diagram not found or the link has expired.'}</p>
+          <div className="space-y-1">
+            <h1 className="text-lg font-bold text-white tracking-tight">Link Unavailable</h1>
+            <p className="text-xs text-[#52525b] leading-relaxed">{error || 'Diagram not found or the link has expired.'}</p>
+          </div>
           <Link
             to="/"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-white text-[#09090b] text-[11px] font-bold uppercase tracking-wider hover:bg-[#e4e4e7] transition-colors"
           >
-            Go to Skemly
+            Go to Schemely
           </Link>
         </div>
       </div>
     )
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ success Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#09090b] overflow-hidden">
       {/* Header */}
-      <header className="shrink-0 h-13 border-b border-border/70 bg-card/90 backdrop-blur-sm px-4 flex items-center gap-3">
-        {/* Logo / Brand */}
-        <Link
-          to="/"
-          className="flex items-center gap-2 text-foreground hover:text-primary transition-colors shrink-0"
-          title="Skemly"
-        >
-          <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" className="w-4 h-4 text-primary fill-current">
-              <path d="M12 2 L22 8 L22 16 L12 22 L2 16 L2 8 Z" />
-            </svg>
-          </div>
-          <span className="text-[13px] font-bold tracking-tight hidden sm:block">Skemly</span>
-        </Link>
-
-        <div className="w-px h-4 bg-border/60 shrink-0" />
-
-        {/* Diagram title */}
-        <h1 className="font-semibold text-sm truncate min-w-0 flex-1">{diagram.title}</h1>
-
-        {/* Live indicator */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Collaborators */}
-          <div className="flex items-center -space-x-2 mr-2">
-            <TooltipProvider>
-              {collaborators.map((c) => (
-                <Tooltip key={c.userId}>
-                  <TooltipTrigger asChild>
-                    <div 
-                      className="relative rounded-full p-0.5 bg-background transition-transform hover:-translate-y-0.5 cursor-default"
-                      style={{ zIndex: 10 }}
-                    >
-                      <Avatar className="h-7 w-7 border-2" style={{ borderColor: c.color }}>
-                        {c.avatar ? <AvatarImage src={c.avatar} /> : null}
-                        <AvatarFallback className="text-[10px] font-black" style={{ backgroundColor: `${c.color}20`, color: c.color }}>
-                          {(c.userName || 'C').charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="bg-popover text-popover-foreground border-border shadow-lg">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs font-bold">{c.userName || 'Collaborator'}</span>
-                      <span className="text-[9px] opacity-60">Editing now</span>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              ))}
-            </TooltipProvider>
-          </div>
-
-          {isLive ? (
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 text-emerald-500 text-[11px] font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live
-              {liveUpdates > 0 && <span className="opacity-70">Ã‚Â· {liveUpdates} updates</span>}
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-[11px] font-medium">
-              <Wifi className="w-3 h-3" />
-              Connecting...
-            </span>
-          )}
-          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-[11px]">
-            <Eye className="w-3 h-3" />
-            Read-only
-          </span>
-        </div>
-
-        {/* Refresh & open in editor */}
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              const cached = token ? sessionStorage.getItem(SESSION_KEY(token)) : null
-              void fetchPublicDiagram({ password: cached || undefined })
-            }}
-            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            title="Refresh diagram"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+      <header className="shrink-0 h-[52px] border-b border-white/[0.06] bg-[#0a0a0d]/80 backdrop-blur-xl px-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Logo */}
           <Link
             to="/"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-primary hover:bg-primary/10 transition-colors"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"
+            title="Schemely"
           >
-            Open App
-            <ExternalLink className="w-3.5 h-3.5" />
+            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-4 h-4 text-white fill-current">
+                <path d="M12 2 L22 8 L22 16 L12 22 L2 16 L2 8 Z" />
+              </svg>
+            </div>
+            <span className="text-[13px] font-bold tracking-tight text-white hidden sm:block">Schemely</span>
           </Link>
+
+          <div className="w-px h-4 bg-white/[0.06] shrink-0" />
+
+          {/* Diagram title */}
+          <h1 className="font-bold text-xs text-white truncate max-w-[200px] sm:max-w-sm">{diagram.title}</h1>
+        </div>
+
+        {/* Action / indicators group */}
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Live indicator */}
+          <div className="flex items-center gap-2">
+            {collaborators.length > 0 && (
+              <div className="flex items-center -space-x-1.5 mr-1">
+                <TooltipProvider>
+                  {collaborators.map((c) => (
+                    <Tooltip key={c.userId}>
+                      <TooltipTrigger asChild>
+                        <div 
+                          className="relative rounded-full p-0.5 bg-[#09090b] transition-transform hover:-translate-y-0.5 cursor-default"
+                          style={{ zIndex: 10 }}
+                        >
+                          <div 
+                            className="h-6 w-6 rounded-full border flex items-center justify-center text-[9px] font-black uppercase text-white"
+                            style={{ borderColor: c.color, backgroundColor: `${c.color}20` }}
+                          >
+                            {(c.userName || 'C').charAt(0).toUpperCase()}
+                          </div>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-[#0e0e11] text-white border-white/[0.08] shadow-2xl">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[11px] font-bold">{c.userName || 'Collaborator'}</span>
+                          <span className="text-[9px] text-[#52525b]">Active editor</span>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </TooltipProvider>
+              </div>
+            )}
+
+            {isLive ? (
+              <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#4ade80]/10 border border-[#4ade80]/20 text-[#4ade80] text-[10px] font-bold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-pulse" />
+                Live
+                {liveUpdates > 0 && <span className="opacity-70">· {liveUpdates}</span>}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04] border border-white/[0.06] text-[#52525b] text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                <Wifi className="w-3 h-3" />
+                Connecting…
+              </span>
+            )}
+            
+            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/[0.04] border border-white/[0.06] text-[#52525b] text-[10px] font-bold uppercase tracking-wider">
+              <Eye className="w-3 h-3" />
+              Read-only
+            </span>
+          </div>
+
+          <div className="w-px h-4 bg-white/[0.06]" />
+
+          {/* Refresh & open in editor */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                const cached = token ? sessionStorage.getItem(SESSION_KEY(token)) : null
+                void fetchPublicDiagram({ password: cached || undefined })
+              }}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.06] text-[#52525b] hover:text-white transition-colors"
+              title="Refresh diagram"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 px-3 h-8 rounded-lg bg-white text-[#09090b] text-[11px] font-bold uppercase tracking-wider hover:bg-[#e4e4e7] transition-colors"
+            >
+              <span>Open App</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
       </header>
 
-      {/* Canvas - full remaining height */}
-      <div className="flex-1 min-h-0">
+      {/* Canvas */}
+      <div className="flex-1 min-h-0 bg-[#09090b]">
         <DiagramCanvas
           syntax={diagram.syntax}
           visualData={{ nodes: diagram.nodes, edges: diagram.edges }}

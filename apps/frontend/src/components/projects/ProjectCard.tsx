@@ -1,4 +1,4 @@
-﻿import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Card } from '../ui/card';
 import { MoreVertical, FolderOpen, Trash2, Edit2 } from 'lucide-react';
 import {
@@ -39,7 +39,7 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
           </div>
           <div>
             <Link to={`/projects/${project.id}`}>
-              <h3 className="font-semibold text-lg group-hover:text-primary-600 transition-colors">
+              <h3 className="font-semibold text-lg group-hover:text-white transition-colors">
                 {project.name}
               </h3>
             </Link>

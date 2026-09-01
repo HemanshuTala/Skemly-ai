@@ -19,20 +19,20 @@ import toast from 'react-hot-toast'
 
 /* ── Design Tokens ── */
 const T = {
-  bg: '#080808',
-  surface: '#111111',
-  surfaceHi: '#161616',
-  border: '#1f1f1f',
-  borderHi: '#2a2a2a',
-  text: '#f2f0eb',
-  textSub: '#8a8680',
-  textMuted: '#3d3d3b',
-  accent: '#c9b89a',
-  accentDim: '#8a7d68',
+  bg: '#09090b',
+  surface: '#0e0e11',
+  surfaceHi: '#18181b',
+  border: 'rgba(255,255,255,0.06)',
+  borderHi: '#27272a',
+  text: '#ffffff',
+  textSub: '#a1a1aa',
+  textMuted: '#71717a',
+  accent: '#ffffff',
+  accentDim: '#71717a',
   green: '#4ade80',
-  font: "'DM Sans', -apple-system, sans-serif",
-  fontSerif: "'Cormorant Garamond', Georgia, serif",
-  fontMono: "'DM Mono', 'Fira Code', monospace",
+  font: '"Inter", -apple-system, sans-serif',
+  fontSerif: '"Outfit", "Inter", sans-serif',
+  fontMono: '"JetBrains Mono", monospace',
   nodeR: 8,
 }
 
@@ -42,8 +42,8 @@ const SP_SLOW = { type: 'spring', stiffness: 50, damping: 18 }
 
 /* ── Data ── */
 const FEATURES = [
-  { icon: Braces, tag: '01', title: 'Code syntax', desc: 'Write diagrams with clean, predictable syntax. Structure your thinking, let Skemly render it beautifully.' },
-  { icon: Sparkles, tag: '02', title: 'AI generation', desc: 'Describe your system in plain English. Skemly understands architecture and produces exact diagrams instantly.' },
+  { icon: Braces, tag: '01', title: 'Code syntax', desc: 'Write diagrams with clean, predictable syntax. Structure your thinking, let Schemely render it beautifully.' },
+  { icon: Sparkles, tag: '02', title: 'AI generation', desc: 'Describe your system in plain English. Schemely understands architecture and produces exact diagrams instantly.' },
   { icon: MousePointer2, tag: '03', title: 'Visual canvas', desc: 'Infinite workspace. Drag, align, and refine. Export to SVG, PNG, Notion, and Confluence.' },
 ]
 const USE_CASES = [
@@ -57,7 +57,7 @@ const USE_CASES = [
   { icon: Workflow, label: 'Workflows' },
 ]
 const TESTIMONIALS = [
-  { name: 'Alex Chen', role: 'Senior Architect, Stripe', text: 'Every PR we ship now includes a Skemly diagram. It fundamentally changed how our team reviews architecture decisions.', initial: 'A' },
+  { name: 'Alex Chen', role: 'Senior Architect, Stripe', text: 'Every PR we ship now includes a Schemely diagram. It fundamentally changed how our team reviews architecture decisions.', initial: 'A' },
   { name: 'Sarah Miller', role: 'Engineering Lead, Linear', text: 'I describe a system in one sentence and get back exactly what I would have drawn in two hours. Remarkable.', initial: 'S' },
   { name: 'James Wilson', role: 'CTO, Vercel', text: 'Nothing else comes close for documenting how our systems actually work at scale. It\'s become essential.', initial: 'J' },
 ]
@@ -121,7 +121,7 @@ function MagneticBtn({ children, style = {}, onClick, variant = 'solid' }: { chi
     my.set((e.clientY - r.top - r.height/2) * 0.3)
   }, [mx, my])
   const onLeave = useCallback(() => { mx.set(0); my.set(0) }, [mx, my])
-  const solid = { background: T.text, color: T.bg, border: 'none' }
+  const solid = { background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)', color: '#ffffff', border: 'none' }
   const ghost = { background: 'transparent', color: T.textSub, border: `1px solid ${T.border}` }
   return (
     <motion.button ref={ref} onMouseMove={onMove} onMouseLeave={onLeave} onClick={onClick}
@@ -184,7 +184,7 @@ function DiagramCanvas() {
             {NODES.map(n=>(
               <motion.g key={n.label} initial={{ opacity:0, scale:0.7, y:-10 }} animate={{ opacity:1, scale:1, y:0 }} transition={{ delay:n.d, ...SP_BOUNCY }} whileHover={{ scale:1.03 }} style={{ cursor:'pointer' }}>
                 <rect x={n.x} y={n.y} width={118} height={34} rx={T.nodeR} fill={T.surface} stroke={n.sel ? T.accent : T.border} strokeWidth={1} />
-                {n.sel && <rect x={n.x} y={n.y} width={118} height={34} rx={T.nodeR} fill="rgba(201,184,154,0.04)" />}
+                {n.sel && <rect x={n.x} y={n.y} width={118} height={34} rx={T.nodeR} fill="rgba(255,255,255,0.04)" />}
                 <text x={n.x+59} y={n.y+22} textAnchor="middle" fill={n.sel ? T.accent : T.text} fontSize={11.5} fontFamily={T.font} fontWeight={n.sel?600:400}>{n.label}</text>
               </motion.g>
             ))}
@@ -234,7 +234,7 @@ function ProcessSteps() {
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
   const STEPS = [
-    { num:'01', icon:Terminal, title:'Write or describe', desc:'Use Skemly syntax, or describe your architecture in plain English.' },
+    { num:'01', icon:Terminal, title:'Write or describe', desc:'Use Schemely syntax, or describe your architecture in plain English.' },
     { num:'02', icon:Sparkles, title:'AI generates it', desc:'Get precise, production-quality diagrams in under a second.' },
     { num:'03', icon:PenTool, title:'Refine and share', desc:'Edit on the canvas. Export to SVG, PNG, or embed anywhere.' },
   ]
@@ -299,7 +299,7 @@ function FloatingOrbs() {
   return (
     <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}>
       {[{ x:'8%', y:'15%', size:320, delay:0 }, { x:'85%', y:'25%', size:240, delay:2 }, { x:'55%', y:'70%', size:180, delay:4 }, { x:'20%', y:'80%', size:200, delay:1.5 }].map((o,i)=>(
-        <motion.div key={i} style={{ position:'absolute', left:o.x, top:o.y, width:o.size, height:o.size, borderRadius:'50%', background:`radial-gradient(circle, rgba(201,184,154,0.025) 0%, transparent 70%)`, filter:'blur(40px)' }} animate={{ y:[-20,20,-20], x:[-10,10,-10] }} transition={{ duration:8+i*2, delay:o.delay, repeat:Infinity, ease:'easeInOut' }} />
+        <motion.div key={i} style={{ position:'absolute', left:o.x, top:o.y, width:o.size, height:o.size, borderRadius:'50%', background:`radial-gradient(circle, rgba(255,255,255,0.025) 0%, transparent 70%)`, filter:'blur(40px)' }} animate={{ y:[-20,20,-20], x:[-10,10,-10] }} transition={{ duration:8+i*2, delay:o.delay, repeat:Infinity, ease:'easeInOut' }} />
       ))}
     </div>
   )
@@ -313,7 +313,7 @@ function CursorGlow() {
   const x = useMotionValue(-400)
   const y = useMotionValue(-400)
   useEffect(() => { const move = (e: MouseEvent) => { x.set(e.clientX); y.set(e.clientY) }; window.addEventListener('mousemove', move); return () => window.removeEventListener('mousemove', move) }, [])
-  return <motion.div style={{ position:'fixed', top:0, left:0, pointerEvents:'none', zIndex:0, x, y, translateX:'-50%', translateY:'-50%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(201,184,154,0.04) 0%, transparent 70%)' }} />
+  return <motion.div style={{ position:'fixed', top:0, left:0, pointerEvents:'none', zIndex:0, x, y, translateX:'-50%', translateY:'-50%', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)' }} />
 }
 
 /* ════════════════ PRICING SECTION ════════════════ */
@@ -368,9 +368,9 @@ function PricingSection({ sec, wrap, lbl, serifHdg, T, SP_SOFT, SP_BOUNCY }: any
       return
     }
 
-    // Free plan - just go to editor
+    // Free plan - just go to dashboard
     if (planId === 'free') {
-      window.location.href = '/editor'
+      window.location.href = '/dashboard'
       return
     }
 
@@ -428,7 +428,7 @@ function PricingSection({ sec, wrap, lbl, serifHdg, T, SP_SOFT, SP_BOUNCY }: any
                 <span style={{ fontSize:14, color:T.textMuted }}>/{plan.interval}</span>
               </div>
               <p style={{ fontSize:14, color:T.textSub, marginBottom:24, lineHeight:1.6 }}>
-                {plan.id === 'free' && 'Perfect for personal projects and trying out Skemly.'}
+                {plan.id === 'free' && 'Perfect for personal projects and trying out Schemely.'}
                 {plan.id === 'starter' && 'Great for solo developers building documentation.'}
                 {plan.id === 'basic' && 'For professionals who need more power and features.'}
               </p>
@@ -501,7 +501,7 @@ export default function LandingPage() {
         @keyframes marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
         @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         * { box-sizing:border-box; margin:0; padding:0 }
-        ::selection { background:rgba(201,184,154,0.18); color:${T.text} }
+        ::selection { background:rgba(255,255,255,0.15); color:${T.text} }
         ::-webkit-scrollbar { width:3px }
         ::-webkit-scrollbar-track { background:${T.bg} }
         ::-webkit-scrollbar-thumb { background:${T.border}; border-radius:2px }
@@ -522,17 +522,17 @@ export default function LandingPage() {
         <div style={{ maxWidth:1080, margin:'0 auto', padding:'0 32px', height:'100%', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <motion.div whileHover={{ scale:1.02 }} transition={SP_BOUNCY} style={{ display:'flex', alignItems:'center', gap:12, cursor:'pointer' }} onClick={() => window.location.href = '/'}>
             <img src={SkemlyLogo} alt="Skemly" style={{ width:36, height:36, borderRadius:8, objectFit:'cover' }} />
-            <span style={{ fontSize:18, fontWeight:700, color:T.text, letterSpacing:'-0.02em', fontFamily:T.font }}>Skemly</span>
+            <span style={{ fontSize:18, fontWeight:700, color:T.text, letterSpacing:'-0.02em', fontFamily:T.font }}>Schemely</span>
           </motion.div>
           <div style={{ display:'flex', gap:4, position:'absolute', left:'50%', transform:'translateX(-50%)' }}>
             {['Features','Pricing','Docs'].map(l=>(
-              <motion.a key={l} href={l === 'Features' ? '#features' : `/${l.toLowerCase()}`} whileHover={{ color:T.text }} style={{ padding:'8px 16px', fontSize:14, color:T.textMuted, cursor:'pointer', fontFamily:T.font, letterSpacing:'-0.01em', transition:'color 0.15s', fontWeight:500 }}>{l}</motion.a>
+              <motion.a key={l} href={l === 'Features' ? '#features' : l === 'Pricing' ? '#pricing' : `/${l.toLowerCase()}`} whileHover={{ color:T.text }} style={{ padding:'8px 16px', fontSize:14, color:T.textMuted, cursor:'pointer', fontFamily:T.font, letterSpacing:'-0.01em', transition:'color 0.15s', fontWeight:500 }}>{l}</motion.a>
             ))}
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <motion.button whileHover={{ color:T.text }} initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.2 }} onClick={() => window.location.href = '/login'} style={{ padding:'8px 18px', fontSize:14, background:'none', border:'none', color:T.textSub, cursor:'pointer', fontFamily:T.font, letterSpacing:'-0.01em', fontWeight:500 }}>Sign in</motion.button>
             <motion.div initial={{ opacity:0, scale:0.88 }} animate={{ opacity:1, scale:1 }} transition={{ delay:0.3, ...SP_BOUNCY }}>
-              <MagneticBtn onClick={() => window.location.href = '/editor'} style={{ padding:'10px 20px', borderRadius:8, fontSize:14 }}>Get Started</MagneticBtn>
+              <MagneticBtn onClick={() => window.location.href = '/dashboard'} style={{ padding:'10px 20px', borderRadius:8, fontSize:14 }}>Get Started</MagneticBtn>
             </motion.div>
           </div>
         </div>
@@ -555,7 +555,7 @@ export default function LandingPage() {
                 AI generation, code-first syntax, and a visual canvas — one workspace built for engineering teams who care about clarity.
               </motion.p>
               <motion.div initial={{ opacity:0, y:14 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.28, ...SP_SOFT }} style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                <MagneticBtn onClick={() => window.location.href = '/editor'} style={{ padding:'11px 24px', fontSize:13.5 }}>Start for free <ArrowRight size={14} /></MagneticBtn>
+                <MagneticBtn onClick={() => window.location.href = '/dashboard'} style={{ padding:'11px 24px', fontSize:13.5 }}>Start for free <ArrowRight size={14} /></MagneticBtn>
                 <MagneticBtn variant="ghost" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior:'smooth' })} style={{ padding:'11px 20px', fontSize:13.5 }}>View examples <ArrowUpRight size={13} /></MagneticBtn>
               </motion.div>
               <motion.div initial="hidden" animate="show" variants={{ hidden:{}, show:{ transition:{ staggerChildren:0.1, delayChildren:0.55 } } }} style={{ display:'flex', gap:40, marginTop:48, paddingTop:32, borderTop:`1px solid ${T.border}` }}>
@@ -577,7 +577,7 @@ export default function LandingPage() {
                   </motion.button>
                 ))}
               </div>
-              <div style={{ position:'absolute', inset:'-20px', borderRadius:20, background:`radial-gradient(ellipse at 50% 50%, rgba(201,184,154,0.06) 0%, transparent 70%)`, pointerEvents:'none', zIndex:0 }} />
+              <div style={{ position:'absolute', inset:'-20px', borderRadius:20, background:`radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)`, pointerEvents:'none', zIndex:0 }} />
               <AnimatePresence mode="wait">
                 <motion.div key={tab} initial={{ opacity:0, y:12, scale:0.98 }} animate={{ opacity:1, y:0, scale:1 }} exit={{ opacity:0, y:-10, scale:0.98 }} transition={SP_SOFT} style={{ position:'relative', zIndex:1 }}>
                   {tab === 'diagram' ? <DiagramCanvas /> : <CodeEditor />}
@@ -640,7 +640,7 @@ export default function LandingPage() {
                 color: T.textMuted,
                 fontFamily: 'JetBrains Mono, monospace',
               }}>
-                skemly.ai/docs
+                schemely.ai/docs
               </div>
             </div>
             
@@ -648,7 +648,7 @@ export default function LandingPage() {
             <div style={{ position: 'relative', width: '100%', background: T.bg }}>
               <motion.img 
                 src={docsImage} 
-                alt="Skemly Documentation"
+                alt="Schemely Documentation"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
@@ -729,9 +729,9 @@ export default function LandingPage() {
           <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:320, height:320, borderRadius:'50%', border:`1px solid ${T.border}`, opacity:0.2, pointerEvents:'none' }} />
           <div style={lbl}>Get started</div>
           <motion.h2 initial={{ opacity:0, y:30 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} transition={SP_SOFT} style={{ ...serifHdg(56), marginBottom:16 }}>Your next system design<br />starts here.</motion.h2>
-          <motion.p initial={{ opacity:0 }} whileInView={{ opacity:1 }} viewport={{ once:true }} transition={{ delay:0.12 }} style={{ fontSize:14, color:T.textSub, marginBottom:36, lineHeight:1.75, fontFamily:T.font }}>No credit card required. Open Skemly and start building in seconds.</motion.p>
+          <motion.p initial={{ opacity:0 }} whileInView={{ opacity:1 }} viewport={{ once:true }} transition={{ delay:0.12 }} style={{ fontSize:14, color:T.textSub, marginBottom:36, lineHeight:1.75, fontFamily:T.font }}>No credit card required. Open Schemely and start building in seconds.</motion.p>
           <motion.div initial={{ opacity:0, scale:0.9 }} whileInView={{ opacity:1, scale:1 }} viewport={{ once:true }} transition={{ delay:0.2, ...SP_BOUNCY }}>
-            <MagneticBtn onClick={() => window.location.href = '/editor'} style={{ padding:'12px 32px', fontSize:14 }}>Start for free <ArrowRight size={14} /></MagneticBtn>
+            <MagneticBtn onClick={() => window.location.href = '/dashboard'} style={{ padding:'12px 32px', fontSize:14 }}>Start for free <ArrowRight size={14} /></MagneticBtn>
           </motion.div>
           <motion.div initial={{ opacity:0, y:10 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} transition={{ delay:0.32 }} style={{ display:'flex', justifyContent:'center', gap:10, marginTop:28, flexWrap:'wrap' }}>
             {['No credit card','Cancel anytime','Free forever plan'].map((txt,i)=>(
@@ -751,7 +751,7 @@ export default function LandingPage() {
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
               <motion.div whileHover={{ scale:1.02 }} transition={SP_BOUNCY} style={{ display:'flex', alignItems:'center', gap:12, cursor:'pointer' }} onClick={() => window.location.href = '/'}>
                 <img src={SkemlyLogo} alt="Skemly" style={{ width:32, height:32, borderRadius:8, objectFit:'cover' }} />
-                <span style={{ fontSize:18, fontWeight:700, color:T.text, letterSpacing:'-0.02em', fontFamily:T.font }}>Skemly</span>
+                <span style={{ fontSize:18, fontWeight:700, color:T.text, letterSpacing:'-0.02em', fontFamily:T.font }}>Schemely</span>
               </motion.div>
               <p style={{ fontSize:14, color:T.textSub, fontFamily:T.font, marginLeft:16, paddingLeft:16, borderLeft:`1px solid ${T.border}` }}>
                 Create system diagrams with AI and code.
@@ -761,7 +761,7 @@ export default function LandingPage() {
             {/* Simple Nav Links */}
             <div style={{ display:'flex', gap:32   }}>
               {['Features', 'Pricing', 'Docs'].map(item => (
-                <motion.a key={item} href={`/${item.toLowerCase()}`} whileHover={{ color:T.text }} style={{ fontSize:14, color:T.textSub, fontFamily:T.font, transition:'color 0.15s' }}>{item}</motion.a>
+                <motion.a key={item} href={item === 'Features' ? '#features' : item === 'Pricing' ? '#pricing' : `/${item.toLowerCase()}`} whileHover={{ color:T.text }} style={{ fontSize:14, color:T.textSub, fontFamily:T.font, transition:'color 0.15s' }}>{item}</motion.a>
               ))}
             </div>
           </div>
@@ -769,7 +769,7 @@ export default function LandingPage() {
           {/* Bottom Bar */}
           <div style={{ paddingTop:24, borderTop:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
             <div style={{ fontSize:13, color:T.textMuted, fontFamily:T.font }}>
-              © 2026 SkemlyAI
+              © 2026 Schemely AI
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 import '@reactflow/node-resizer/dist/style.css';
@@ -24,7 +24,7 @@ interface ShapeData {
   onLabelChange?: (id: string, label: string) => void;
 }
 
-export function ResizableShapeNode({ data, selected, id, type }: NodeProps<ShapeData>) {
+export const ResizableShapeNode = memo(function ResizableShapeNode({ data, selected, id, type }: NodeProps<ShapeData>) {
   const { getNode } = useReactFlow();
   
   // Handle resize - only notify parent, don't call setNodes (ReactFlow handles visual resize)
@@ -86,9 +86,9 @@ export function ResizableShapeNode({ data, selected, id, type }: NodeProps<Shape
 
   const getShapeStyles = () => {
     const baseStyles = {
-      background: style.fillColor || '#ffffff',
-      border: `${style.strokeWidth || 2}px solid ${style.strokeColor || '#000000'}`,
-      boxShadow: selected ? '0 4px 12px rgba(59, 130, 246, 0.25)' : '0 2px 8px rgba(0, 0, 0, 0.08)',
+      background: style.fillColor || '#18181b',
+      border: `${style.strokeWidth || 2}px solid ${style.strokeColor || '#3f3f46'}`,
+      boxShadow: selected ? '0 4px 12px rgba(59, 130, 246, 0.25)' : '0 2px 8px rgba(0, 0, 0, 0.35)',
       transition: 'box-shadow 0.2s ease',
     };
 
@@ -161,7 +161,7 @@ export function ResizableShapeNode({ data, selected, id, type }: NodeProps<Shape
           className="w-full h-full p-3 text-center resize-none outline-none bg-transparent relative z-10"
           style={{ 
             fontSize: style.fontSize || 14, 
-            color: style.color || '#000000',
+            color: style.color || '#ffffff',
             fontFamily: 'inherit',
             lineHeight: '1.4',
           }}
@@ -172,7 +172,7 @@ export function ResizableShapeNode({ data, selected, id, type }: NodeProps<Shape
           className="w-full h-full p-3 flex items-center justify-center relative z-10"
           style={{ 
             fontSize: style.fontSize || 14, 
-            color: style.color || '#000000',
+            color: style.color || '#ffffff',
             fontFamily: 'inherit',
             lineHeight: '1.4',
             overflow: shape === 'circle' ? 'visible' : 'auto',
@@ -181,7 +181,7 @@ export function ResizableShapeNode({ data, selected, id, type }: NodeProps<Shape
           <span 
             className="text-center break-words" 
             style={{ 
-              color: style.color || '#000000',
+              color: style.color || '#ffffff',
               display: '-webkit-box',
               WebkitLineClamp: shape === 'circle' ? 2 : 3,
               WebkitBoxOrient: 'vertical',
@@ -195,4 +195,4 @@ export function ResizableShapeNode({ data, selected, id, type }: NodeProps<Shape
       )}
     </div>
   );
-}
+});

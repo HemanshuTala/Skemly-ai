@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 import { X, ImageIcon } from 'lucide-react';
@@ -12,7 +12,7 @@ interface ImageData {
   aspectRatio?: 'original' | 'square' | 'video' | 'wide';
 }
 
-export function ImageNode({ data, selected, id }: NodeProps<ImageData>) {
+export const ImageNode = memo(function ImageNode({ data, selected, id }: NodeProps<ImageData>) {
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -95,4 +95,4 @@ export function ImageNode({ data, selected, id }: NodeProps<ImageData>) {
       <Handle id="left-source" type="source" position={Position.Left} className="!w-2 !h-2 !bg-[#c99367] !border-2 !border-[#18181b]" />
     </div>
   );
-}
+});

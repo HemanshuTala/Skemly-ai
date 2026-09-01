@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,16 +17,15 @@ import {
   FolderOpen,
   MoreVertical,
   Clock,
-  FileText,
   Grid3x3,
   List,
   Edit,
   Trash2,
-  Loader2,
   Sparkles,
   Layers,
-  Zap,
+  ChevronRight,
   ArrowRight,
+  FolderKanban,
 } from 'lucide-react'
 import { useProjectStore } from '@/stores/projectStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -35,10 +34,20 @@ import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal'
 import { ProjectIcon } from '@/components/projects/ProjectIcon'
+import { cn } from '@/lib/utils'
+
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05 } },
+}
+const item = {
+  hidden: { opacity: 0, y: 12 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } },
+}
 
 export default function ProjectsPage() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [searchQuery, setSearchQuery]       = useState('')
+  const [viewMode, setViewMode]             = useState<'grid' | 'list'>('grid')
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   const { projects, fetchProjects, createProject, deleteProject, isLoading } = useProjectStore()
@@ -52,260 +61,280 @@ export default function ProjectsPage() {
     }
   }, [currentWorkspace])
 
-  const filteredProjects = projects.filter((project) =>
-    project.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredProjects = projects.filter((p) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const getProjectDiagramCount = (projectId: string) => {
-    return diagrams.filter(d => d.projectId === projectId && !d.trashed).length
-  }
+  const getDiagramCount = (projectId: string) =>
+    diagrams.filter(d => d.projectId === projectId && !d.trashed).length
 
-  const handleCreateProject = async (data: { name: string; description?: string; icon?: string; color?: string }) => {
+  const handleCreateProject = async (data: { name: string; icon?: string; color?: string }) => {
     if (!currentWorkspace) {
-      toast.error('No workspace loaded yet. Wait a moment or refresh the page.')
+      toast.error('No workspace selected')
       return
     }
-
-    try {
-      await createProject(currentWorkspace.id, {
-        name: data.name,
-        icon: data.icon,
-        color: data.color,
-      })
-      setShowCreateModal(false)
-    } catch (error) {
-      console.error('Failed to create project:', error)
-    }
+    await createProject(currentWorkspace.id, data)
+    setShowCreateModal(false)
   }
 
   const handleDeleteProject = async (projectId: string) => {
     if (!currentWorkspace) return
-    if (confirm('Are you sure you want to delete this project?')) {
+    if (confirm('Delete this project? This cannot be undone.')) {
       await deleteProject(currentWorkspace.id, projectId)
     }
   }
 
+  /* ── Loading skeleton ── */
   if (isLoading && projects.length === 0) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-[#71717a]" />
+      <div className="max-w-[1200px] mx-auto px-6 py-8 space-y-8">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-28 rounded" />
+            <Skeleton className="h-3.5 w-44 rounded" />
+          </div>
+          <Skeleton className="h-9 w-28 rounded-lg" />
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="rounded-xl border border-white/[0.05] bg-[#0d0d10] p-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-10 h-10 rounded-lg" />
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="h-4 w-2/3 rounded" />
+                  <Skeleton className="h-3 w-1/3 rounded" />
+                </div>
+              </div>
+              <Skeleton className="h-3 w-1/2 rounded" />
+              <Skeleton className="h-8 w-full rounded-lg" />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 text-white p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="max-w-[1200px] mx-auto px-6 py-8 space-y-6">
+      {/* ── Header ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="flex items-center justify-between gap-4"
+      >
         <div>
-          <h1 className="text-2xl font-bold text-white">Projects</h1>
-          <p className="text-[#71717a] text-sm mt-1">
-            {currentWorkspace?.name || 'Select a workspace'}
+          <h1 className="text-[22px] font-bold text-white tracking-[-0.02em]">Projects</h1>
+          <p className="text-[13px] text-[#52525b] mt-0.5">
+            {filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''} in{' '}
+            <span className="text-[#a1a1aa]">{currentWorkspace?.name || 'workspace'}</span>
           </p>
         </div>
-        <Button
+        <button
           onClick={() => setShowCreateModal(true)}
           disabled={!currentWorkspace}
-          className="gap-2 bg-white text-[#18181b] hover:bg-[#e4e4e7] border-0"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-[#09090b] text-[12px] font-bold hover:bg-[#e4e4e7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
           New Project
-        </Button>
+        </button>
+      </motion.div>
+
+      {/* ── Search + view toggle ── */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-[320px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#52525b]" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search projects…"
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-[13px] text-white placeholder:text-[#3f3f46] outline-none focus:border-white/[0.15] focus:bg-white/[0.05] transition-all"
+          />
+        </div>
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={cn(
+              'p-1.5 rounded-md transition-colors',
+              viewMode === 'grid' ? 'bg-white/[0.08] text-white' : 'text-[#52525b] hover:text-[#a1a1aa]'
+            )}
+            aria-label="Grid view"
+          >
+            <Grid3x3 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={cn(
+              'p-1.5 rounded-md transition-colors',
+              viewMode === 'list' ? 'bg-white/[0.08] text-white' : 'text-[#52525b] hover:text-[#a1a1aa]'
+            )}
+            aria-label="List view"
+          >
+            <List className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="flex gap-6 mt-6 pt-6 border-t border-[#27272a]">
-        <div>
-          <div className="text-2xl font-bold text-white">{filteredProjects.length}</div>
-          <div className="text-xs text-[#71717a] uppercase tracking-wider">Projects</div>
-        </div>
-        <div>
-          <div className="text-2xl font-bold text-white">
-            {filteredProjects.reduce((acc, p) => acc + getProjectDiagramCount(p.id), 0)}
+      {/* ── Empty state ── */}
+      {filteredProjects.length === 0 && !isLoading && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="rounded-xl border border-dashed border-white/[0.08] bg-[#0d0d10] py-16 text-center"
+        >
+          <div className="w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto mb-5">
+            {searchQuery ? <Search className="w-6 h-6 text-[#52525b]" /> : <FolderKanban className="w-6 h-6 text-[#52525b]" />}
           </div>
-          <div className="text-xs text-[#71717a] uppercase tracking-wider">Diagrams</div>
-        </div>
-      </div>
-
-      {/* Projects Grid */}
-      {viewMode === 'grid' && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project, i) => (
-            <motion.div
-              key={project.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
+          <h3 className="text-[15px] font-semibold text-white mb-1.5">
+            {searchQuery ? 'No projects found' : 'No projects yet'}
+          </h3>
+          <p className="text-[13px] text-[#52525b] max-w-[240px] mx-auto mb-6 leading-relaxed">
+            {searchQuery
+              ? `No results for "${searchQuery}"`
+              : 'Organize your diagrams into projects for better collaboration'}
+          </p>
+          {!searchQuery && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-[#09090b] text-[12px] font-bold hover:bg-[#e4e4e7] transition-colors"
             >
-              <Card className="p-5 group bg-[#18181b] border-[#27272a] hover:border-[#3f3f46] transition-all">
+              <Plus className="w-3.5 h-3.5" />
+              Create First Project
+            </button>
+          )}
+        </motion.div>
+      )}
+
+      {/* ── Grid view ── */}
+      {viewMode === 'grid' && filteredProjects.length > 0 && (
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          animate="show"
+          className="grid md:grid-cols-2 lg:grid-cols-3 gap-3"
+        >
+          {filteredProjects.map((project) => (
+            <motion.div key={project.id} variants={item}>
+              <div className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-[#0d0d10] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/[0.12] hover:shadow-lg hover:shadow-black/30">
+                {/* Top row */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: project.color || '#3f3f46' }}
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: project.color || '#27272a' }}
                     >
                       <ProjectIcon icon={project.icon} className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-white">
+                      <h3 className="text-[14px] font-semibold text-white tracking-[-0.01em]">
                         {project.name}
                       </h3>
-                      <p className="text-xs text-[#71717a]">
-                        {getProjectDiagramCount(project.id)} diagrams
+                      <p className="text-[11px] text-[#52525b] mt-0.5">
+                        {getDiagramCount(project.id)} diagram{getDiagramCount(project.id) !== 1 ? 's' : ''}
                       </p>
                     </div>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 text-[#a1a1aa] hover:text-white hover:bg-[#27272a]">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
+                      <button className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-all">
+                        <MoreVertical className="w-3.5 h-3.5 text-[#71717a]" />
+                      </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-[#27272a] border-[#3f3f46]">
-                      <DropdownMenuItem className="text-[#a1a1aa] hover:text-white hover:bg-[#3f3f46] focus:bg-[#3f3f46] focus:text-white">
-                        <Edit className="w-4 h-4 mr-2" />
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <Edit className="w-3.5 h-3.5 mr-2" />
                         Rename
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-[#3f3f46]" />
-                      <DropdownMenuItem 
-                        className="text-[#f87171] hover:text-[#f87171] hover:bg-[#3f3f46] focus:bg-[#3f3f46]"
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-[#f87171] focus:text-[#f87171]"
                         onClick={() => handleDeleteProject(project.id)}
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
+                        <Trash2 className="w-3.5 h-3.5 mr-2" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-[#71717a] mb-4">
-                  <Clock className="w-3.5 h-3.5" />
+                {/* Meta */}
+                <div className="flex items-center gap-1.5 text-[11px] text-[#52525b] mb-4">
+                  <Clock className="w-3 h-3" />
                   <span>{formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}</span>
                 </div>
 
+                {/* Open CTA */}
                 <Link to="/dashboard">
-                  <Button variant="outline" className="w-full bg-transparent border-[#3f3f46] text-white hover:bg-[#27272a] hover:text-white hover:border-[#52525b]">
+                  <button className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-white/[0.07] bg-white/[0.03] text-[12px] text-[#a1a1aa] font-medium hover:bg-white/[0.07] hover:text-white transition-colors">
                     Open Project
-                  </Button>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </Link>
-              </Card>
+              </div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
-      {/* Projects List */}
-      {viewMode === 'list' && (
-        <div className="space-y-2">
+      {/* ── List view ── */}
+      {viewMode === 'list' && filteredProjects.length > 0 && (
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          animate="show"
+          className="space-y-1.5"
+        >
           {filteredProjects.map((project) => (
-            <div
-              key={project.id}
-              className="p-4 flex items-center justify-between rounded-lg border border-[#27272a] bg-[#18181b] hover:border-[#3f3f46] transition-all group"
-            >
-              <div className="flex items-center gap-4 flex-1">
-                <div 
-                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: project.color || '#3f3f46' }}
+            <motion.div key={project.id} variants={item}>
+              <div className="group flex items-center gap-4 px-4 py-3.5 rounded-xl border border-white/[0.05] bg-[#0d0d10] hover:border-white/[0.10] hover:bg-white/[0.02] transition-all">
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: project.color || '#27272a' }}
                 >
-                  <ProjectIcon icon={project.icon} className="w-5 h-5 text-white" />
+                  <ProjectIcon icon={project.icon} className="w-4 h-4 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-white group-hover:text-[#a1a1aa] transition-colors">
-                    {project.name}
-                  </h3>
-                  <div className="flex items-center gap-4 text-xs text-[#71717a] mt-0.5">
-                    <span>{getProjectDiagramCount(project.id)} diagrams</span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-[13px] font-semibold text-white">{project.name}</h3>
+                  <div className="flex items-center gap-3 text-[11px] text-[#52525b] mt-0.5">
+                    <span>{getDiagramCount(project.id)} diagrams</span>
+                    <span>·</span>
                     <span>{formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}</span>
                   </div>
                 </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Link to="/dashboard">
+                    <button className="px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] text-[11px] text-white font-medium hover:bg-white/[0.08] transition-colors">
+                      Open
+                    </button>
+                  </Link>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-all">
+                        <MoreVertical className="w-3.5 h-3.5 text-[#71717a]" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <Edit className="w-3.5 h-3.5 mr-2" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-[#f87171] focus:text-[#f87171]"
+                        onClick={() => handleDeleteProject(project.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 text-[#a1a1aa] hover:text-white hover:bg-[#27272a]">
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-[#27272a] border-[#3f3f46]">
-                  <DropdownMenuItem className="text-[#a1a1aa] hover:text-white hover:bg-[#3f3f46] focus:bg-[#3f3f46] focus:text-white">
-                    <Edit className="w-4 h-4 mr-2" />
-                    Rename
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-[#3f3f46]" />
-                  <DropdownMenuItem 
-                    className="text-[#f87171] hover:text-[#f87171] hover:bg-[#3f3f46] focus:bg-[#3f3f46]"
-                    onClick={() => handleDeleteProject(project.id)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {filteredProjects.length === 0 && !isLoading && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          {/* Animated illustration */}
-          <motion.div 
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="relative mb-8"
-          >
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#3f3f46] to-[#27272a] flex items-center justify-center shadow-2xl shadow-black/50">
-              <Layers className="w-12 h-12 text-[#a1a1aa]" />
-            </div>
-            <motion.div 
-              animate={{ y: [0, -4, 0] }}
-              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-              className="absolute -top-2 -right-2 w-10 h-10 rounded-xl bg-gradient-to-br from-[#c99367] to-[#a67c52] flex items-center justify-center shadow-lg"
-            >
-              <Sparkles className="w-5 h-5 text-white" />
             </motion.div>
-          </motion.div>
-
-          {/* Main text */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-white to-[#a1a1aa] bg-clip-text text-transparent">
-              {searchQuery ? 'No matching projects' : 'Start your first project'}
-            </h3>
-
-          </motion.div>
-
-          {/* CTA Buttons */}
-          <motion.div 
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-col sm:flex-row gap-3"
-          >
-            <Button 
-              onClick={() => setShowCreateModal(true)} 
-              className="gap-2 bg-white text-[#18181b] hover:bg-[#e4e4e7] px-6 py-5 text-sm font-semibold"
-            >
-              <Plus className="w-4 h-4" />
-              Create Project
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-            {!searchQuery && (
-              <Button 
-                variant="outline" 
-                className="gap-2 bg-transparent border-[#3f3f46] text-[#a1a1aa] hover:bg-[#27272a] hover:text-white px-6 py-5 text-sm"
-              >
-                <Zap className="w-4 h-4" />
-                Try Demo Project
-              </Button>
-            )}
-          </motion.div>
-
-       
-        </div>
+          ))}
+        </motion.div>
       )}
 
       {/* Create Project Modal */}

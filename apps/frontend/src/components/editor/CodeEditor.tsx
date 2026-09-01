@@ -1,4 +1,4 @@
-﻿import { memo, useRef, useState, useEffect, useLayoutEffect, useCallback, type MutableRefObject } from 'react';
+import { memo, useRef, useState, useEffect, useLayoutEffect, useCallback, type MutableRefObject } from 'react';
 import { createPortal } from 'react-dom';
 import Editor, { OnMount } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
@@ -9,30 +9,11 @@ import {
   GitBranch,
   Server,
   GitMerge,
-  Map,
-  Palette,
-  Moon,
-  Sun,
-  Sparkles,
-  Wand2,
-  LayoutTemplate,
-  RotateCcw,
-  Maximize2,
-  Type,
-  Settings,
-  Check,
-  Keyboard,
-  Command,
-  Zap,
-  FileJson,
-  Save,
-  History,
+  Terminal,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
-export type EditorTheme = 'diagram-dark' | 'diagram-light' | 'diagram-zinc' | 'diagram-ocean';
+export type EditorTheme = 'diagram-dark';
 
 export interface EditorSettings {
   theme: EditorTheme;
@@ -101,9 +82,9 @@ const EXAMPLES = [
 ] as const;
 
 const HINTS = [
-  { syntax: '[Node]', desc: 'Process / rectangle' },
+  { syntax: '[Node]', desc: 'Rectangle shape' },
   { syntax: '{Decision}', desc: 'Diamond shape' },
-  { syntax: '(Start)', desc: 'Pill / terminator' },
+  { syntax: '(Start)', desc: 'Terminator shape' },
   { syntax: 'A --> B', desc: 'Arrow connection' },
   { syntax: 'A -- label --> B', desc: 'Labeled edge' },
 ];
@@ -161,7 +142,6 @@ export const CodeEditor = memo(function CodeEditor({
     };
   }, [examplesOpen, updateMenuPosition]);
 
-  // Defer outside-close so the same click that opened the menu doesn't hit capture-phase handlers first on the next frame in some browsers.
   useEffect(() => {
     if (!examplesOpen) return;
     let detached: (() => void) | null = null;
@@ -213,8 +193,8 @@ export const CodeEditor = memo(function CodeEditor({
     editor.updateOptions({
       minimap: { enabled: false },
       fontFamily: JB_MONO,
-      fontSize: 13,
-      lineHeight: 22,
+      fontSize: 12,
+      lineHeight: 20,
       lineNumbers: 'on',
       roundedSelection: true,
       scrollBeyondLastLine: false,
@@ -234,21 +214,21 @@ export const CodeEditor = memo(function CodeEditor({
       base: 'vs-dark',
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '6B7280', fontStyle: 'italic' },
-        { token: 'string', foreground: 'c99367' },
-        { token: 'keyword', foreground: 'a78bfa' },
+        { token: 'comment', foreground: '52525b', fontStyle: 'italic' },
+        { token: 'string', foreground: 'ffffff' },
+        { token: 'keyword', foreground: 'a1a1aa' },
       ],
       colors: {
-        'editor.background': '#0f0b09',
-        'editor.foreground': '#f4e7db',
-        'editor.lineHighlightBackground': '#1c150f',
-        'editorCursor.foreground': '#c99367',
-        'editor.selectionBackground': '#3d2914',
-        'editorLineNumber.foreground': '#3d3028',
-        'editorLineNumber.activeForeground': '#c99367',
+        'editor.background': '#09090b',
+        'editor.foreground': '#ffffff',
+        'editor.lineHighlightBackground': '#18181b',
+        'editorCursor.foreground': '#ffffff',
+        'editor.selectionBackground': '#27272a',
+        'editorLineNumber.foreground': '#3f3f46',
+        'editorLineNumber.activeForeground': '#ffffff',
         'scrollbar.shadow': '#00000000',
-        'editorGutter.background': '#0f0b09',
-        'editor.inactiveSelectionBackground': '#2d1f12',
+        'editorGutter.background': '#09090b',
+        'editor.inactiveSelectionBackground': '#27272a',
       },
     });
 
@@ -266,13 +246,12 @@ export const CodeEditor = memo(function CodeEditor({
         id={EXAMPLES_MENU_ID}
         role="menu"
         aria-label="Diagram examples"
-        className="fixed rounded-xl border border-primary/40 bg-[#27272a] py-1 shadow-[0_24px_80px_rgba(0,0,0,0.85)] outline-none ring-1 ring-white/10"
+        className="fixed rounded-xl border border-white/[0.08] bg-[#0d0d10] py-1 shadow-2xl overflow-hidden z-[2147483647] custom-scrollbar"
         style={{
           top: menuBox.top,
           left: menuBox.left,
           width: menuBox.width,
           maxHeight: menuBox.maxH,
-          zIndex: 2147483647,
           overflowY: 'auto',
         }}
       >
@@ -283,18 +262,18 @@ export const CodeEditor = memo(function CodeEditor({
               key={ex.label}
               type="button"
               role="menuitem"
-              className="flex w-full cursor-pointer items-center gap-3 px-2.5 py-2.5 text-left text-[#f4e7db] transition-colors hover:bg-primary/20 focus:bg-primary/25 focus:outline-none"
+              className="flex w-full items-center gap-3 px-3 py-2 text-left text-white transition-colors hover:bg-white/[0.04] focus:bg-white/[0.06] focus:outline-none"
               onClick={() => {
                 onChange(ex.code);
                 setExamplesOpen(false);
               }}
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/20">
-                <Icon className="h-4 w-4 text-primary" />
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] border border-white/[0.08]">
+                <Icon className="h-3.5 w-3.5 text-white" />
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-semibold">{ex.label}</div>
-                <div className="text-[11px] text-[#bba08c]">{ex.description}</div>
+                <div className="text-xs font-semibold text-white">{ex.label}</div>
+                <div className="text-[10px] text-[#52525b] truncate">{ex.description}</div>
               </div>
             </button>
           );
@@ -304,35 +283,33 @@ export const CodeEditor = memo(function CodeEditor({
     );
 
   return (
-    <div className="relative z-10 flex h-full w-full min-h-0 flex-col overflow-visible border-r border-border/60 bg-[#0f0b09]">
-      <div className="relative z-30 shrink-0 overflow-visible border-b border-white/[0.08] bg-[#130e0a]/95 backdrop-blur-md">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 sm:px-4 sm:py-2.5">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/15">
-              <Code2 className="h-4 w-4 text-primary" />
+    <div className="relative z-10 flex h-full w-full min-h-0 flex-col overflow-visible border-r border-white/[0.05] bg-[#09090b]">
+      {/* Code Header */}
+      <div className="relative z-30 shrink-0 border-b border-white/[0.05] bg-[#0a0a0d]/80 backdrop-blur-xl">
+        <div className="flex items-center justify-between gap-x-3 px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] border border-white/[0.08]">
+              <Terminal className="h-3.5 w-3.5 text-white" />
             </div>
-            <div className="min-w-0">
-              <span className="block font-display text-xs font-semibold tracking-tight text-foreground/90">
-                Diagram code
-              </span>
-              <span className="hidden text-[10px] text-muted-foreground/50 sm:block">
-                Syntax canvas
+            <div>
+              <span className="block font-bold text-xs text-white uppercase tracking-wider">
+                Syntax Editor
               </span>
             </div>
           </div>
 
-          <div className="relative z-40 flex shrink-0 items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setShowHints((v) => !v)}
               className={cn(
-                'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-all',
+                'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all border',
                 showHints
-                  ? 'border border-amber-500/35 bg-amber-500/12 text-amber-300'
-                  : 'border border-transparent text-muted-foreground/70 hover:bg-white/[0.06] hover:text-foreground'
+                  ? 'border-white/[0.15] bg-white/[0.08] text-white'
+                  : 'border-transparent text-[#52525b] hover:text-white hover:bg-white/[0.05]'
               )}
             >
-              <Lightbulb className="h-3.5 w-3.5" />
+              <Lightbulb className="h-3.5 w-3.5 animate-pulse" />
               <span>Hints</span>
             </button>
 
@@ -342,10 +319,10 @@ export const CodeEditor = memo(function CodeEditor({
               aria-expanded={examplesOpen}
               aria-haspopup="menu"
               className={cn(
-                'flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#f4e7db] outline-none transition-all hover:bg-white/[0.1]',
+                'flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all',
                 examplesOpen
-                  ? 'border-primary/40 bg-primary/15'
-                  : 'border-white/[0.12] bg-white/[0.06]'
+                  ? 'border-white/[0.15] bg-white/[0.08] text-white'
+                  : 'border-white/[0.06] bg-white/[0.03] text-[#a1a1aa] hover:bg-white/[0.05]'
               )}
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => {
@@ -366,21 +343,20 @@ export const CodeEditor = memo(function CodeEditor({
         </div>
 
         {showHints && (
-          <div className="border-t border-white/[0.06] px-3 py-2 sm:px-4">
+          <div className="border-t border-white/[0.05] px-4 py-2.5 bg-[#0d0d10]">
             <div className="flex flex-wrap gap-1.5">
               {HINTS.map((h) => (
                 <div
                   key={h.syntax}
-                  className="flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1"
+                  className="flex items-center gap-1.5 rounded-lg border border-white/[0.05] bg-white/[0.02] px-2.5 py-1"
                   title={h.desc}
                 >
                   <code
-                    className="text-[11px] text-primary"
-                    style={{ fontFamily: JB_MONO }}
+                    className="text-[11px] text-white font-semibold font-mono"
                   >
                     {h.syntax}
                   </code>
-                  <span className="hidden text-[10px] text-muted-foreground/50 lg:inline">{h.desc}</span>
+                  <span className="text-[10px] text-[#52525b]">{h.desc}</span>
                 </div>
               ))}
             </div>
@@ -388,7 +364,7 @@ export const CodeEditor = memo(function CodeEditor({
         )}
       </div>
 
-      <div className="relative z-0 min-h-0 flex-1 isolate">
+      <div className="relative z-0 min-h-0 flex-1 isolate bg-[#09090b]">
         <Editor
           height="100%"
           defaultLanguage={language}
@@ -400,8 +376,8 @@ export const CodeEditor = memo(function CodeEditor({
             readOnly,
             minimap: { enabled: false },
             fontFamily: JB_MONO,
-            fontSize: 13,
-            lineHeight: 22,
+            fontSize: 12,
+            lineHeight: 20,
             lineNumbers: 'on',
             scrollBeyondLastLine: false,
             automaticLayout: true,
@@ -413,6 +389,23 @@ export const CodeEditor = memo(function CodeEditor({
             overviewRulerBorder: false,
           }}
         />
+      </div>
+
+      {/* Code Status Bar */}
+      <div className="relative z-30 shrink-0 border-t border-white/[0.05] bg-[#0a0a0d] h-7 px-4 flex items-center justify-between text-[10px] text-[#52525b] font-medium font-mono select-none">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1 text-[#4ade80]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80]" />
+            IDE Synced
+          </span>
+          <div className="h-3 w-px bg-white/[0.06]" />
+          <span>{value.split('\n').length} lines</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span>Tab Size: 2</span>
+          <div className="h-3 w-px bg-white/[0.06]" />
+          <span>Markdown DSL</span>
+        </div>
       </div>
     </div>
   );
