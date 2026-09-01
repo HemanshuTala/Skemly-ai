@@ -127,30 +127,19 @@ export const NODE_ICONS: Record<string, React.ComponentType<{ className?: string
 function GithubIcon({ className }: { className?: string }) {
   return <div className={cn("w-6 h-6 border-2 border-current rounded-full flex items-center justify-center text-[10px] font-bold", className)}>GH</div>;
 }
+import { getShapeDefinition } from '@/domain/shapeRegistry';
 
-export function getNodeStyle(data: any, kind: string): Required<CanvasNodeStyle> {
-  const base =
-    kind === 'decision'
-      ? { width: 140, height: 140 }
-      : kind === 'startend'
-        ? { width: 160, height: 56 }
-        : kind === 'database'
-          ? { width: 176, height: 68 }
-          : kind === 'entity'
-            ? { width: 184, height: 84 }
-            : kind === 'actor'
-              ? { width: 160, height: 58 }
-              : kind === 'queue'
-                ? { width: 176, height: 56 }
-                : kind === 'io'
-                  ? { width: 180, height: 56 }
-                  : { width: 168, height: 56 };
-  // Get style from data or use defaults
+// Helper function to extract node styles with fallbacks to canonical shape registry
+export function getNodeStyle(kind: string, data?: any): Required<CanvasNodeStyle> {
+  const shapeDef = getShapeDefinition(kind);
+  const base = { width: shapeDef.defaultWidth, height: shapeDef.defaultHeight };
+  
+  // Get style from data or use defaults from canonical registry
   const style = data?.style || {};
   
   return {
-    fillColor: String(style.fillColor || '#131317'),
-    strokeColor: String(style.strokeColor || '#3f3f46'),
+    fillColor: String(style.fillColor || shapeDef.fillColor),
+    strokeColor: String(style.strokeColor || shapeDef.borderColor),
     strokeWidth: Number(style.strokeWidth || 1.5),
     fontSize: Number(style.fontSize || 12),
     fontWeight: style.fontWeight || 600,
@@ -160,24 +149,9 @@ export function getNodeStyle(data: any, kind: string): Required<CanvasNodeStyle>
     width: Number(style.width || base.width),
     height: Number(style.height || base.height),
     fontFamily: String(style.fontFamily || 'inherit'),
-    color: String(style.color || '#f4f4f5'),
+    color: String(style.color || shapeDef.textColor),
     iconColor: String(style.iconColor || style.strokeColor || '#a1a1aa'),
-    borderRadius:
-      Number(style.borderRadius) > 0
-        ? Number(style.borderRadius)
-        : kind === 'startend'
-          ? 9999
-          : kind === 'decision'
-            ? 4
-            : kind === 'entity'
-              ? 10
-              : kind === 'actor'
-                ? 10
-                : kind === 'queue'
-                  ? 10
-                  : kind === 'io'
-                    ? 6
-                    : 12,
+    borderRadius: Number(style.borderRadius) >= 0 ? Number(style.borderRadius) : shapeDef.borderRadius,
   };
 }
 

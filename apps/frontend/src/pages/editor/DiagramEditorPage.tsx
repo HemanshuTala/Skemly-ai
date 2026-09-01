@@ -28,8 +28,8 @@ import { Modal } from '@/components/ui/modal';
 import { ArchitectureReviewModal } from '@/components/editor/ArchitectureReviewModal';
 import { TradeoffAnalysisModal } from '@/components/editor/TradeoffAnalysisModal';
 import { RequirementsTraceabilityModal } from '@/components/editor/RequirementsTraceabilityModal';
-import { InterviewModeModal } from '@/components/editor/InterviewModeModal';
 import { ExportPanel } from '@/components/editor/ExportPanel';
+import { VersionConflictModal } from '@/components/editor/VersionConflictModal';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -300,8 +300,16 @@ export default function DiagramEditorPage() {
   const { diagramId } = useParams<{ diagramId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuthStore();
-  const { currentDiagram, loadDiagram, updateDiagram, isLoading } = useDiagramStore();
+  const {
+    currentDiagram,
+    loadDiagram,
+    updateDiagram,
+    isLoading,
+    conflictState,
+    closeConflictModal,
+    resolveConflictKeepChanges,
+    resolveConflictLoadServer,
+  } = useDiagramStore();
 
   // ─── Fine-grained Zustand slices (replace 30+ local useState calls) ──────────
   // Each selector only re-renders this component when ITS slice changes.
@@ -1496,6 +1504,24 @@ export default function DiagramEditorPage() {
         diagramId,
       });
       setAiOutput(nextSyntax);
+
+      // Incremental position preservation: retain user node positions for matching node labels
+      if (localGraph?.nodes && localGraph.nodes.length > 0) {
+        const parsedGraph = parseSyntaxToGraph(nextSyntax);
+        const existingPosMap = new Map(
+          localGraph.nodes.map((n) => [String(n.data?.label || n.id).toLowerCase().trim(), n.position])
+        );
+        const mergedNodes = parsedGraph.nodes.map((n) => {
+          const labelKey = String(n.data?.label || n.id).toLowerCase().trim();
+          const existingPos = existingPosMap.get(labelKey);
+          return existingPos ? { ...n, position: existingPos } : n;
+        });
+        const mergedGraph = { nodes: mergedNodes, edges: parsedGraph.edges };
+        latestGraphRef.current = mergedGraph;
+        setLocalGraph(mergedGraph);
+        setVisualOverride(true);
+      }
+
       handleSyntaxChange(nextSyntax, 'code');
       toast.success('AI generated diagram');
     } catch (error: any) {
@@ -1505,7 +1531,7 @@ export default function DiagramEditorPage() {
     } finally {
       setIsAIBusy(false);
     }
-  }, [aiPrompt, currentDiagram?.type, diagramId, handleSyntaxChange, aiGenerate]);
+  }, [aiPrompt, currentDiagram?.type, diagramId, handleSyntaxChange, aiGenerate, localGraph]);
 
   const runAIExplain = useCallback(async () => {
     if (!diagramId) return;
@@ -2218,6 +2244,35 @@ export default function DiagramEditorPage() {
           await navigator.clipboard.writeText(shareUrl || `${window.location.origin}/public/${currentDiagram.publicLinkToken}`);
           toast.success('Share link copied');
         } : undefined}
+      />
+      <VersionConflictModal
+        isOpen={conflictState?.isOpen || false}
+        onClose={closeConflictModal}
+        serverVersion={conflictState?.serverVersion}
+        clientVersion={conflictState?.clientVersion}
+        onKeepChanges={async () => {
+          if (diagramId) await resolveConflictKeepChanges(diagramId);
+        }}
+        onLoadServerVersion={async () => {
+          if (diagramId) await resolveConflictLoadServer(diagramId);
+        }}
+        onExportLocalBackup={() => {
+          const backupData = {
+            timestamp: new Date().toISOString(),
+            diagramId,
+            syntax,
+            nodes: localGraph?.nodes || [],
+            edges: localGraph?.edges || [],
+          };
+          const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `schemely-backup-${diagramId || 'draft'}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          toast.success('Local backup downloaded');
+        }}
       />
       <Modal
         isOpen={isAIOpen}

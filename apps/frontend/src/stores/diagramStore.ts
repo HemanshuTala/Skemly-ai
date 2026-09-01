@@ -2,10 +2,18 @@ import { create } from 'zustand'
 import { diagramAPI, Diagram } from '@/services/api.service'
 import toast from 'react-hot-toast'
 
+export interface ConflictState {
+  isOpen: boolean;
+  serverVersion?: number;
+  clientVersion?: number;
+  pendingData?: any;
+}
+
 interface DiagramState {
   diagrams: Diagram[]
   currentDiagram: Diagram | null
   isLoading: boolean
+  conflictState: ConflictState
   fetchDiagrams: (params?: { workspaceId?: string; projectId?: string; starred?: boolean; trashed?: boolean }) => Promise<void>
   createDiagram: (data: { title: string; type: string; workspaceId: string; projectId?: string }) => Promise<Diagram>
   getDiagram: (id: string) => Promise<void>
@@ -18,12 +26,57 @@ interface DiagramState {
   trashDiagram: (id: string) => Promise<void>
   restoreDiagram: (id: string) => Promise<void>
   setCurrentDiagram: (diagram: Diagram | null) => void
+  closeConflictModal: () => void
+  resolveConflictKeepChanges: (id: string) => Promise<void>
+  resolveConflictLoadServer: (id: string) => Promise<void>
 }
 
 export const useDiagramStore = create<DiagramState>((set, get) => ({
   diagrams: [],
   currentDiagram: null,
   isLoading: false,
+  conflictState: { isOpen: false },
+
+  closeConflictModal: () => set({ conflictState: { isOpen: false } }),
+
+  resolveConflictKeepChanges: async (id: string) => {
+    const state = get();
+    const conflict = state.conflictState;
+    if (!conflict.pendingData) return;
+    try {
+      localStorage.setItem(`schemely_conflict_backup_${id}`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        diagramId: id,
+        version: conflict.clientVersion,
+        data: conflict.pendingData,
+      }));
+    } catch (e) {}
+
+    const res = await diagramAPI.update(id, conflict.pendingData, undefined);
+    const updatedDiagram = res.data.data;
+    set({
+      diagrams: state.diagrams.map((d) => (d.id === id ? updatedDiagram : d)),
+      currentDiagram: state.currentDiagram?.id === id ? updatedDiagram : state.currentDiagram,
+      conflictState: { isOpen: false },
+    });
+  },
+
+  resolveConflictLoadServer: async (id: string) => {
+    const state = get();
+    const conflict = state.conflictState;
+    if (conflict.pendingData) {
+      try {
+        localStorage.setItem(`schemely_conflict_backup_${id}`, JSON.stringify({
+          timestamp: new Date().toISOString(),
+          diagramId: id,
+          version: conflict.clientVersion,
+          data: conflict.pendingData,
+        }));
+      } catch (e) {}
+    }
+    await get().getDiagram(id);
+    set({ conflictState: { isOpen: false } });
+  },
 
   fetchDiagrams: async (params) => {
     if (!params?.workspaceId) {
@@ -82,6 +135,18 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         currentDiagram: state.currentDiagram?.id === id ? updatedDiagram : state.currentDiagram,
       }))
     } catch (error: any) {
+      if (error.response?.status === 409 || error.response?.data?.error?.code === 'DIAGRAM_VERSION_CONFLICT') {
+        const errData = error.response?.data?.error || {};
+        set({
+          conflictState: {
+            isOpen: true,
+            serverVersion: errData.serverVersion || (get().currentDiagram?.version || 1) + 1,
+            clientVersion: errData.clientVersion || get().currentDiagram?.version || 1,
+            pendingData: data,
+          },
+        });
+        return;
+      }
       const message = error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update diagram'
       toast.error(message)
       throw error

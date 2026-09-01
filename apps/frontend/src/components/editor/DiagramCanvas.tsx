@@ -362,12 +362,19 @@ function DiagramCanvasInner({
 
       // Get the canvas background color
       const computedStyle = window.getComputedStyle(flowContainer);
-      const bgColor = computedStyle.backgroundColor || '#09090b';
+      // Memory safety calculation: clamp pixel ratio if dimensions exceed 64 Megapixels or 14000px bounds
+      const requestedScale = Math.max(1, Math.min(Number(scale) || 2, 3));
+      const maxPixels = 64 * 1024 * 1024;
+      const targetPixels = (containerWidth * requestedScale) * (containerHeight * requestedScale);
+      let safeScale = requestedScale;
+      if (targetPixels > maxPixels || containerWidth * requestedScale > 14000 || containerHeight * requestedScale > 14000) {
+        safeScale = Math.max(1, Math.floor(Math.sqrt(maxPixels / (containerWidth * containerHeight))));
+      }
 
       // Capture the viewport element (has the CSS transforms applied)
       const dataUrl = await toPng(flowViewport, {
         cacheBust: true,
-        pixelRatio: Math.max(1, Math.min(Number(scale) || 2, 3)), // Cap at 3x
+        pixelRatio: safeScale,
         backgroundColor: bgColor,
         width: containerWidth,
         height: containerHeight,
