@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download,
@@ -50,7 +51,7 @@ interface ExportPanelProps {
   diagramTitle: string;
   diagramCode: string;
   onExport: (options: ExportOptions) => Promise<string>;
-  onExportSVG?: () => Promise<string>;
+  onExportSVG?: (options: ExportOptions) => Promise<string>;
   onCopyLink?: () => Promise<void>;
   hasSelection?: boolean;
 }
@@ -128,7 +129,7 @@ export function ExportPanel({
       // SVG export
       if (format === 'svg' && onExportSVG) {
         setStep('rendering');
-        const svgContent = await onExportSVG();
+        const svgContent = await onExportSVG(options);
         setStep('downloading');
         const blob = new Blob([svgContent], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
@@ -195,8 +196,8 @@ export function ExportPanel({
   const scaleMultiplier = { '1x': 1, '2x': 2, '3x': 3 }[quality];
   const showSizeWarning = format === 'png' && scaleMultiplier >= 3;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.97, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -464,6 +465,7 @@ export function ExportPanel({
           </div>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }

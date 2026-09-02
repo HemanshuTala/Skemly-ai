@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Send, X, Copy, Check, Wand2, Code2, Terminal, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -169,14 +170,14 @@ export function AIAssistant({ onGenerate }: AIAssistantProps) {
     setInput(prompt);
   };
 
-  return (
+  return createPortal(
     <>
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={() => setIsOpen(true)}
         className={cn(
-          'fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl',
+          'fixed bottom-6 right-6 z-[10000] flex items-center gap-2 px-4 py-2.5 rounded-xl',
           'bg-white text-[#09090b] font-bold text-xs shadow-2xl tracking-wide uppercase',
           'hover:bg-[#e4e4e7] transition-all duration-200 select-none border border-transparent',
           isOpen && 'hidden'
@@ -193,7 +194,7 @@ export function AIAssistant({ onGenerate }: AIAssistantProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-6 right-6 z-50 w-[420px] rounded-2xl border border-white/[0.08] bg-[#0d0d10] shadow-2xl shadow-black/80 overflow-hidden flex flex-col max-h-[600px]"
+            className="fixed bottom-6 right-6 z-[10000] w-[420px] rounded-2xl border border-white/[0.08] bg-[#0d0d10] shadow-2xl shadow-black/80 overflow-hidden flex flex-col max-h-[600px]"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-[#0a0a0d] shrink-0">
@@ -425,6 +426,7 @@ export function AIAssistant({ onGenerate }: AIAssistantProps) {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </>,
+    document.body
   );
 }

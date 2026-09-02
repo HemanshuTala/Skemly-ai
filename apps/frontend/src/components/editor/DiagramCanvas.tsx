@@ -61,7 +61,8 @@ import {
   Brain, Bot, Sparkles, Lightbulb, Flashlight, Flame as FireIcon
 } from 'lucide-react';
 import gsap from 'gsap';
-import { toPng } from 'html-to-image';
+import { toPng, toSvg } from 'html-to-image';
+import { parseSyntaxToGraph, graphToSyntax, slugifyId, applySafeAutoLayout } from '@/domain/diagramParser';
 
 const EDGE_STROKE = 'var(--color-primary)';
 const PANEL_MUTED = 'h-9 border-b border-border/80 bg-muted/35 flex items-center px-3 shrink-0';
@@ -92,7 +93,8 @@ interface DiagramCanvasProps {
     selectedNode: Node | null;
     selectedEdge: Edge | null;
   }) => void;
-  onRegisterPngExporter?: (exporter: ((scale: number) => Promise<string>) | null) => void;
+  onRegisterPngExporter?: (exporter: ((opts?: any) => Promise<string>) | null) => void;
+  onRegisterSvgExporter?: (exporter: ((opts?: any) => Promise<string>) | null) => void;
   /**
    * Registers a direct style-patcher function that can patch node styles in-place
    * without going through the syntax/visualData roundtrip. Call with null to unregister.
@@ -191,6 +193,7 @@ function DiagramCanvasInner({
   showRuler = false,
   onSelectionChange,
   onRegisterPngExporter,
+  onRegisterSvgExporter,
   onRegisterStylePatcher,
   currentView = 'all',
   onViewChange,
@@ -273,9 +276,14 @@ function DiagramCanvasInner({
 
   useEffect(() => {
     if (!onRegisterPngExporter) return;
-    const exporter = async (scale: number) => {
+    const exporter = async (opts?: any) => {
       const root = containerRef.current;
-      if (!root) throw new Error('Canvas root not available');
+      if (!root || !reactFlowInstance) throw new Error('Canvas root or ReactFlow instance not available');
+
+      const scale = typeof opts === 'number' ? opts : opts?.quality === '3x' ? 3 : opts?.quality === '1x' ? 1 : 2;
+      const isSelectionArea = opts?.area === 'selection';
+      const bgSetting = opts?.background || 'dark';
+      const customPadding = Number(opts?.padding) >= 0 ? Number(opts?.padding) : 40;
 
       const previousSelectedNodeId = selectedNodeId;
       const previousMode = interactionMode;
@@ -283,29 +291,30 @@ function DiagramCanvasInner({
       setSelectedNodeId(null);
       setInteractionMode('pan');
 
-      // Temporarily clear react-flow selection to hide resize and selection handles in export
       const originalNodes = reactFlowInstance.getNodes();
       const originalEdges = reactFlowInstance.getEdges();
-      reactFlowInstance.setNodes(originalNodes.map(n => ({ ...n, selected: false })));
-      reactFlowInstance.setEdges(originalEdges.map(e => ({ ...e, selected: false })));
 
-      // Get the flow container and viewport elements
+      // Filter nodes if area is selection
+      const targetNodes = isSelectionArea && originalNodes.some((n) => n.selected)
+        ? originalNodes.filter((n) => n.selected)
+        : originalNodes;
+
+      if (targetNodes.length === 0) {
+        throw new Error('No nodes available for export');
+      }
+
+      // Temporarily clear selection highlights for export
+      reactFlowInstance.setNodes(originalNodes.map((n) => ({ ...n, selected: false })));
+      reactFlowInstance.setEdges(originalEdges.map((e) => ({ ...e, selected: false })));
+
       const flowContainer = root.querySelector('.react-flow') as HTMLElement | null;
       const flowViewport = root.querySelector('.react-flow__viewport') as HTMLElement | null;
-      
-      if (!flowContainer || !flowViewport || !reactFlowInstance) {
+
+      if (!flowContainer || !flowViewport) {
         throw new Error('Canvas elements not found');
       }
 
-      // Get current nodes and calculate exact bounds including node dimensions
-      const currentNodes = reactFlowInstance.getNodes();
-      
-      if (currentNodes.length === 0) {
-        throw new Error('No nodes to export');
-      }
-
-      // Calculate bounds with proper node dimensions
-      const nodesWithBounds = currentNodes.map((n) => {
+      const nodesWithBounds = targetNodes.map((n) => {
         const styleW = Number((n.data as any)?.style?.width);
         const styleH = Number((n.data as any)?.style?.height);
         const width = Number(n.width) > 0 ? Number(n.width) : Number.isFinite(styleW) && styleW > 0 ? styleW : 160;
@@ -329,40 +338,33 @@ function DiagramCanvasInner({
       const contentWidth = maxX - minX;
       const contentHeight = maxY - minY;
 
-      // Add padding around the content
-      const padding = 40;
-      const boundsWidth = contentWidth + padding * 2;
-      const boundsHeight = contentHeight + padding * 2;
+      const boundsWidth = contentWidth + customPadding * 2;
+      const boundsHeight = contentHeight + customPadding * 2;
 
-      // Get container dimensions
       const containerWidth = flowContainer.clientWidth;
       const containerHeight = flowContainer.clientHeight;
 
-      // Calculate optimal zoom to fit all content
       const zoomX = containerWidth / boundsWidth;
       const zoomY = containerHeight / boundsHeight;
-      const optimalZoom = Math.min(zoomX, zoomY, 1.2); // Cap at 1.2x
-      const zoom = Math.max(optimalZoom, 0.2); // Minimum zoom 0.2
+      const optimalZoom = Math.min(zoomX, zoomY, 1.2);
+      const zoom = Math.max(optimalZoom, 0.2);
 
-      // Center the content
       const centerX = minX + contentWidth / 2;
       const centerY = minY + contentHeight / 2;
-      
+
       const viewportX = containerWidth / 2 - centerX * zoom;
       const viewportY = containerHeight / 2 - centerY * zoom;
 
-      // Set viewport to fit all content
-      reactFlowInstance.setViewport(
-        { x: viewportX, y: viewportY, zoom },
-        { duration: 0 }
-      );
-
-      // Wait for viewport to render
+      reactFlowInstance.setViewport({ x: viewportX, y: viewportY, zoom }, { duration: 0 });
       await new Promise<void>((resolve) => window.setTimeout(() => resolve(), 300));
 
-      // Get the canvas background color
-      const computedStyle = window.getComputedStyle(flowContainer);
-      // Memory safety calculation: clamp pixel ratio if dimensions exceed 64 Megapixels or 14000px bounds
+      let bgColor: string | undefined = '#09090b';
+      if (bgSetting === 'transparent') {
+        bgColor = undefined;
+      } else if (bgSetting === 'light') {
+        bgColor = '#ffffff';
+      }
+
       const requestedScale = Math.max(1, Math.min(Number(scale) || 2, 3));
       const maxPixels = 64 * 1024 * 1024;
       const targetPixels = (containerWidth * requestedScale) * (containerHeight * requestedScale);
@@ -371,7 +373,6 @@ function DiagramCanvasInner({
         safeScale = Math.max(1, Math.floor(Math.sqrt(maxPixels / (containerWidth * containerHeight))));
       }
 
-      // Capture the viewport element (has the CSS transforms applied)
       const dataUrl = await toPng(flowViewport, {
         cacheBust: true,
         pixelRatio: safeScale,
@@ -382,7 +383,6 @@ function DiagramCanvasInner({
         filter: (node) => {
           if (!(node instanceof Element)) return true;
           const classList = node.classList;
-          // Remove UI overlays and controls
           return !(
             classList.contains('export-ignore') ||
             classList.contains('react-flow__controls') ||
@@ -398,19 +398,127 @@ function DiagramCanvasInner({
         },
       });
 
-      // Restore previous state
       reactFlowInstance.setNodes(originalNodes);
       reactFlowInstance.setEdges(originalEdges);
       setSelectedNodeId(previousSelectedNodeId);
       setInteractionMode(previousMode);
       setIsExportingSnapshot(false);
-      
+
       return dataUrl;
     };
 
     onRegisterPngExporter(exporter);
     return () => onRegisterPngExporter(null);
   }, [onRegisterPngExporter, reactFlowInstance, selectedNodeId, interactionMode]);
+
+  useEffect(() => {
+    if (!onRegisterSvgExporter) return;
+    const svgExporter = async (opts?: any) => {
+      const root = containerRef.current;
+      if (!root || !reactFlowInstance) throw new Error('Canvas root or ReactFlow instance not available');
+
+      const isSelectionArea = opts?.area === 'selection';
+      const bgSetting = opts?.background || 'dark';
+      const customPadding = Number(opts?.padding) >= 0 ? Number(opts?.padding) : 40;
+
+      const flowContainer = root.querySelector('.react-flow') as HTMLElement | null;
+      const flowViewport = root.querySelector('.react-flow__viewport') as HTMLElement | null;
+      if (!flowContainer || !flowViewport) throw new Error('Canvas elements not found');
+
+      const originalNodes = reactFlowInstance.getNodes();
+      const originalEdges = reactFlowInstance.getEdges();
+
+      const targetNodes = isSelectionArea && originalNodes.some((n) => n.selected)
+        ? originalNodes.filter((n) => n.selected)
+        : originalNodes;
+
+      if (targetNodes.length === 0) {
+        throw new Error('No nodes available for SVG export');
+      }
+
+      reactFlowInstance.setNodes(originalNodes.map((n) => ({ ...n, selected: false })));
+      reactFlowInstance.setEdges(originalEdges.map((e) => ({ ...e, selected: false })));
+
+      // Align viewport bounds
+      const nodesWithBounds = targetNodes.map((n) => {
+        const styleW = Number((n.data as any)?.style?.width);
+        const styleH = Number((n.data as any)?.style?.height);
+        const width = Number(n.width) > 0 ? Number(n.width) : Number.isFinite(styleW) && styleW > 0 ? styleW : 160;
+        const height = Number(n.height) > 0 ? Number(n.height) : Number.isFinite(styleH) && styleH > 0 ? styleH : 60;
+        return {
+          left: n.position.x,
+          right: n.position.x + width,
+          top: n.position.y,
+          bottom: n.position.y + height,
+        };
+      });
+
+      const minX = Math.min(...nodesWithBounds.map((n) => n.left));
+      const maxX = Math.max(...nodesWithBounds.map((n) => n.right));
+      const minY = Math.min(...nodesWithBounds.map((n) => n.top));
+      const maxY = Math.max(...nodesWithBounds.map((n) => n.bottom));
+
+      const contentWidth = maxX - minX;
+      const contentHeight = maxY - minY;
+      const boundsWidth = contentWidth + customPadding * 2;
+      const boundsHeight = contentHeight + customPadding * 2;
+      const containerWidth = flowContainer.clientWidth;
+      const containerHeight = flowContainer.clientHeight;
+
+      const zoomX = containerWidth / boundsWidth;
+      const zoomY = containerHeight / boundsHeight;
+      const zoom = Math.max(Math.min(zoomX, zoomY, 1.2), 0.2);
+
+      const centerX = minX + contentWidth / 2;
+      const centerY = minY + contentHeight / 2;
+      const viewportX = containerWidth / 2 - centerX * zoom;
+      const viewportY = containerHeight / 2 - centerY * zoom;
+
+      reactFlowInstance.setViewport({ x: viewportX, y: viewportY, zoom }, { duration: 0 });
+      await new Promise<void>((resolve) => window.setTimeout(() => resolve(), 300));
+
+      let bgColor: string | undefined = '#09090b';
+      if (bgSetting === 'transparent') {
+        bgColor = undefined;
+      } else if (bgSetting === 'light') {
+        bgColor = '#ffffff';
+      }
+
+      const dataUrl = await toSvg(flowViewport, {
+        cacheBust: true,
+        backgroundColor: bgColor,
+        filter: (node) => {
+          if (!(node instanceof Element)) return true;
+          const classList = node.classList;
+          return !(
+            classList.contains('export-ignore') ||
+            classList.contains('react-flow__controls') ||
+            classList.contains('react-flow__minimap') ||
+            classList.contains('react-flow__attribution') ||
+            classList.contains('react-flow__handle') ||
+            classList.contains('react-flow__nodesselection') ||
+            classList.contains('react-flow__selection') ||
+            classList.contains('react-flow__edgeupdater') ||
+            classList.contains('react-flow__panel') ||
+            node.getAttribute('data-testid')?.includes('panel')
+          );
+        },
+      });
+
+      reactFlowInstance.setNodes(originalNodes);
+      reactFlowInstance.setEdges(originalEdges);
+
+      if (dataUrl.startsWith('data:image/svg+xml;utf8,')) {
+        return decodeURIComponent(dataUrl.replace('data:image/svg+xml;utf8,', ''));
+      } else if (dataUrl.startsWith('data:image/svg+xml;base64,')) {
+        return atob(dataUrl.replace('data:image/svg+xml;base64,', ''));
+      }
+      return dataUrl;
+    };
+
+    onRegisterSvgExporter(svgExporter);
+    return () => onRegisterSvgExporter(null);
+  }, [onRegisterSvgExporter, reactFlowInstance]);
 
   // Register a direct style-patcher so the parent can update node styles in-place
   // without going through the syntax → parse → visualData roundtrip (which loses styles).
@@ -903,21 +1011,111 @@ function DiagramCanvasInner({
     }, 0);
   }, [setEdges, setNodes]);
 
+  const duplicateSelected = useCallback(() => {
+    setNodes((prevNodes) => {
+      const selected = prevNodes.filter((n) => n.selected);
+      if (selected.length === 0) return prevNodes;
+
+      onCanvasUserGesture?.();
+
+      const idMap = new Map<string, string>();
+      const newNodes: Node[] = selected.map((n) => {
+        const newId = `n-${Date.now()}-${slugifyId(String(n.data?.label || n.id))}-${Math.random().toString(16).slice(2, 5)}`;
+        idMap.set(n.id, newId);
+
+        return {
+          ...n,
+          id: newId,
+          selected: true,
+          position: {
+            x: n.position.x + 30,
+            y: n.position.y + 30,
+          },
+          data: { ...(n.data as any) },
+        };
+      });
+
+      const unselectedOriginals = prevNodes.map((n) => (n.selected ? { ...n, selected: false } : n));
+
+      setEdges((prevEdges) => {
+        const newEdges: Edge[] = [];
+        prevEdges.forEach((e) => {
+          if (idMap.has(e.source) && idMap.has(e.target)) {
+            newEdges.push({
+              ...e,
+              id: `e-${idMap.get(e.source)}-${idMap.get(e.target)}-${Date.now()}`,
+              source: idMap.get(e.source)!,
+              target: idMap.get(e.target)!,
+              selected: true,
+            });
+          }
+        });
+        const unselectedOriginalEdges = prevEdges.map((e) => (e.selected ? { ...e, selected: false } : e));
+        return [...unselectedOriginalEdges, ...newEdges];
+      });
+
+      return [...unselectedOriginals, ...newNodes];
+    });
+  }, [setNodes, setEdges, onCanvasUserGesture]);
+
+  const selectAll = useCallback(() => {
+    setNodes((prev) => prev.map((n) => ({ ...n, selected: true })));
+    setEdges((prev) => prev.map((e) => ({ ...e, selected: true })));
+  }, [setNodes, setEdges]);
+
+  const deleteSelected = useCallback(() => {
+    setNodes((prevNodes) => {
+      const hasSelectedNodes = prevNodes.some((n) => n.selected);
+      const remainingNodes = prevNodes.filter((n) => !n.selected);
+      const remainingNodeIds = new Set(remainingNodes.map((n) => n.id));
+
+      setEdges((prevEdges) => {
+        const remainingEdges = prevEdges.filter(
+          (e) => !e.selected && remainingNodeIds.has(e.source) && remainingNodeIds.has(e.target)
+        );
+        return remainingEdges;
+      });
+
+      if (hasSelectedNodes) {
+        onCanvasUserGesture?.();
+      }
+
+      return remainingNodes;
+    });
+  }, [setNodes, setEdges, onCanvasUserGesture]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const el = containerRef.current;
       if (!el) return;
-      const target = e.target as unknown as globalThis.Node;
-      if (!el.contains(target)) return;
-      if (!(e.ctrlKey || e.metaKey)) return;
+      const activeEl = document.activeElement;
+      const isInput = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.getAttribute('contenteditable') === 'true'
+      );
+      if (isInput) return;
 
+      const isCtrl = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
-      if (key === 'z' && !e.shiftKey) {
+
+      if (isCtrl) {
+        if (key === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          undo();
+        } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+          e.preventDefault();
+          redo();
+        } else if (key === 'd') {
+          e.preventDefault();
+          duplicateSelected();
+        } else if (key === 'a') {
+          e.preventDefault();
+          selectAll();
+        }
+      } else if (key === 'delete' || key === 'backspace') {
         e.preventDefault();
-        undo();
-      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
-        e.preventDefault();
-        redo();
+        deleteSelected();
       }
     };
 
@@ -928,7 +1126,6 @@ function DiagramCanvasInner({
       const el = containerRef.current;
       if (!el || !reactFlowInstance) return;
       
-      // Check if paste is within canvas
       const target = e.target as HTMLElement;
       if (!el.contains(target)) return;
 
@@ -946,7 +1143,6 @@ function DiagramCanvasInner({
             const dataUrl = event.target?.result as string;
             if (!dataUrl) return;
 
-            // Get center of current viewport
             const { x, y, zoom } = reactFlowInstance.getViewport();
             const rect = el.getBoundingClientRect();
             const centerX = rect.width / 2;
@@ -990,7 +1186,7 @@ function DiagramCanvasInner({
       window.removeEventListener('paste', handlePaste);
       window.removeEventListener('deleteNode', handleDeleteNode as EventListener);
     };
-  }, [redo, undo, reactFlowInstance, setNodes, onCanvasUserGesture]);
+  }, [redo, undo, reactFlowInstance, setNodes, duplicateSelected, selectAll, deleteSelected, onCanvasUserGesture]);
 
   const autoLayout = useCallback(() => {
     if (!nodes.length) return;
@@ -1113,18 +1309,8 @@ function DiagramCanvasInner({
           setNodes((nds: Node[]) => [...nds, ...newNodes]);
           setEdges((eds: Edge[]) => [...eds, ...newEdges]);
         } else {
-          // Individual node fallback
-          const k = payload.kind;
-          const kind =
-            k === 'decision' ||
-            k === 'startend' ||
-            k === 'database' ||
-            k === 'entity' ||
-            k === 'actor' ||
-            k === 'queue' ||
-            k === 'io'
-              ? k
-              : 'node';
+          // Preserve all canonical shape kinds without degrading to generic 'node'
+          const kind = payload.kind || 'node';
           // Get default label for resizable shapes - capitalize first letter
           const shapeDefault = payload.shape 
             ? payload.shape.charAt(0).toUpperCase() + payload.shape.slice(1)
@@ -1437,8 +1623,8 @@ function DiagramCanvasInner({
           snapGrid={[20, 20]}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
-          panOnDrag={true}
-          selectionOnDrag={false}
+          panOnDrag={interactionMode === 'pan' ? true : [1, 2]}
+          selectionOnDrag={interactionMode === 'select'}
           panOnScroll={false}
           zoomOnScroll={true}
           fitView
@@ -1697,440 +1883,4 @@ export const DiagramCanvas = memo(function DiagramCanvas(props: DiagramCanvasPro
 });
 
 
-function slugifyId(input: string) {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/[\s]+/g, '-')
-    .replace(/[^a-z0-9-_]/g, '');
-}
-
-function unwrapNodeRef(raw: string): { label: string; kind: string; shape?: string; width?: number; height?: number; style?: Record<string, string> } {
-  const s = raw.trim();
-
-  // Guard against empty or invalid input
-  if (!s || s === '[]' || s === '{}' || s === '()') {
-    return { label: 'Node', kind: 'node' };
-  }
-
-  // Explicit kind with :: prefix
-  const kindMatch = s.match(/^(.*)::(node|decision|startend|database|entity|actor|queue|io)$/i);
-  const base = kindMatch ? kindMatch[1].trim() : s;
-  const explicitKind = kindMatch ? kindMatch[2].toLowerCase() : '';
-
-  // [[Database]]
-  const dbl = base.match(/^\[\[(.*?)\]\]$/);
-  if (dbl) return { label: dbl[1].trim() || 'Database', kind: explicitKind || 'database' };
-
-  // [Label|w:X,h:Y,shape:S,fill:#fff,stroke:#000] — resizable shape syntax.
-  // [Label|fill:#ff0000,stroke:#00ff00,kind:node] — styled regular node syntax.
-  // Use non-greedy match for label to handle edge cases
-  const pipeMatch = base.match(/^\[([^|\]]*?)\|([^\]]*?)\]$/);
-  if (pipeMatch) {
-    const label = pipeMatch[1].trim();
-    const attrsStr = pipeMatch[2];
-    let width: number | undefined;
-    let height: number | undefined;
-    let shape: string | undefined;
-    let kind: string | undefined;
-    const style: Record<string, string> = {};
-    // Only process attrs if they look valid (contain :)
-    if (attrsStr.includes(':')) {
-      attrsStr.split(',').forEach(attr => {
-        const [k, v] = attr.trim().split(':');
-        if (!k || !v) return;
-        if (k === 'w' && /^\d+$/.test(v)) width = parseInt(v, 10);
-        if (k === 'h' && /^\d+$/.test(v)) height = parseInt(v, 10);
-        if (k === 'shape') shape = v.trim();
-        if (k === 'kind') kind = v.trim();
-        if (k === 'fill' || k === 'fillColor') style.fillColor = v.trim();
-        if (k === 'stroke' || k === 'strokeColor') style.strokeColor = v.trim();
-        if (k === 'color' || k === 'textColor') style.color = v.trim();
-        if (k === 'strokeWidth') style.strokeWidth = v.trim();
-      });
-    }
-    // Ensure we have a valid label, not just attributes, and strip extra brackets
-    let finalLabel = label || 'Shape';
-    finalLabel = finalLabel.replace(/^[\[]+/, '').replace(/[\]]+$/, '').trim();
-    // If has kind: attribute, it's a styled regular node (not a resizable shape)
-    if (kind) {
-      return { label: finalLabel, kind, style };
-    }
-    // Otherwise it's a resizable shape
-    return { label: finalLabel, kind: 'resizableShape', shape: shape || 'rectangle', width, height, style };
-  }
-
-  // [Process] - with better validation
-  const square = base.match(/^\[(.*?)\]$/);
-  if (square) {
-    const content = square[1].trim();
-    // Ignore if content looks like malformed attributes (starts with shape:, w:, h:)
-    if (content && !content.match(/^(shape|w|h):/)) {
-      return { label: content, kind: explicitKind || 'node' };
-    }
-    // If content is empty or looks like attributes, return default
-    return { label: 'Node', kind: explicitKind || 'node' };
-  }
-
-  // {Decision}
-  const curly = base.match(/^\{(.*)\}$/);
-  if (curly) return { label: curly[1], kind: explicitKind || 'decision' };
-
-  // (Terminal)
-  const paren = base.match(/^\((.*)\)$/);
-  if (paren) return { label: paren[1], kind: explicitKind || 'startend' };
-
-  // ERD / Mermaid specific syntax matches
-  // Entity[Label]
-  const entityMatch = base.match(/^([a-zA-Z0-9_-]+)\[(.*)\]$/);
-  if (entityMatch) return { label: entityMatch[2], kind: explicitKind || 'entity' };
-
-  // Entity{Label}
-  const entityCurlyMatch = base.match(/^([a-zA-Z0-9_-]+)\{(.*)\}$/);
-  if (entityCurlyMatch) return { label: entityCurlyMatch[2], kind: explicitKind || 'entity' };
-
-  return { label: base, kind: explicitKind || 'node' };
-}
-
-function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
-  // Fix corrupted syntax where commas were converted to newlines in extended format
-  // Pattern: lines like [Label|w:120], [h:80], [shape:rectangle] should be joined
-  let fixedSyntax = String(syntax || '');
-
-  // Pre-fix: Strip extra leading brackets from resizable shape tokens anywhere in the line.
-  // [[Rectangle|w:240,h:200,shape:rectangle] -> [Rectangle|w:240,h:200,shape:rectangle]
-  // Uses greedy attrs + required closing bracket so attrs are never empty.
-  fixedSyntax = fixedSyntax.replace(/\[{2,}([a-zA-Z0-9_ \-]+)\|([^\]]*)\]/g, (_match, label, attrs) => {
-    return `[${label.trim()}|${attrs}]`;
-  });
-
-  // Preprocess: split multiple connections on one line (comma-separated)
-  const preprocessed = fixedSyntax
-    .split('\n')
-    .flatMap((line) => {
-      const trimmed = line.trim();
-      // Fix missing closing bracket at end of a shape token
-      if (trimmed.match(/^\[[^\]]+\|/) && !trimmed.endsWith(']')) {
-        return [trimmed + ']'];
-      }
-      // If line contains arrows and commas, split — but ONLY on commas outside brackets.
-      // e.g. "[Rectangle|w:120,h:80,shape:rectangle] --> [B], [C] --> [D]"
-      // must NOT split on the commas inside the shape token.
-      if (trimmed.includes('-->') && trimmed.includes(',')) {
-        const parts: string[] = [];
-        let depth = 0;
-        let current = '';
-        for (const ch of trimmed) {
-          if (ch === '[') { depth++; current += ch; }
-          else if (ch === ']') { depth--; current += ch; }
-          else if (ch === ',' && depth === 0) { if (current.trim()) parts.push(current.trim()); current = ''; }
-          else { current += ch; }
-        }
-        if (current.trim()) parts.push(current.trim());
-        // Only apply the split if there really were top-level commas
-        if (parts.length > 1) return parts.filter((s) => s.length > 0);
-      }
-      return [trimmed];
-    })
-    .filter((l) => l.length > 0);
-
-  const lines = preprocessed;
-
-  const nodeById = new Map<string, Node>();
-  const edges: Edge[] = [];
-
-  /** Arrow patterns: -->, ->, =>, ---, --, -, -.-> */
-  const ARROW_REGEX = /\s*(?:-\.-{1,}>|\.->{1,}>|-{2,}>|={1,}>|-{1,}>|---?|--?|==?)\s*/;
-
-  const ensureNode = (raw: string) => {
-    const trimmed = raw.trim();
-    if (!trimmed) return null;
-
-    // Handle ID[Label] or ID(Label) style (Mermaid-ish)
-    // IMPORTANT: Skip this path if the token contains '|' — those are extended shape tokens
-    // like [Rectangle|w:240,h:200,shape:rectangle] which must go through unwrapNodeRef directly.
-    // Without this guard, "Rectangle" gets parsed as the ID and "w:240,h:200,shape:rectangle"
-    // as the inner content, stripping the pipe and losing all shape/dimension data.
-    const hasPipe = trimmed.includes('|');
-    const idLabelMatch = !hasPipe
-      ? trimmed.match(/^([a-zA-Z0-9_-]+)\s*[\[\(\{]([^\]\)\}]*?)[\]\)\}]$/)
-      : null;
-    let finalId = '';
-    let finalLabel = '';
-    let finalKind = 'node';
-
-    if (idLabelMatch) {
-      finalId = idLabelMatch[1];
-      const innerContent = idLabelMatch[2]; // The content inside brackets
-      // Reconstruct the bracketed part for unwrapNodeRef
-      const bracketType = trimmed.includes('(') ? '(' : trimmed.includes('{') ? '{' : '[';
-      const closingBracket = bracketType === '(' ? ')' : bracketType === '{' ? '}' : ']';
-      const unwrapped = unwrapNodeRef(`${bracketType}${innerContent}${closingBracket}`);
-      finalLabel = unwrapped.label;
-      finalKind = unwrapped.kind;
-    } else {
-      const unwrapped = unwrapNodeRef(trimmed);
-      finalLabel = unwrapped.label;
-      finalKind = unwrapped.kind;
-      finalId = slugifyId(finalLabel);
-    }
-
-    if (nodeById.has(finalId)) {
-      return nodeById.get(finalId)!;
-    }
-
-    // If it's a resizable shape, create the correct node type
-    if (finalKind === 'resizableShape') {
-      const unwrappedFull = idLabelMatch
-        ? unwrapNodeRef(trimmed.slice(finalId.length))
-        : unwrapNodeRef(trimmed);
-      // Use extracted style or defaults
-      const extractedStyle = unwrappedFull.style || {};
-      const shapeNode: Node = {
-        id: finalId,
-        type: 'resizableShape',
-        position: { x: 0, y: 0 },
-        ...(unwrappedFull.width ? { width: unwrappedFull.width } : {}),
-        ...(unwrappedFull.height ? { height: unwrappedFull.height } : {}),
-        data: {
-          label: finalLabel,
-          shape: unwrappedFull.shape || 'rectangle',
-          style: {
-            fillColor: extractedStyle.fillColor || '#ffffff',
-            strokeColor: extractedStyle.strokeColor || '#000000',
-            strokeWidth: extractedStyle.strokeWidth ? parseInt(extractedStyle.strokeWidth, 10) : 2,
-            fontSize: 14,
-            color: extractedStyle.color || '#000000',
-          },
-        },
-      };
-      nodeById.set(finalId, shapeNode);
-      return shapeNode;
-    }
-
-    // Determine icon from kind or label
-    const getIconFromKind = (k: string, label: string): string => {
-      const labelLower = label.toLowerCase();
-      // Check label first for specific matches
-      if (labelLower.includes('user') || labelLower.includes('actor')) return 'actor';
-      if (labelLower.includes('db') || labelLower.includes('database') || labelLower.includes('data')) return 'database';
-      if (labelLower.includes('queue') || labelLower.includes('topic')) return 'queue';
-      if (labelLower.includes('cache')) return 'cache';
-      if (labelLower.includes('service')) return 'service';
-      if (labelLower.includes('func') || labelLower.includes('lambda')) return 'function';
-      if (labelLower.includes('cdn')) return 'cdn';
-      if (labelLower.includes('system')) return 'system';
-      // Then check kind
-      if (k === 'entity') return 'entity';
-      if (k === 'database') return 'database';
-      if (k === 'queue') return 'queue';
-      if (k === 'actor') return 'actor';
-      if (['ui', 'cloud', 'security', 'mobile', 'analytics', 'communication', 'media', 'location'].includes(k)) return k;
-      return k;
-    };
-
-    const icon = getIconFromKind(finalKind, finalLabel);
-
-    // Get the full unwrapped data including style
-    const unwrappedFull = idLabelMatch
-      ? unwrapNodeRef(trimmed.slice(finalId.length))
-      : unwrapNodeRef(trimmed);
-    const extractedStyle = unwrappedFull.style || {};
-
-    const newNode: Node = {
-      id: finalId,
-      type: 'diagramNode',
-      position: { x: 0, y: 0 },
-      data: {
-        label: finalLabel,
-        kind: finalKind,
-        icon: icon,
-        // Include extracted style if present (fillColor, strokeColor, color)
-        ...(Object.keys(extractedStyle).length > 0 ? { style: extractedStyle } : {}),
-      },
-    };
-    nodeById.set(finalId, newNode);
-    return newNode;
-  };
-
-  lines.forEach((line, index) => {
-    // Skip comments or metadata starting with @ or #
-    if (line.startsWith('@') || line.startsWith('#') || line.startsWith('%%')) return;
-    const low = line.toLowerCase();
-    
-    // Mermaid-style flowchart headers
-    if (
-      low.startsWith('flowchart ') ||
-      low === 'flowchart' ||
-      low.startsWith('graph ') ||
-      low === 'graph' ||
-      low.startsWith('subgraph ') ||
-      low === 'subgraph' ||
-      low === 'end' ||
-      low.startsWith('erdiagram') ||
-      low.startsWith('classdiagram')
-    ) {
-      return;
-    }
-
-    // Handle image syntax: ![alt](url) or img[url]
-    const imageMatch = line.match(/^!\[(.*?)\]\((.+?)\)$/);
-    if (imageMatch) {
-      const alt = imageMatch[1];
-      const url = imageMatch[2];
-      const imgNode: Node = {
-        id: `img-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
-        type: 'image',
-        position: { x: 0, y: 0 },
-        data: {
-          src: url,
-          alt: alt || 'Image',
-        },
-        style: { width: 200, height: 150 },
-      };
-      nodeById.set(imgNode.id, imgNode);
-      return;
-    }
-
-    // Handle labeled arrows: From -- label --> To OR From -.-> To (dotted)
-    // Check dotted arrows first (more specific)
-    const dottedMatch = line.match(/^(.+?)\s+(-\.-{1,}>|\.->{1,}>)\s*(.+)$/);
-    if (dottedMatch) {
-      const fromNode = ensureNode(dottedMatch[1]);
-      const toNode = ensureNode(dottedMatch[3]);
-      if (fromNode && toNode) {
-        edges.push({
-          id: `e-${fromNode.id}-${toNode.id}-${index}`,
-          source: fromNode.id,
-          target: toNode.id,
-          type: 'smoothstep',
-          style: { stroke: EDGE_STROKE, strokeWidth: 2, strokeDasharray: '5,5' },
-          markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_STROKE, width: 18, height: 18 },
-        });
-      }
-      return;
-    }
-
-    // Handle labeled arrows with space separator: From -- label --> To
-    // Use negative lookahead (?!-) to exclude lines starting with -.- (dotted arrows)
-    const labeledMatch = line.match(/^(.+?)\s+--(?!\s*-)\s+(.+?)\s*(-->|->|=>|---)\s*(.+)$/);
-    if (labeledMatch) {
-      const fromNode = ensureNode(labeledMatch[1]);
-      const edgeLabel = labeledMatch[2].trim();
-      const toNode = ensureNode(labeledMatch[4]);
-
-      if (fromNode && toNode) {
-        edges.push({
-          id: `e-${fromNode.id}-${toNode.id}-${index}`,
-          source: fromNode.id,
-          target: toNode.id,
-          label: edgeLabel,
-          type: 'smoothstep',
-          style: { stroke: EDGE_STROKE, strokeWidth: 2 },
-          labelStyle: { fill: '#000000', fontSize: 11, fontWeight: 700 },
-          labelBgStyle: { fill: '#f4e7db', stroke: '#c99367', strokeWidth: 1 },
-          labelShowBg: true,
-          labelBgPadding: [6, 4],
-          markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_STROKE, width: 18, height: 18 },
-        });
-      }
-      return;
-    }
-
-    // Handle labeled arrows with pipe: From -->|label| To or From -.->|label| To
-    const pipeMatch = line.match(/^(.+?)\s*(?:-\.-{1,}>|\.->{1,}>|-{2,}>|={1,}>|-{1,}>|---)\s*\|(.+?)\|\s*(.+)$/);
-    if (pipeMatch) {
-      const fromNode = ensureNode(pipeMatch[1]);
-      const toNode = ensureNode(pipeMatch[3]);
-      const edgeLabel = pipeMatch[2].trim();
-
-      if (fromNode && toNode) {
-        edges.push({
-          id: `e-${fromNode.id}-${toNode.id}-${index}-p`,
-          source: fromNode.id,
-          target: toNode.id,
-          label: edgeLabel,
-          type: 'smoothstep',
-          style: { stroke: EDGE_STROKE, strokeWidth: 2 },
-          labelStyle: { fill: '#000000', fontSize: 11, fontWeight: 700 },
-          labelBgStyle: { fill: '#f4e7db', stroke: '#c99367', strokeWidth: 1 },
-          labelShowBg: true,
-          labelBgPadding: [6, 4],
-          markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_STROKE, width: 18, height: 18 },
-        });
-      }
-      return;
-    }
-
-    // Handle simple arrows: From --> To
-    const arrowParts = line.split(ARROW_REGEX);
-    if (arrowParts.length >= 2) {
-      let lastNode = ensureNode(arrowParts[0]);
-      for (let i = 1; i < arrowParts.length; i++) {
-        const currentNode = ensureNode(arrowParts[i]);
-        if (lastNode && currentNode) {
-          edges.push({
-            id: `e-${lastNode.id}-${currentNode.id}-${index}-${i}`,
-            source: lastNode.id,
-            target: currentNode.id,
-            type: 'smoothstep',
-            style: { stroke: EDGE_STROKE, strokeWidth: 2 },
-            markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_STROKE, width: 18, height: 18 },
-          });
-        }
-        lastNode = currentNode;
-      }
-      return;
-    }
-
-    // Standalone node definitions: [Label], {Decision}, etc.
-    ensureNode(line);
-  });
-
-  const nodes = Array.from(nodeById.values());
-
-  // Automatic Hierarchical Layout (BFS Level Based)
-  const incoming = new Map<string, number>();
-  nodes.forEach((n) => incoming.set(n.id, 0));
-  edges.forEach((e) => incoming.set(e.target, (incoming.get(e.target) ?? 0) + 1));
-
-  const roots = nodes.filter((n) => (incoming.get(n.id) ?? 0) === 0);
-  if (roots.length === 0 && nodes.length > 0) roots.push(nodes[0]);
-
-  const adj = new Map<string, string[]>();
-  nodes.forEach((n) => adj.set(n.id, []));
-  edges.forEach((e) => adj.set(e.source, [...(adj.get(e.source) ?? []), e.target]));
-
-  const depth = new Map<string, number>();
-  const visit = (id: string, d: number) => {
-    depth.set(id, Math.max(depth.get(id) ?? 0, d));
-    ;(adj.get(id) ?? []).forEach((next) => visit(next, d + 1));
-  };
-  roots.forEach((r) => visit(r.id, 0));
-
-  const levels = new Map<number, Node[]>();
-  nodes.forEach((n) => {
-    const d = depth.get(n.id) ?? 0;
-    const arr = levels.get(d) ?? [];
-    arr.push(n);
-    levels.set(d, arr);
-  });
-
-  const sortedLevels = Array.from(levels.keys()).sort((a, b) => a - b);
-  const cellX = 280;
-  const cellY = 180;
-
-  sortedLevels.forEach((levelIndex, i) => {
-    const list = levels.get(levelIndex) ?? [];
-    list
-      .slice()
-      .sort((a, b) =>
-        String((a.data as any)?.label ?? a.id).localeCompare(String((b.data as any)?.label ?? b.id))
-      )
-      .forEach((node, idx) => {
-        node.position = { x: i * cellX + 80, y: idx * cellY + 60 };
-      });
-  });
-
-  return { nodes, edges };
-}
+// Clean export boundary - parser algorithms imported from '@/domain/diagramParser'

@@ -1,11 +1,13 @@
 // E:\Skemly-ai\apps\frontend\src\hooks\useAutoSave.ts
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { saveOfflineDraft } from '@/lib/offlineStorage';
 
 interface UseAutoSaveOptions {
   onSave: (data: any) => Promise<void>;
   delay?: number;
   maxWait?: number;
   enabled?: boolean;
+  diagramId?: string;
 }
 
 export function useAutoSave({
@@ -13,6 +15,7 @@ export function useAutoSave({
   delay = 2500,
   maxWait,
   enabled = true,
+  diagramId,
 }: UseAutoSaveOptions) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxWaitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -38,6 +41,18 @@ export function useAutoSave({
       isSavingRef.current = true;
       setIsSaving(true);
       lastSaveTimeRef.current = Date.now();
+      
+      // Save draft offline to IndexedDB immediately
+      if (diagramId && pendingDataRef.current) {
+        saveOfflineDraft({
+          diagramId,
+          updatedAt: new Date().toISOString(),
+          syntax: pendingDataRef.current.syntax || '',
+          nodes: pendingDataRef.current.nodes || [],
+          edges: pendingDataRef.current.edges || [],
+        }).catch(() => {});
+      }
+
       await onSave(pendingDataRef.current);
     } catch (error) {
       // Caller handles errors

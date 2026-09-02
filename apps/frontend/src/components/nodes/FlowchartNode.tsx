@@ -159,7 +159,7 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
   const { setNodes } = useReactFlow();
   const label = String(props.data?.label ?? '');
   const kind = String(props.data?.kind ?? 'node');
-  const style = getNodeStyle(props.data, kind);
+  const style = getNodeStyle(kind, props.data);
   const isSelected = props.selected;
 
   // Connection handles - sleek, dark-mode neutral dots that light up on hover
@@ -221,6 +221,7 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
             : '0 2px 10px rgba(0,0,0,0.2)',
         }}
       >
+        <Handle id="top" type="target" position={Position.Top} className={handleClass} />
         <Handle id="left" type="target" position={Position.Left} className={handleClass} />
         <div
           className="text-center leading-snug select-none"
@@ -237,6 +238,7 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
           {label}
         </div>
         <Handle id="right" type="source" position={Position.Right} className={handleClass} />
+        <Handle id="bottom" type="source" position={Position.Bottom} className={handleClass} />
       </div>
     );
   }
@@ -246,19 +248,18 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
     const h = style.height;
     return (
       <div className="group/node relative flex flex-col items-center justify-center select-none" style={{ width: w, height: h }}>
+        <Handle id="top" type="target" position={Position.Top} className={cn(handleClass, "!z-20")} />
         <Handle id="left" type="target" position={Position.Left} className={cn(handleClass, "!z-20")} />
         <Handle id="right" type="source" position={Position.Right} className={cn(handleClass, "!z-20")} />
+        <Handle id="bottom" type="source" position={Position.Bottom} className={cn(handleClass, "!z-20")} />
         <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="absolute inset-0 z-0" aria-hidden
           style={{ filter: isSelected ? 'drop-shadow(0 0 10px rgba(var(--color-primary),0.4))' : 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}
         >
-          {/* Cylinder body */}
           <path 
             d={`M0,12 L0,${h-12} C0,${h+2} ${w},${h+2} ${w},${h-12} L${w},12 Z`} 
             fill={style.fillColor} stroke={style.strokeColor} strokeWidth={style.strokeWidth} 
           />
-          {/* Cylinder lid (top ellipse) */}
           <ellipse cx={w/2} cy="12" rx={w/2} ry="12" fill={style.fillColor} stroke={style.strokeColor} strokeWidth={style.strokeWidth} />
-          {/* Decorative faint ring */}
           <ellipse cx={w/2} cy="22" rx={w/2} ry="8" fill="transparent" stroke={style.strokeColor} strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
         </svg>
         <div
@@ -280,7 +281,6 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
     const header = lines[0] || 'Entity';
     const fields = lines.slice(1);
     
-    // Auto-expand height
     const dynamicHeight = Math.max(style.height, 42 + fields.length * 26 + 8);
     
     return (
@@ -297,10 +297,11 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
             : '0 4px 14px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
         }}
       >
+        <Handle id="top" type="target" position={Position.Top} className={cn(handleClass, "!z-20")} />
         <Handle id="left" type="target" position={Position.Left} className={cn(handleClass, "!top-1/2 !z-20")} />
         <Handle id="right" type="source" position={Position.Right} className={cn(handleClass, "!top-1/2 !z-20")} />
+        <Handle id="bottom" type="source" position={Position.Bottom} className={cn(handleClass, "!z-20")} />
         
-        {/* Entity Header */}
         <div
           className="shrink-0 border-b border-black/30 px-3 py-2 flex items-center justify-between"
           style={{ background: style.strokeColor }}
@@ -313,7 +314,6 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
           </span>
         </div>
         
-        {/* Entity Fields */}
         <div
           className="flex flex-col flex-1 px-1.5 py-1.5 text-left select-none relative"
           style={{
@@ -347,7 +347,6 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
           )}
         </div>
         
-        {/* Quick Add Column Button */}
         {isSelected && (
           <button
             autoFocus={false}
@@ -392,6 +391,7 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
           boxShadow: isSelected ? `0 0 0 2px color-mix(in oklab, var(--color-primary) 40%, transparent)` : '',
         }}
       >
+        <Handle id="top" type="target" position={Position.Top} className={handleClass} />
         <Handle id="left" type="target" position={Position.Left} className={handleClass} />
         <div className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-1">Actor</div>
         <div
@@ -405,6 +405,7 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
           {label}
         </div>
         <Handle id="right" type="source" position={Position.Right} className={handleClass} />
+        <Handle id="bottom" type="source" position={Position.Bottom} className={handleClass} />
       </div>
     );
   }
@@ -423,6 +424,7 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
           boxShadow: isSelected ? `0 0 0 2px color-mix(in oklab, var(--color-primary) 40%, transparent)` : '0 2px 8px rgba(0,0,0,0.2)',
         }}
       >
+        <Handle id="top" type="target" position={Position.Top} className={handleClass} />
         <Handle id="left" type="target" position={Position.Left} className={handleClass} />
         <div
           className="absolute inset-y-0 left-0 w-2.5 opacity-40"
@@ -440,6 +442,7 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
           {label}
         </div>
         <Handle id="right" type="source" position={Position.Right} className={handleClass} />
+        <Handle id="bottom" type="source" position={Position.Bottom} className={handleClass} />
       </div>
     );
   }
@@ -447,8 +450,10 @@ export const FlowchartNode = memo(function FlowchartNode(props: NodeProps) {
   if (kind === 'io') {
     return (
       <div className="group/node relative select-none" style={{ width: style.width, height: style.height }}>
+        <Handle id="top" type="target" position={Position.Top} className={cn(handleClass, "!z-20")} />
         <Handle id="left" type="target" position={Position.Left} className={cn(handleClass, "!z-20")} />
         <Handle id="right" type="source" position={Position.Right} className={cn(handleClass, "!z-20")} />
+        <Handle id="bottom" type="source" position={Position.Bottom} className={cn(handleClass, "!z-20")} />
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{

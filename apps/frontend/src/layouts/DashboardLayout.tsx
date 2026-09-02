@@ -532,9 +532,9 @@ export default function DashboardLayout() {
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              initial={reduceMotion ? undefined : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? false : { opacity: 0, y: -4 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
               className="min-h-full"
             >

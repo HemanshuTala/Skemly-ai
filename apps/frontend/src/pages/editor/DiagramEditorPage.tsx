@@ -28,8 +28,11 @@ import { Modal } from '@/components/ui/modal';
 import { ArchitectureReviewModal } from '@/components/editor/ArchitectureReviewModal';
 import { TradeoffAnalysisModal } from '@/components/editor/TradeoffAnalysisModal';
 import { RequirementsTraceabilityModal } from '@/components/editor/RequirementsTraceabilityModal';
+import { InterviewModeModal } from '@/components/editor/InterviewModeModal';
 import { ExportPanel } from '@/components/editor/ExportPanel';
 import { VersionConflictModal } from '@/components/editor/VersionConflictModal';
+import { parseSyntaxToGraph, graphToSyntax, mergeAIGraphUpdate } from '@/domain/diagramParser';
+import { getOfflineDraft, saveOfflineDraft, clearOfflineDraft } from '@/lib/offlineStorage';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -54,227 +57,7 @@ import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { MarkerType, type Edge, type Node } from 'reactflow';
 
-// Helper functions for parsing and normalizing graph data
-function parseSyntaxToGraph(syntax: string): { nodes: Node[]; edges: Edge[] } {
-  let fixedSyntax = String(syntax || '');
-  
-  // Strip duplicate leading brackets from resizable shape tokens anywhere in the line.
-  fixedSyntax = fixedSyntax.replace(/\[{2,}([a-zA-Z0-9_ \-]+)\|([^\]]*)\]/g, (_match, label, attrs) => {
-    return `[${label.trim()}|${attrs}]`;
-  });
-  
-  const lines = fixedSyntax.split('\n');
-  const fixedLines: string[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    let fixedLine = line;
-    if (fixedLine.match(/^\[[^\]]+\|/) && !fixedLine.endsWith(']')) {
-      fixedLine += ']';
-    }
-
-    const isAttrLine = fixedLine.match(/^\[(w:|h:|shape:)[^\]]*\]$/);
-    const lastLine = fixedLines[fixedLines.length - 1];
-    const isBrokenExtended = lastLine && isAttrLine && lastLine.match(/\[[^|]+\|[^\]]*$/);
-
-    if (isBrokenExtended) {
-      const attrContent = fixedLine.slice(1, -1);
-      fixedLines[fixedLines.length - 1] = fixedLines[fixedLines.length - 1].replace(/\]$/, '') + ',' + attrContent + ']';
-    } else {
-      fixedLines.push(fixedLine);
-    }
-  }
-  
-  const rejoined = fixedLines.map((line) => {
-    if (line.match(/^\[(w:|h:|shape:)[^\]]*\]$/)) {
-      return null;
-    }
-    return line;
-  }).filter((l): l is string => l !== null);
-  
-  const nodeById = new Map<string, Node>();
-  const nodes: Node[] = [];
-  const edges: Edge[] = [];
-
-  // Helper to extract full node info from raw bracket formats (supports double brackets, parentheses, braces)
-  const extractNodeInfo = (raw: string): { label: string; width?: number; height?: number; shape?: string; type?: string } => {
-    let cleaned = raw.trim();
-    // Recursively clean leading/trailing braces, brackets, parentheses
-    while (
-      (cleaned.startsWith('[') && cleaned.endsWith(']')) ||
-      (cleaned.startsWith('{') && cleaned.endsWith('}')) ||
-      (cleaned.startsWith('(') && cleaned.endsWith(')'))
-    ) {
-      cleaned = cleaned.slice(1, -1).trim();
-    }
-
-    const pipeIndex = cleaned.indexOf('|');
-    let label = pipeIndex >= 0 ? cleaned.slice(0, pipeIndex) : cleaned;
-    label = label.trim();
-    if (!label) label = 'Node';
-
-    let width: number | undefined;
-    let height: number | undefined;
-    let shape: string | undefined;
-
-    if (pipeIndex >= 0) {
-      let attrsStr = cleaned.slice(pipeIndex + 1);
-      attrsStr = attrsStr.replace(/\|shape:/, ',shape:');
-      const attrs = attrsStr.split(',');
-      attrs.forEach(attr => {
-        const [key, value] = attr.trim().split(':');
-        if (key === 'w' && value) width = parseInt(value, 10);
-        if (key === 'h' && value) height = parseInt(value, 10);
-        if (key === 'shape' && value) shape = value.trim();
-      });
-    }
-
-    return {
-      label,
-      width,
-      height,
-      shape,
-      type: shape ? 'resizableShape' : 'diagramNode',
-    };
-  };
-
-  rejoined.forEach((line) => {
-    if (!line) return;
-    
-    // 1. Connection line pattern check (handles -->, ==>, -.->, and labeled equivalents)
-    const edgeMatch = line.match(/^(.+?)\s*(?:--\s*(.+?)\s*-->|==\s*(.+?)\s*==>|-\.\s*(.+?)\s*\.->|==>|-\.-\.>|-->)\s*(.+)$/);
-    
-    if (edgeMatch) {
-      const fromRaw = edgeMatch[1].trim();
-      const toRaw = edgeMatch[edgeMatch.length - 1].trim();
-      
-      const label = (edgeMatch[2] || edgeMatch[3] || edgeMatch[4] || '').trim();
-      const fromInfo = extractNodeInfo(fromRaw);
-      const toInfo = extractNodeInfo(toRaw);
-      
-      const fromId = fromInfo.label.replace(/\s+/g, '-').toLowerCase();
-      const toId = toInfo.label.replace(/\s+/g, '-').toLowerCase();
-
-      // Ensure 'from' node exists
-      let fromNode = nodeById.get(fromId);
-      if (!fromNode) {
-        const isResizable = !!fromInfo.shape;
-        fromNode = {
-          id: fromId,
-          position: { x: 100 + nodes.length * 150, y: 100 + nodes.length * 100 },
-          ...(fromInfo.width && { width: fromInfo.width }),
-          ...(fromInfo.height && { height: fromInfo.height }),
-          type: fromInfo.type || 'diagramNode',
-          data: {
-            label: fromInfo.label,
-            kind: 'node',
-            ...(fromInfo.shape && { shape: fromInfo.shape }),
-            style: isResizable ? {
-              fillColor: '#18181b',
-              strokeColor: '#3f3f46',
-              strokeWidth: 2,
-              fontSize: 14,
-              color: '#ffffff',
-            } : undefined,
-          },
-        };
-        nodes.push(fromNode);
-        nodeById.set(fromId, fromNode);
-      }
-
-      // Ensure 'to' node exists
-      let toNode = nodeById.get(toId);
-      if (!toNode) {
-        const isResizable = !!toInfo.shape;
-        toNode = {
-          id: toId,
-          position: { x: 100 + nodes.length * 150, y: 100 + nodes.length * 150 },
-          ...(toInfo.width && { width: toInfo.width }),
-          ...(toInfo.height && { height: toInfo.height }),
-          type: toInfo.type || 'diagramNode',
-          data: {
-            label: toInfo.label,
-            kind: 'node',
-            ...(toInfo.shape && { shape: toInfo.shape }),
-            style: isResizable ? {
-              fillColor: '#18181b',
-              strokeColor: '#3f3f46',
-              strokeWidth: 2,
-              fontSize: 14,
-              color: '#ffffff',
-            } : undefined,
-          },
-        };
-        nodes.push(toNode);
-        nodeById.set(toId, toNode);
-      }
-
-      // Build style settings depending on connection symbols
-      let style: any = {};
-      if (line.includes('==>')) {
-        style.strokeWidth = 3;
-      } else if (line.includes('-.->') || line.includes('.->')) {
-        style.strokeDasharray = '5 5';
-      }
-
-      edges.push({
-        id: `${fromId}-${toId}`,
-        source: fromId,
-        target: toId,
-        type: 'smoothstep',
-        style,
-        ...(label && { label }),
-      });
-      
-    } else {
-      // 2. Node line pattern check
-      let cleaned = line;
-      let hasBrackets = false;
-      while (
-        (cleaned.startsWith('[') && cleaned.endsWith(']')) ||
-        (cleaned.startsWith('{') && cleaned.endsWith('}')) ||
-        (cleaned.startsWith('(') && cleaned.endsWith(')'))
-      ) {
-        cleaned = cleaned.slice(1, -1).trim();
-        hasBrackets = true;
-      }
-      
-      if (hasBrackets) {
-        const info = extractNodeInfo(line);
-        const id = info.label.replace(/\s+/g, '-').toLowerCase();
-        
-        if (!nodeById.has(id)) {
-          const isResizable = !!info.shape;
-          const newNode: any = {
-            id,
-            position: { x: 100 + nodes.length * 150, y: 100 + nodes.length * 100 },
-            ...(info.width && { width: info.width }),
-            ...(info.height && { height: info.height }),
-            type: info.type || 'diagramNode',
-            data: {
-              label: info.label,
-              kind: 'node',
-              ...(info.shape && { shape: info.shape }),
-              style: isResizable ? {
-                fillColor: '#18181b',
-                strokeColor: '#3f3f46',
-                strokeWidth: 2,
-                fontSize: 14,
-                color: '#ffffff',
-              } : undefined,
-            },
-          };
-          nodes.push(newNode);
-          nodeById.set(id, newNode);
-        }
-      }
-    }
-  });
-
-  return { nodes, edges };
-}
+// Canonical parser & graphToSyntax imported from '@/domain/diagramParser'
 
 function normalizeGraphForBackend(graph: { nodes: Node[]; edges: Edge[] }) {
   // Strip internal MongoDB fields to prevent version conflicts
@@ -300,6 +83,7 @@ export default function DiagramEditorPage() {
   const { diagramId } = useParams<{ diagramId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user } = useAuthStore();
   const {
     currentDiagram,
     loadDiagram,
@@ -425,7 +209,8 @@ export default function DiagramEditorPage() {
   /** When true, diagram text is driven by the code editor — never overwrite it from canvas parse/layout. */
   const codeAuthoritativeRef = useRef(true);
   const codeEditorApiRef = useRef<CodeEditorApi | null>(null);
-  const pngExporterRef = useRef<((scale: number) => Promise<string>) | null>(null);
+  const pngExporterRef = useRef<((opts?: any) => Promise<string>) | null>(null);
+  const svgExporterRef = useRef<((opts?: any) => Promise<string>) | null>(null);
   /** Direct canvas style patcher — mutates node styles in the canvas without roundtripping through syntax. */
   const canvasStylePatcherRef = useRef<((nodeIds: string[], stylePatch: Record<string, unknown>) => void) | null>(null);
 
@@ -650,6 +435,7 @@ export default function DiagramEditorPage() {
     delay: 2500,
     maxWait: 30000,
     enabled: !!diagramId,
+    diagramId,
   });
 
   // Monitor network status
@@ -664,40 +450,46 @@ export default function DiagramEditorPage() {
     };
   }, []);
 
-  // Check for offline drafts
+  // Check for offline drafts from IndexedDB or localStorage fallback
   useEffect(() => {
     if (!diagramId) return;
-    const draftKey = `offline_draft:${diagramId}`;
-    const draft = localStorage.getItem(draftKey);
-    if (draft) {
-      try {
-        const parsed = JSON.parse(draft);
-        if (parsed.updatedAt && (!lastSaved || parsed.updatedAt > lastSaved.getTime())) {
-          setHasOfflineDraft(true);
-        }
-      } catch (err) {
-        console.error('Failed to parse offline draft', err);
+    getOfflineDraft(diagramId).then((draft) => {
+      if (draft && draft.updatedAt && (!lastSaved || new Date(draft.updatedAt).getTime() > lastSaved.getTime())) {
+        setHasOfflineDraft(true);
+        return;
       }
-    }
+      const lsDraft = localStorage.getItem(`offline_draft:${diagramId}`);
+      if (lsDraft) {
+        try {
+          const parsed = JSON.parse(lsDraft);
+          if (parsed.updatedAt && (!lastSaved || new Date(parsed.updatedAt).getTime() > lastSaved.getTime())) {
+            setHasOfflineDraft(true);
+          }
+        } catch (err) {}
+      }
+    });
   }, [diagramId, lastSaved]);
 
   const handleSyncOfflineDraft = useCallback(async () => {
     if (!diagramId) return;
-    const draftKey = `offline_draft:${diagramId}`;
-    const draft = localStorage.getItem(draftKey);
+    let draft = await getOfflineDraft(diagramId);
+    if (!draft) {
+      const lsDraft = localStorage.getItem(`offline_draft:${diagramId}`);
+      if (lsDraft) {
+        try { draft = JSON.parse(lsDraft); } catch (e) {}
+      }
+    }
     if (draft) {
       try {
-        const parsed = JSON.parse(draft);
-        setSyntax(parsed.syntax);
-        
-        if (parsed.nodes && parsed.nodes.length > 0) {
-          latestGraphRef.current = { nodes: parsed.nodes, edges: parsed.edges || [] };
-          await saveNow({ syntax: parsed.syntax, nodes: parsed.nodes, edges: parsed.edges });
+        setSyntax(draft.syntax || '');
+        if (draft.nodes && draft.nodes.length > 0) {
+          latestGraphRef.current = { nodes: draft.nodes, edges: draft.edges || [] };
+          await saveNow({ syntax: draft.syntax, nodes: draft.nodes, edges: draft.edges });
         } else {
-          await saveNow({ syntax: parsed.syntax });
+          await saveNow({ syntax: draft.syntax });
         }
-        
-        localStorage.removeItem(draftKey);
+        await clearOfflineDraft(diagramId);
+        localStorage.removeItem(`offline_draft:${diagramId}`);
         setHasOfflineDraft(false);
         toast.success('Synced offline changes!');
       } catch (err) {
@@ -707,10 +499,10 @@ export default function DiagramEditorPage() {
     }
   }, [diagramId, saveNow]);
 
-  const handleDiscardOfflineDraft = useCallback(() => {
+  const handleDiscardOfflineDraft = useCallback(async () => {
     if (!diagramId) return;
-    const draftKey = `offline_draft:${diagramId}`;
-    localStorage.removeItem(draftKey);
+    await clearOfflineDraft(diagramId);
+    localStorage.removeItem(`offline_draft:${diagramId}`);
     setHasOfflineDraft(false);
     toast.success('Discarded local changes.');
   }, [diagramId]);
@@ -871,101 +663,7 @@ export default function DiagramEditorPage() {
     ? localGraph?.edges?.find((e) => e.id === selectedEdgeId) ?? selectedEdgeData ?? null
     : null;
 
-  const graphToSyntax = useCallback((nodes: Node[], edges: Edge[]): string => {
-    const nodeById = new Map<string, { label: string; kind: string; width?: number; height?: number; shape?: string; type?: string; style?: any }>()
-    nodes.forEach((n) => {
-      // Defensive: ensure data exists and extract properties safely
-      const data = (n as any)?.data || {}
-      // Strip brackets in case they leaked into the label
-      let nodeLabel = String(data?.label || '').trim()
-      nodeLabel = nodeLabel.replace(/^[\[]+/, '').replace(/[\]]+$/, '').trim()
-      const fallbackLabel = n.id?.startsWith('n-') ? 'Node' : String(n.id || 'Node')
-      nodeById.set(n.id, {
-        label: nodeLabel || fallbackLabel,
-        kind: String(data?.kind ?? 'node'),
-        width: n.width ?? undefined,
-        height: n.height ?? undefined,
-        shape: data?.shape,
-        type: n.type,
-        style: data?.style,
-      })
-    })
-
-    const wrap = (info: { label: string; kind: string; width?: number; height?: number; shape?: string; type?: string; style?: any }) => {
-      const { label, kind, width, height, shape, type, style } = info;
-      // For resizable shapes, always include shape attribute so re-parsing restores the correct node type
-      if (type === 'resizableShape') {
-        // Default to 'rectangle' if shape was somehow lost
-        const shapeAttr = shape || 'rectangle';
-        const dimPart = (width != null && height != null) ? `w:${Math.round(width)},h:${Math.round(height)},` : '';
-        // Include style properties if they exist and differ from defaults
-        const styleParts: string[] = [];
-        if (style?.fillColor && style.fillColor !== '#ffffff') styleParts.push(`fill:${style.fillColor}`);
-        if (style?.strokeColor && style.strokeColor !== '#000000') styleParts.push(`stroke:${style.strokeColor}`);
-        if (style?.color && style.color !== '#000000') styleParts.push(`color:${style.color}`);
-        const stylePart = styleParts.length > 0 ? styleParts.join(',') + ',' : '';
-        const result = `[${label}|${dimPart}${stylePart}shape:${shapeAttr}]`;
-        return result;
-      }
-      // For regular nodes with custom styles, serialize them with kind: attribute
-      const hasCustomStyle = style && (style.fillColor || style.strokeColor || style.color);
-      if (hasCustomStyle) {
-        const styleParts: string[] = [];
-        if (style?.fillColor) styleParts.push(`fill:${style.fillColor}`);
-        if (style?.strokeColor) styleParts.push(`stroke:${style.strokeColor}`);
-        if (style?.color) styleParts.push(`color:${style.color}`);
-        const stylePart = styleParts.join(',');
-        const result = `[${label}|${stylePart},kind:${kind}]`;
-        return result;
-      }
-      if (kind === 'decision') return `{${label}}`
-      if (kind === 'startend') return `(${label})`
-      if (kind === 'database') return `[[${label}]]`
-      return `[${label}]`
-    }
-
-    const lines: string[] = []
-    const connectedNodeIds = new Set<string>()
-    edges.forEach((e, i) => {
-      const from = nodeById.get(e.source)
-      const to = nodeById.get(e.target)
-      if (!from || !to) return
-      connectedNodeIds.add(e.source)
-      connectedNodeIds.add(e.target)
-
-      const fromRef = wrap(from)
-      const toRef = wrap(to)
-      
-      const label = String(e.label ?? '').trim()
-      if (label) {
-        lines.push(`${fromRef} -- ${label} --> ${toRef}`)
-      } else {
-        lines.push(`${fromRef} --> ${toRef}`)
-      }
-    })
-
-    // Preserve standalone nodes created from drag/drop or manual visual edits.
-    nodes.forEach((n) => {
-      if (connectedNodeIds.has(n.id)) return
-      
-      // Handle image nodes
-      if (n.type === 'image') {
-        const src = (n.data as any)?.src || ''
-        const alt = (n.data as any)?.alt || 'Image'
-        if (src) {
-          lines.push(`![${alt}](${src})`)
-        }
-        return
-      }
-      
-      const info = nodeById.get(n.id)
-      if (!info) return
-      lines.push(wrap(info))
-    })
-
-    const result = lines.join('\n')
-    return result
-  }, []);
+  // Canonical graphToSyntax imported directly from '@/domain/diagramParser'
 
   const updateVisualGraph = useCallback(
     (updater: (prev: { nodes: Node[]; edges: Edge[] }) => { nodes: Node[]; edges: Edge[] }) => {
@@ -991,6 +689,10 @@ export default function DiagramEditorPage() {
 
   const handleRegisterPngExporter = useCallback((exporter: any) => {
     pngExporterRef.current = exporter;
+  }, []);
+
+  const handleRegisterSvgExporter = useCallback((exporter: any) => {
+    svgExporterRef.current = exporter;
   }, []);
 
   const handleRegisterStylePatcher = useCallback((patcher: any) => {
@@ -1505,20 +1207,17 @@ export default function DiagramEditorPage() {
       });
       setAiOutput(nextSyntax);
 
-      // Incremental position preservation: retain user node positions for matching node labels
-      if (localGraph?.nodes && localGraph.nodes.length > 0) {
-        const parsedGraph = parseSyntaxToGraph(nextSyntax);
-        const existingPosMap = new Map(
-          localGraph.nodes.map((n) => [String(n.data?.label || n.id).toLowerCase().trim(), n.position])
-        );
-        const mergedNodes = parsedGraph.nodes.map((n) => {
-          const labelKey = String(n.data?.label || n.id).toLowerCase().trim();
-          const existingPos = existingPosMap.get(labelKey);
-          return existingPos ? { ...n, position: existingPos } : n;
-        });
-        const mergedGraph = { nodes: mergedNodes, edges: parsedGraph.edges };
+      // Incremental position & structure preservation for AI modifications
+      const currentGraph = localGraph?.nodes && localGraph.nodes.length > 0 ? localGraph : latestGraphRef.current;
+      if (currentGraph?.nodes && currentGraph.nodes.length > 0) {
+        const mergedGraph = mergeAIGraphUpdate(currentGraph, nextSyntax);
         latestGraphRef.current = mergedGraph;
         setLocalGraph(mergedGraph);
+        setVisualOverride(true);
+      } else {
+        const parsedGraph = parseSyntaxToGraph(nextSyntax);
+        latestGraphRef.current = parsedGraph;
+        setLocalGraph(parsedGraph);
         setVisualOverride(true);
       }
 
@@ -2001,7 +1700,7 @@ export default function DiagramEditorPage() {
             {/* Palette toggle */}
             <button
               type="button"
-              onClick={() => setIsPaletteVisible((v) => !v)}
+              onClick={() => setIsPaletteVisible(!isPaletteVisible)}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
                 isPaletteVisible
                   ? 'bg-primary/12 text-primary border border-primary/30'
@@ -2045,6 +1744,7 @@ export default function DiagramEditorPage() {
                 showGrid={canvasShowGrid}
                 showRuler={canvasShowRuler}
                 onRegisterPngExporter={handleRegisterPngExporter}
+                onRegisterSvgExporter={handleRegisterSvgExporter}
                 onRegisterStylePatcher={handleRegisterStylePatcher}
                 onSelectionChange={handleSelectionChange}
                 onGraphChange={handleGraphChange}
@@ -2234,11 +1934,13 @@ export default function DiagramEditorPage() {
         hasSelection={selectedNodeIds.length > 0}
         onExport={async (options) => {
           if (!pngExporterRef.current) throw new Error('Canvas exporter not ready');
-          const scaleMap: Record<string, number> = { '1x': 1, '2x': 2, '3x': 3 };
-          const scale = scaleMap[options.quality] || 2;
-          const dataUrl = await pngExporterRef.current(scale);
+          const dataUrl = await pngExporterRef.current(options);
           setLastExportUrl(dataUrl);
           return dataUrl;
+        }}
+        onExportSVG={async (options) => {
+          if (!svgExporterRef.current) throw new Error('SVG exporter not ready');
+          return await svgExporterRef.current(options);
         }}
         onCopyLink={currentDiagram?.isPublic && currentDiagram?.publicLinkToken ? async () => {
           await navigator.clipboard.writeText(shareUrl || `${window.location.origin}/public/${currentDiagram.publicLinkToken}`);

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Modal } from '../ui/modal';
 import { AlertTriangle, Download, RefreshCw, Save, ShieldAlert } from 'lucide-react';
-import { toast } from '../ui/toast';
+import toast from 'react-hot-toast';
 
 interface VersionConflictModalProps {
   isOpen: boolean;
