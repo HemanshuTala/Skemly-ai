@@ -5,29 +5,9 @@ import toast from 'react-hot-toast'
 
 import { useDiagramStore } from '@/stores/diagramStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { CANONICAL_TEMPLATES } from '@/domain/templates'
 
-export const TEMPLATE_PRESETS: Record<string, { title: string; syntax: string; type: string }> = {
-  ecommerce: {
-    title: 'E-Commerce Microservices',
-    type: 'flowchart',
-    syntax: `[Web / Mobile Client] --> [API Gateway]\n[API Gateway] --> [Auth Service]\n[API Gateway] --> [Order Service]\n[API Gateway] --> [Payment Service]\n[Order Service] --> [[PostgreSQL DB]]\n[Order Service] --> [Redis Cache]`,
-  },
-  chat: {
-    title: 'Real-Time Chat Engine',
-    type: 'sequence',
-    syntax: `[Mobile Client] --> [WebSocket Gateway]\n[WebSocket Gateway] --> [Kafka Event Bus|shape:queue]\n[Kafka Event Bus] --> [Message Worker]\n[Message Worker] --> [[MongoDB Cluster]]`,
-  },
-  urlShortener: {
-    title: 'URL Shortener Architecture',
-    type: 'flowchart',
-    syntax: `[User Browser] --> [Load Balancer]\n[Load Balancer] --> [Redirect Service]\n[Redirect Service] --> [Redis KV Cache]\n[Redirect Service] --> [[PostgreSQL DB]]`,
-  },
-  payment: {
-    title: 'Payment Processing Pipeline',
-    type: 'flowchart',
-    syntax: `[Checkout Client] --> [API Gateway]\n[API Gateway] --> [Payment Ingest]\n[Payment Ingest] --> [SQS Queue|shape:queue]\n[SQS Queue] --> [Stripe Settlement Worker]\n[Stripe Settlement Worker] --> [[Ledger DB]]`,
-  },
-};
+export const TEMPLATE_PRESETS = CANONICAL_TEMPLATES;
 
 export default function DiagramNewPage() {
   const navigate = useNavigate()

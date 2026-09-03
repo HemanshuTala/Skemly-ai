@@ -31,35 +31,7 @@ import { ResizableShapeNode } from '../nodes/ResizableShapeNode';
 import { ImageNode } from '../nodes/ImageNode';
 import { CollaborativeCursors } from './CollaborativeCursors';
 import { Button } from '../ui/button';
-import {
-  Plus, Maximize2, MousePointer2, Hand, ZoomIn, ZoomOut,
-  Box, LayoutDashboard, User, Tag, ToggleRight, Container, Layers, Diamond,
-  Cloud, Github, GitBranch, RefreshCw, Settings, Activity, FileText,
-  Lock, Shield, Key, Globe, Fingerprint, Database, Smartphone, Tablet,
-  MousePointer, Bell, BarChart3, LineChart, PieChart, Target,
-  MessageSquare, Mail, Video, MessageCircle, Image, Music, Camera,
-  MapPin, Map as MapIcon, Navigation, ArrowRight, Server, HardDrive, Monitor, Circle,
-  FileCode, Code, Wifi, Zap, Battery, Home, Building, Car, Plane,
-  ShoppingCart, CreditCard, Wallet, Calendar, Clock, Star, Heart,
-  Share, Download, Upload, Search, Filter, Grid, List, Menu,
-  MoreHorizontal, MoreVertical, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
-  Check, X, AlertCircle, Info, HelpCircle, AlertTriangle,
-  Trash, Copy, Edit, Save, Undo, Redo, Eye, EyeOff, Lock as LockIcon,
-  Unlock, LogIn, LogOut, UserPlus, Users, UserMinus,
-  Briefcase, BookOpen, GraduationCap, School, Factory,
-  Warehouse, Store, Hotel, Castle, Church, Landmark,
-  Trees, Flower, Leaf, Sun, Moon, CloudRain, Wind, Thermometer,
-  Flame, Snowflake, Droplets, Waves, Anchor, Compass, Rocket,
-  Satellite, Radio, Antenna, Scan, Radar, Siren, Megaphone,
-  Speaker, Headphones, Watch, Glasses, Smartphone as MobileIcon,
-  Laptop, Computer, Cpu, Disc, Usb, Bluetooth, Wifi as WifiIcon,
-  Cable, Power, BatteryCharging, BatteryFull,
-  BatteryLow, BatteryMedium, BatteryWarning, Plug, Zap as ZapIcon,
-  Activity as ActivityIcon, Heart as HeartIcon, Stethoscope,
-  Syringe, Pill, Microscope, FlaskConical, TestTube, Dna,
-  Atom, Orbit, Rocket as RocketIcon, Satellite as SatIcon,
-  Brain, Bot, Sparkles, Lightbulb, Flashlight, Flame as FireIcon
-} from 'lucide-react';
+
 import gsap from 'gsap';
 import { toPng, toSvg } from 'html-to-image';
 import { parseSyntaxToGraph, graphToSyntax, slugifyId, applySafeAutoLayout } from '@/domain/diagramParser';
@@ -108,7 +80,10 @@ interface DiagramCanvasProps {
   onMouseMoveCanvas?: (pos: { x: number; y: number }) => void;
 }
 
+import { Maximize2 } from 'lucide-react';
 import { FlowchartNode, getNodeStyle } from '../nodes/FlowchartNode';
+import { QuickAddOverlay } from './QuickAddOverlay';
+import { CanvasFloatingToolbar } from './CanvasFloatingToolbar';
 
 // nodeTypes MUST be defined outside the component to avoid ReactFlow remounting nodes on every render
 const nodeTypes = { diagramNode: FlowchartNode, resizableShape: ResizableShapeNode, image: ImageNode };
@@ -119,63 +94,6 @@ function stripNodeCallbacks(data: any): any {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { onDimensionsChange, onLabelChange, ...rest } = data;
   return rest;
-}
-
-function QuickAddHandles({
-  node,
-  zoom,
-  viewport,
-  onAdd
-}: {
-  node: Node | undefined;
-  zoom: number;
-  viewport: { x: number; y: number };
-  onAdd: (dir: 'top' | 'right' | 'bottom' | 'left') => void;
-}) {
-  if (!node?.data) return null;
-  const style = getNodeStyle(node.data, (node.data as any)?.kind || 'node');
-  const w = style.width * zoom;
-  const h = style.height * zoom;
-  const tx = node.position.x * zoom + viewport.x;
-  const ty = node.position.y * zoom + viewport.y;
-
-  const btnClass = "absolute flex items-center justify-center w-5 h-5 rounded-full bg-white text-zinc-950 border border-zinc-200 shadow-lg hover:scale-125 hover:bg-zinc-900 hover:text-white transition-all cursor-pointer z-[60]";
-
-  return (
-    <div
-      className="absolute pointer-events-none z-[50]"
-      style={{ left: tx, top: ty, width: w, height: h }}
-    >
-      {/* Top */}
-      <button
-        className={cn(btnClass, "pointer-events-auto -top-6 left-1/2 -translate-x-1/2")}
-        onClick={(e) => { e.stopPropagation(); onAdd('top'); }}
-      >
-        <Plus className="w-3 h-3" />
-      </button>
-      {/* Right */}
-      <button
-        className={cn(btnClass, "pointer-events-auto -right-6 top-1/2 -translate-y-1/2")}
-        onClick={(e) => { e.stopPropagation(); onAdd('right'); }}
-      >
-        <Plus className="w-3 h-3" />
-      </button>
-      {/* Bottom */}
-      <button
-        className={cn(btnClass, "pointer-events-auto -bottom-6 left-1/2 -translate-x-1/2")}
-        onClick={(e) => { e.stopPropagation(); onAdd('bottom'); }}
-      >
-        <Plus className="w-3 h-3" />
-      </button>
-      {/* Left */}
-      <button
-        className={cn(btnClass, "pointer-events-auto -left-6 top-1/2 -translate-y-1/2")}
-        onClick={(e) => { e.stopPropagation(); onAdd('left'); }}
-      >
-        <Plus className="w-3 h-3" />
-      </button>
-    </div>
-  );
 }
 
 // Inner implementation — must be a descendant of ReactFlowProvider
@@ -1696,7 +1614,7 @@ function DiagramCanvasInner({
           )}
 
           {!isExportingSnapshot && selectedNodeId && interactionMode === 'select' && (
-            <QuickAddHandles
+            <QuickAddOverlay
               node={nodes.find((n) => n.id === selectedNodeId)}
               zoom={viewport.zoom}
               viewport={viewport}
@@ -1705,63 +1623,15 @@ function DiagramCanvasInner({
           )}
 
           {/* Floating Controls Overlay */}
-          {!isExportingSnapshot && <div ref={floatingBarRef} className="export-ignore absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Tool Picker */}
-            <div className="flex items-center gap-1 p-1.5 rounded-2xl bg-[#0d0d10]/90 border border-white/[0.08] backdrop-blur-2xl shadow-xl">
-              <button
-                type="button"
-                onClick={() => setInteractionMode('select')}
-                className={cn(
-                  "p-2.5 rounded-xl transition-all duration-200",
-                  interactionMode === 'select'
-                    ? "bg-white/[0.14] text-white border border-white/[0.18] shadow-sm"
-                    : "text-zinc-400 hover:text-white hover:bg-white/[0.06]"
-                )}
-                title="Select Tool (V)"
-              >
-                <MousePointer2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setInteractionMode('pan')}
-                className={cn(
-                  "p-2.5 rounded-xl transition-all duration-200",
-                  interactionMode === 'pan'
-                    ? "bg-white/[0.14] text-white border border-white/[0.18] shadow-sm"
-                    : "text-zinc-400 hover:text-white hover:bg-white/[0.06]"
-                )}
-                title="Pan Tool (H)"
-              >
-                <Hand className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Zoom & View Controls */}
-            <div className="flex items-center gap-1 p-1.5 rounded-2xl bg-[#0d0d10]/90 border border-white/[0.08] backdrop-blur-2xl shadow-xl">
-              <button
-                onClick={() => reactFlowInstance?.zoomOut()}
-                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-              <div className="px-3 text-[11px] font-semibold tabular-nums text-white min-w-[3.5rem] text-center tracking-tighter">
-                {Math.round(viewport.zoom * 100)}%
-              </div>
-              <button
-                onClick={() => reactFlowInstance?.zoomIn()}
-                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
-              <div className="w-px h-5 bg-white/[0.08] mx-1" />
-              <button
-                onClick={() => reactFlowInstance?.fitView({ duration: 800 })}
-                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all"
-                title="Fit View"
-              >
-                <Maximize2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>}
+          {!isExportingSnapshot && (
+            <CanvasFloatingToolbar
+              interactionMode={interactionMode}
+              setInteractionMode={setInteractionMode}
+              zoom={viewport.zoom}
+              reactFlowInstance={reactFlowInstance}
+              toolbarRef={floatingBarRef}
+            />
+          )}
 
           {!isExportingSnapshot && <MiniMap
             className="export-ignore"

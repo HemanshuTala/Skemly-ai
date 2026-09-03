@@ -49,7 +49,7 @@ export function slugifyId(text: string): string {
     .trim()
     .replace(/[^a-z0-9_-]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return slug || `node-${Math.random().toString(16).slice(2, 6)}`;
+  return slug || 'node';
 }
 
 export interface NodeInfo {
@@ -725,15 +725,16 @@ export function critiqueArchitecture(graph: ParsedGraph): ArchitectureReport {
     }
   });
 
-  // 2. Unconsumed Messaging Queue
+  // 2. Unconsumed Messaging Queue & Producer-less Queue
   nodes.forEach((n) => {
     const label = String(n.data?.label || '').toLowerCase();
     const kind = String(n.data?.kind || '').toLowerCase();
-    const isQueue = label.includes('queue') || label.includes('kafka') || label.includes('rabbitmq') || label.includes('pubsub') || kind === 'queue';
+    const isQueue = label.includes('queue') || label.includes('kafka') || label.includes('rabbitmq') || label.includes('pubsub') || label.includes('sqs') || kind === 'queue';
 
     if (isQueue) {
       const outgoing = outEdges.get(n.id) || [];
-      if (outgoing.length === 0) {
+      const incoming = inEdges.get(n.id) || [];
+      if (outgoing.length === 0 && incoming.length > 0) {
         critiques.push({
           id: `crit-unconsumed-queue-${n.id}`,
           severity: 'MEDIUM',
@@ -742,11 +743,41 @@ export function critiqueArchitecture(graph: ParsedGraph): ArchitectureReport {
           suggestion: 'Connect a worker or consumer service to process messages from this queue.',
           affectedNodeIds: [n.id],
         });
+      } else if (incoming.length === 0 && outgoing.length > 0) {
+        critiques.push({
+          id: `crit-producerless-queue-${n.id}`,
+          severity: 'LOW',
+          title: 'Queue Without Ingest Producer',
+          reason: `Queue '${n.data.label}' has consumers but receives no incoming messages.`,
+          suggestion: 'Connect an ingest service or event publisher to this queue.',
+          affectedNodeIds: [n.id],
+        });
       }
     }
   });
 
-  // 3. Isolated Standalone Component
+  // 3. Database Without Access Queries
+  nodes.forEach((n) => {
+    const label = String(n.data?.label || '').toLowerCase();
+    const kind = String(n.data?.kind || '').toLowerCase();
+    const isDb = label.includes('db') || label.includes('database') || label.includes('postgres') || label.includes('mongo') || kind === 'database';
+
+    if (isDb) {
+      const incoming = inEdges.get(n.id) || [];
+      if (incoming.length === 0 && nodes.length > 1) {
+        critiques.push({
+          id: `crit-unreferenced-db-${n.id}`,
+          severity: 'LOW',
+          title: 'Database Without Readers or Writers',
+          reason: `Database '${n.data.label}' has no incoming queries or connection edges from any service.`,
+          suggestion: 'Connect an application backend service to read or write data.',
+          affectedNodeIds: [n.id],
+        });
+      }
+    }
+  });
+
+  // 4. Isolated Standalone Component
   nodes.forEach((n) => {
     const incoming = inEdges.get(n.id) || [];
     const outgoing = outEdges.get(n.id) || [];
@@ -762,7 +793,7 @@ export function critiqueArchitecture(graph: ParsedGraph): ArchitectureReport {
     }
   });
 
-  // 4. Circular Service Dependencies
+  // 5. Circular Service Dependencies
   let hasCycle = false;
   const visited = new Set<string>();
   const inStack = new Set<string>();
@@ -801,6 +832,26 @@ export function critiqueArchitecture(graph: ParsedGraph): ArchitectureReport {
       dfs(n.id, []);
     }
   });
+
+  // 6. Potential Bottleneck / Single Point of Failure (High fan-in and fan-out)
+  if (nodes.length >= 5) {
+    nodes.forEach((n) => {
+      const incoming = inEdges.get(n.id) || [];
+      const outgoing = outEdges.get(n.id) || [];
+      const label = String(n.data?.label || '').toLowerCase();
+      const isGateway = label.includes('gateway') || label.includes('load balancer') || label.includes('balancer') || label.includes('proxy');
+      if (!isGateway && incoming.length >= 3 && outgoing.length >= 3) {
+        critiques.push({
+          id: `crit-spof-${n.id}`,
+          severity: 'MEDIUM',
+          title: 'Potential Single Point of Failure (SPOF)',
+          reason: `Service '${n.data.label}' handles high fan-in (${incoming.length}) and high fan-out (${outgoing.length}) without clear clustering or failover.`,
+          suggestion: 'Consider adding replicas, a load balancer, or asynchronous message decoupling.',
+          affectedNodeIds: [n.id],
+        });
+      }
+    });
+  }
 
   let score = 100;
   critiques.forEach((c) => {

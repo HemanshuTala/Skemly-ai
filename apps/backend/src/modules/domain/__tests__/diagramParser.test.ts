@@ -14,9 +14,12 @@ import {
   critiqueArchitecture,
   classifyAIIntent,
   repairAISyntaxLoop,
+  slugifyId,
   Node,
   Edge,
 } from '../diagramParser';
+import { diffGraphs, applyOperations } from '../diagramOperations';
+import { CANONICAL_TEMPLATES } from '../templates';
 
 describe('AI Diagram Parser Pipeline Tests', () => {
 
@@ -628,6 +631,101 @@ Here is your diagram:
       const scale = Math.min((targetW - pad * 2) / graphW, (targetH - pad * 2) / graphH, 0.9);
       expect(Number.isFinite(scale)).toBe(true);
       expect(scale).toBeGreaterThan(0);
+    });
+  });
+
+  describe('15. Canonical Operation Model, Deterministic ID & Expanded Critic Validation', () => {
+    it('Deterministic ID Test: slugifyId has zero entropy and produces identical IDs across 100 iterations', () => {
+      const inputs = ['API Gateway', '???', '---', 'User Service (v2)', 'PostgreSQL DB'];
+      for (let i = 0; i < 100; i++) {
+        expect(slugifyId('API Gateway')).toBe('api-gateway');
+        expect(slugifyId('???')).toBe('node');
+        expect(slugifyId('---')).toBe('node');
+        expect(slugifyId('User Service (v2)')).toBe('user-service-v2');
+        expect(slugifyId('PostgreSQL DB')).toBe('postgresql-db');
+      }
+    });
+
+    it('Graph Operations Test: diffGraphs detects additions and applies operations without destroying coordinates', () => {
+      const baseGraph = {
+        nodes: [
+          { id: 'client', position: { x: 100, y: 100 }, data: { label: 'Client' }, type: 'diagramNode' },
+          { id: 'gateway', position: { x: 300, y: 100 }, data: { label: 'API Gateway' }, type: 'diagramNode' },
+          { id: 'db', position: { x: 500, y: 100 }, data: { label: 'PostgreSQL DB' }, type: 'diagramNode' },
+        ],
+        edges: [
+          { id: 'e1', source: 'client', target: 'gateway' },
+          { id: 'e2', source: 'gateway', target: 'db' },
+        ],
+      };
+
+      // AI targets adding Redis cache
+      const aiGraph = {
+        nodes: [
+          { id: 'client', position: { x: 0, y: 0 }, data: { label: 'Client' }, type: 'diagramNode' },
+          { id: 'gateway', position: { x: 0, y: 0 }, data: { label: 'API Gateway' }, type: 'diagramNode' },
+          { id: 'redis', position: { x: 400, y: 250 }, data: { label: 'Redis Cache' }, type: 'diagramNode' },
+          { id: 'db', position: { x: 0, y: 0 }, data: { label: 'PostgreSQL DB' }, type: 'diagramNode' },
+        ],
+        edges: [
+          { id: 'e1', source: 'client', target: 'gateway' },
+          { id: 'e-gateway-redis', source: 'gateway', target: 'redis' },
+          { id: 'e2', source: 'gateway', target: 'db' },
+        ],
+      };
+
+      const { operations, summary } = diffGraphs(baseGraph, aiGraph);
+      expect(summary.addedNodes).toContain('Redis Cache');
+      expect(summary.preservedNodeCount).toBe(3);
+      expect(summary.addedEdges).toContain('gateway->redis');
+
+      // Applying operations produces a new graph with Redis and preserved original positions
+      const resultingGraph = applyOperations(baseGraph, operations);
+      expect(resultingGraph.nodes.length).toBe(4);
+      const gatewayNode = resultingGraph.nodes.find((n) => n.id === 'gateway');
+      expect(gatewayNode?.position.x).toBe(300); // Preserved manual position!
+    });
+
+    it('Expanded Critic Test: detects producer-less queue, unreferenced DB, and potential SPOF', () => {
+      const graphWithIssues = {
+        nodes: [
+          { id: 'c1', position: { x: 0, y: 0 }, data: { label: 'Client 1' }, type: 'diagramNode' },
+          { id: 'c2', position: { x: 0, y: 0 }, data: { label: 'Client 2' }, type: 'diagramNode' },
+          { id: 'c3', position: { x: 0, y: 0 }, data: { label: 'Client 3' }, type: 'diagramNode' },
+          { id: 'svc', position: { x: 100, y: 0 }, data: { label: 'Central Service' }, type: 'diagramNode' },
+          { id: 'd1', position: { x: 200, y: 0 }, data: { label: 'Downstream 1' }, type: 'diagramNode' },
+          { id: 'd2', position: { x: 200, y: 100 }, data: { label: 'Downstream 2' }, type: 'diagramNode' },
+          { id: 'd3', position: { x: 200, y: 200 }, data: { label: 'Downstream 3' }, type: 'diagramNode' },
+          { id: 'q', position: { x: 300, y: 0 }, data: { label: 'Orphan Queue', kind: 'queue' }, type: 'diagramNode' },
+          { id: 'w', position: { x: 400, y: 0 }, data: { label: 'Worker' }, type: 'diagramNode' },
+          { id: 'unused_db', position: { x: 500, y: 0 }, data: { label: 'Unused Database', kind: 'database' }, type: 'diagramNode' },
+        ],
+        edges: [
+          { id: 'e1', source: 'c1', target: 'svc' },
+          { id: 'e2', source: 'c2', target: 'svc' },
+          { id: 'e3', source: 'c3', target: 'svc' },
+          { id: 'e4', source: 'svc', target: 'd1' },
+          { id: 'e5', source: 'svc', target: 'd2' },
+          { id: 'e6', source: 'svc', target: 'd3' },
+          { id: 'eq', source: 'q', target: 'w' }, // Queue has consumer but no producer
+        ],
+      };
+
+      const report = critiqueArchitecture(graphWithIssues);
+      expect(report.critiques.some((c) => c.title.includes('Queue Without Ingest Producer'))).toBe(true);
+      expect(report.critiques.some((c) => c.title.includes('Database Without Readers or Writers'))).toBe(true);
+      expect(report.critiques.some((c) => c.title.includes('Single Point of Failure'))).toBe(true);
+      expect(report.score).toBeLessThan(100);
+    });
+
+    it('Canonical Shared Templates Test: all canonical templates parse into valid non-empty graphs', () => {
+      Object.values(CANONICAL_TEMPLATES).forEach((tmpl) => {
+        const graph = parseSyntaxToGraph(tmpl.syntax);
+        expect(graph.nodes.length).toBe(tmpl.nodeCount);
+        expect(graph.edges.length).toBeGreaterThan(1);
+        const validation = validateParsedGraph(graph);
+        expect(validation.valid).toBe(true);
+      });
     });
   });
 });

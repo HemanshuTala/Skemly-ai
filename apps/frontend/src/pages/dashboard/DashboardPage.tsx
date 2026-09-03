@@ -22,13 +22,9 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';
 import { AIComposer } from '@/components/dashboard/AIComposer';
 import { RecentDiagramCard } from '@/components/dashboard/RecentDiagramCard';
+import { CANONICAL_TEMPLATES } from '@/domain/templates';
 
-const TEMPLATES = [
-  { id: 'ecommerce', title: 'E-Commerce Microservices', type: 'flowchart', desc: 'API Gateway, Auth, Order, Payment, PostgreSQL, Redis' },
-  { id: 'chat', title: 'Real-Time Chat Engine', type: 'sequence', desc: 'WebSocket Server, Kafka Event Bus, Workers, MongoDB' },
-  { id: 'urlShortener', title: 'URL Shortener System', type: 'flowchart', desc: 'Load Balancer, Redirect Service, Redis Cache, Postgres' },
-  { id: 'payment', title: 'Payment Processing Pipeline', type: 'flowchart', desc: 'API Gateway, Payment Ingest, SQS Queue, Stripe Settlement Worker' },
-];
+const TEMPLATES = Object.values(CANONICAL_TEMPLATES).slice(0, 4);
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -220,7 +216,7 @@ export default function DashboardPage() {
                   {t.type}
                 </span>
                 <h3 className="text-sm font-bold text-white mt-2">{t.title}</h3>
-                <p className="text-xs text-zinc-400 line-clamp-2 mt-1">{t.desc}</p>
+                <p className="text-xs text-zinc-400 line-clamp-2 mt-1">{t.description}</p>
               </div>
               <button
                 type="button"
