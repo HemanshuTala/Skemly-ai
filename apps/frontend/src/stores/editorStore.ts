@@ -309,8 +309,14 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setLastExportUrl: (s) => set({ lastExportUrl: s }),
 
   // Layout actions
-  setLeftPaneWidth: (n) => set({ leftPaneWidth: n }),
-  setRightPaneWidth: (n) => set({ rightPaneWidth: n }),
+  setLeftPaneWidth: (n) =>
+    set({
+      leftPaneWidth: typeof n === 'number' && !isNaN(n) && n >= 15 && n <= 50 ? n : 28,
+    }),
+  setRightPaneWidth: (n) =>
+    set({
+      rightPaneWidth: typeof n === 'number' && !isNaN(n) && n >= 15 && n <= 45 ? n : 22,
+    }),
   setIsResizing: (s) => set({ isResizing: s }),
 
   // Stats actions

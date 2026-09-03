@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, lazy, Suspense } from 'react';
 import gsap from 'gsap';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Link as RouterLink } from 'react-router-dom';
@@ -15,7 +15,7 @@ import {
 } from '@/stores/editorStore';
 import { useShallow } from 'zustand/react/shallow';
 import { Toolbar } from '@/components/editor/Toolbar';
-import { CodeEditor, type CodeEditorApi } from '@/components/editor/CodeEditor';
+import type { CodeEditorApi } from '@/components/editor/CodeEditor';
 import { ShapePalette } from '@/components/editor/ShapePalette';
 import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
 import { PropertiesPanel } from '@/components/editor/PropertiesPanel';
@@ -23,6 +23,8 @@ import { NotesEditor } from '@/components/editor/NotesEditor';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useAIGenerate } from '@/hooks/useAIGenerate';
 import { socketClient } from '@/lib/socket';
+
+const CodeEditor = lazy(() => import('@/components/editor/CodeEditor').then(m => ({ default: m.CodeEditor })));
 import { aiAPI, commentAPI, diagramAPI, exportAPI, notesAPI } from '@/services/api.service';
 import { Modal } from '@/components/ui/modal';
 import { ArchitectureReviewModal } from '@/components/editor/ArchitectureReviewModal';
@@ -241,10 +243,15 @@ export default function DiagramEditorPage() {
   }, [diagramId, loadDiagram]);
 
   useEffect(() => {
-    if (searchParams.get('ai') === '1' && currentDiagram) {
+    if (!currentDiagram) return;
+    const promptParam = searchParams.get('prompt');
+    if (promptParam) {
+      setAiPrompt(promptParam);
+      setIsAIOpen(true);
+    } else if (searchParams.get('ai') === '1') {
       setIsAIOpen(true);
     }
-  }, [searchParams, currentDiagram]);
+  }, [searchParams, currentDiagram, setAiPrompt, setIsAIOpen]);
 
   // Set initial diagram fields (notes load separately via /notes API)
   useEffect(() => {
@@ -1680,11 +1687,13 @@ export default function DiagramEditorPage() {
           style={{ width: `${leftPaneWidth}%` }}
           className="min-w-[260px] max-w-[680px] min-h-0 flex flex-col overflow-visible"
         >
-          <CodeEditor
-            value={syntax}
-            onChange={(v) => handleSyntaxChange(v, 'code')}
-            editorApiRef={codeEditorApiRef}
-          />
+          <Suspense fallback={<div className="h-full w-full bg-[#09090b] flex items-center justify-center text-xs font-mono text-muted-foreground/60">Loading Code Editor…</div>}>
+            <CodeEditor
+              value={syntax}
+              onChange={(v) => handleSyntaxChange(v, 'code')}
+              editorApiRef={codeEditorApiRef}
+            />
+          </Suspense>
         </div>
         <div
           role="separator"

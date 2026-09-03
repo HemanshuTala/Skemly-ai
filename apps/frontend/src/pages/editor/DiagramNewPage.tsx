@@ -6,10 +6,32 @@ import toast from 'react-hot-toast'
 import { useDiagramStore } from '@/stores/diagramStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 
+export const TEMPLATE_PRESETS: Record<string, { title: string; syntax: string; type: string }> = {
+  ecommerce: {
+    title: 'E-Commerce Microservices',
+    type: 'flowchart',
+    syntax: `[Web / Mobile Client] --> [API Gateway]\n[API Gateway] --> [Auth Service]\n[API Gateway] --> [Order Service]\n[API Gateway] --> [Payment Service]\n[Order Service] --> [[PostgreSQL DB]]\n[Order Service] --> [Redis Cache]`,
+  },
+  chat: {
+    title: 'Real-Time Chat Engine',
+    type: 'sequence',
+    syntax: `[Mobile Client] --> [WebSocket Gateway]\n[WebSocket Gateway] --> [Kafka Event Bus|shape:queue]\n[Kafka Event Bus] --> [Message Worker]\n[Message Worker] --> [[MongoDB Cluster]]`,
+  },
+  urlShortener: {
+    title: 'URL Shortener Architecture',
+    type: 'flowchart',
+    syntax: `[User Browser] --> [Load Balancer]\n[Load Balancer] --> [Redirect Service]\n[Redirect Service] --> [Redis KV Cache]\n[Redirect Service] --> [[PostgreSQL DB]]`,
+  },
+  payment: {
+    title: 'Payment Processing Pipeline',
+    type: 'flowchart',
+    syntax: `[Checkout Client] --> [API Gateway]\n[API Gateway] --> [Payment Ingest]\n[Payment Ingest] --> [SQS Queue|shape:queue]\n[SQS Queue] --> [Stripe Settlement Worker]\n[Stripe Settlement Worker] --> [[Ledger DB]]`,
+  },
+};
+
 export default function DiagramNewPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { currentWorkspace } = useWorkspaceStore()
   const { createDiagram } = useDiagramStore()
 
   const [isCreating, setIsCreating] = useState(false)
@@ -18,23 +40,34 @@ export default function DiagramNewPage() {
     const run = async () => {
       setIsCreating(true)
       try {
-        // If currentWorkspace is not loaded, fetch workspaces first
         let activeWorkspace = useWorkspaceStore.getState().currentWorkspace
         if (!activeWorkspace) {
           await useWorkspaceStore.getState().fetchWorkspaces()
           activeWorkspace = useWorkspaceStore.getState().currentWorkspace
         }
 
+        const params = new URLSearchParams(location.search)
+        const templateKey = params.get('template')
+        const preset = templateKey ? TEMPLATE_PRESETS[templateKey] : null
+
+        const title = preset?.title || params.get('title') || 'Untitled Diagram'
+        const type = preset?.type || params.get('type') || 'flowchart'
+        const syntax = preset?.syntax || ''
+
         const diagram = await createDiagram({
-          title: 'Untitled Diagram',
-          type: 'flowchart',
+          title,
+          type,
           workspaceId: activeWorkspace?.id || 'default',
+          syntax: syntax || undefined,
         })
 
-        const aiQuery = location.search.includes('ai=1') ? '?ai=1' : ''
-        navigate(`/diagram/${diagram.id}${aiQuery}`, { replace: true })
+        const forwardParams = new URLSearchParams()
+        if (params.get('ai') === '1') forwardParams.set('ai', '1')
+        if (params.get('prompt')) forwardParams.set('prompt', params.get('prompt')!)
+
+        const queryStr = forwardParams.toString() ? `?${forwardParams.toString()}` : ''
+        navigate(`/diagram/${diagram.id}${queryStr}`, { replace: true })
       } catch (e) {
-        // Store already toasts the specific error (e.g. PLAN_LIMIT_REACHED)
         navigate('/dashboard', { replace: true })
       } finally {
         setIsCreating(false)
@@ -45,12 +78,11 @@ export default function DiagramNewPage() {
   }, [createDiagram, navigate, location.search])
 
   return (
-    <div className="h-screen flex items-center justify-center bg-background">
+    <div className="h-screen flex items-center justify-center bg-[#09090b]">
       <div className="text-center">
-        <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-4" />
-        <p className="text-muted-foreground">Creating your diagram...</p>
+        <Loader2 className="w-8 h-8 animate-spin text-purple-400 mx-auto mb-4" />
+        <p className="text-sm font-medium text-zinc-400">Initializing your architecture diagram...</p>
       </div>
     </div>
   )
 }
-

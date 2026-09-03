@@ -112,3 +112,33 @@ export async function getAllOfflineDrafts(): Promise<OfflineDraft[]> {
     return [];
   }
 }
+
+// ─── Multi-Tab Broadcast Synchronization ─────────────────────────
+const tabChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('schemely_tab_sync')
+  : null;
+
+export function broadcastDiagramEdit(diagramId: string, version?: number): void {
+  try {
+    tabChannel?.postMessage({
+      type: 'DIAGRAM_EDITED',
+      diagramId,
+      version: version || 1,
+      timestamp: Date.now(),
+    });
+  } catch { /* ignore */ }
+}
+
+export function subscribeTabSync(
+  onConflict: (event: { diagramId: string; version: number }) => void
+): () => void {
+  if (!tabChannel) return () => {};
+  const handler = (e: MessageEvent) => {
+    if (e.data?.type === 'DIAGRAM_EDITED') {
+      onConflict({ diagramId: e.data.diagramId, version: e.data.version });
+    }
+  };
+  tabChannel.addEventListener('message', handler);
+  return () => tabChannel.removeEventListener('message', handler);
+}
+

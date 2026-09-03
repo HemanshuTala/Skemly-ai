@@ -15,7 +15,7 @@ interface DiagramState {
   isLoading: boolean
   conflictState: ConflictState
   fetchDiagrams: (params?: { workspaceId?: string; projectId?: string; starred?: boolean; trashed?: boolean }) => Promise<void>
-  createDiagram: (data: { title: string; type: string; workspaceId: string; projectId?: string }) => Promise<Diagram>
+  createDiagram: (data: { title: string; type: string; workspaceId: string; projectId?: string; syntax?: string }) => Promise<Diagram>
   getDiagram: (id: string) => Promise<void>
   loadDiagram: (id: string) => Promise<void>
   updateDiagram: (id: string, data: { title?: string; syntax?: string; nodes?: any[]; edges?: any[]; requirements?: any[] }) => Promise<void>

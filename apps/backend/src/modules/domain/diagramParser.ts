@@ -215,7 +215,13 @@ export function validateParsedGraph(graph: ParsedGraph): { valid: boolean; error
 
     if (seenIds.has(nodeId)) {
       errors.push(`Duplicate node ID '${nodeId}' deduplicated`);
-      nodeId = `${nodeId}-${Math.random().toString(16).slice(2, 6)}`;
+      let dupIndex = 1;
+      let candidateId = `${nodeId}-dup-${dupIndex}`;
+      while (seenIds.has(candidateId)) {
+        dupIndex++;
+        candidateId = `${nodeId}-dup-${dupIndex}`;
+      }
+      nodeId = candidateId;
     }
     seenIds.add(nodeId);
 
@@ -647,3 +653,269 @@ export function graphToSyntax(nodes: Node[], edges: Edge[]): string {
 
   return lines.join('\n');
 }
+
+export interface ArchitectureCritiqueItem {
+  id: string;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  title: string;
+  reason: string;
+  suggestion: string;
+  affectedNodeIds: string[];
+}
+
+export interface ArchitectureReport {
+  score: number;
+  critiques: ArchitectureCritiqueItem[];
+  nodeCount: number;
+  edgeCount: number;
+  hasCycle: boolean;
+}
+
+/**
+ * Architecture Critic & Reasoning Engine:
+ * Analyzes Diagram IR to detect direct Client-to-DB calls, unconsumed queues, circular dependencies,
+ * isolated nodes, and calculates an overall Architecture Quality Score (0-100%).
+ */
+export function critiqueArchitecture(graph: ParsedGraph): ArchitectureReport {
+  const critiques: ArchitectureCritiqueItem[] = [];
+  const nodes = graph.nodes || [];
+  const edges = graph.edges || [];
+
+  const inEdges = new Map<string, Edge[]>();
+  const outEdges = new Map<string, Edge[]>();
+  const nodeMap = new Map<string, Node>();
+
+  nodes.forEach((n) => {
+    nodeMap.set(n.id, n);
+    inEdges.set(n.id, []);
+    outEdges.set(n.id, []);
+  });
+
+  edges.forEach((e) => {
+    inEdges.get(e.target)?.push(e);
+    outEdges.get(e.source)?.push(e);
+  });
+
+  // 1. Direct Client-to-Database Connection
+  nodes.forEach((n) => {
+    const label = String(n.data?.label || '').toLowerCase();
+    const kind = String(n.data?.kind || '').toLowerCase();
+    const isClient = label.includes('client') || label.includes('frontend') || label.includes('mobile') || label.includes('browser') || kind === 'actor';
+
+    if (isClient) {
+      const outgoing = outEdges.get(n.id) || [];
+      outgoing.forEach((e) => {
+        const target = nodeMap.get(e.target);
+        if (!target) return;
+        const targetLabel = String(target.data?.label || '').toLowerCase();
+        const targetKind = String(target.data?.kind || '').toLowerCase();
+        const isDb = targetLabel.includes('db') || targetLabel.includes('database') || targetLabel.includes('postgres') || targetLabel.includes('mongo') || targetKind === 'database' || targetKind === 'storage';
+
+        if (isDb) {
+          critiques.push({
+            id: `crit-client-db-${n.id}-${target.id}`,
+            severity: 'HIGH',
+            title: 'Direct Client to Database Connection',
+            reason: `Client component '${n.data.label}' connects directly to Database '${target.data.label}' without an API Gateway or backend security layer.`,
+            suggestion: 'Route client requests through an API Gateway or backend microservice with authentication.',
+            affectedNodeIds: [n.id, target.id],
+          });
+        }
+      });
+    }
+  });
+
+  // 2. Unconsumed Messaging Queue
+  nodes.forEach((n) => {
+    const label = String(n.data?.label || '').toLowerCase();
+    const kind = String(n.data?.kind || '').toLowerCase();
+    const isQueue = label.includes('queue') || label.includes('kafka') || label.includes('rabbitmq') || label.includes('pubsub') || kind === 'queue';
+
+    if (isQueue) {
+      const outgoing = outEdges.get(n.id) || [];
+      if (outgoing.length === 0) {
+        critiques.push({
+          id: `crit-unconsumed-queue-${n.id}`,
+          severity: 'MEDIUM',
+          title: 'Unconsumed Message Queue',
+          reason: `Queue '${n.data.label}' receives messages but has no downstream consumer worker attached.`,
+          suggestion: 'Connect a worker or consumer service to process messages from this queue.',
+          affectedNodeIds: [n.id],
+        });
+      }
+    }
+  });
+
+  // 3. Isolated Standalone Component
+  nodes.forEach((n) => {
+    const incoming = inEdges.get(n.id) || [];
+    const outgoing = outEdges.get(n.id) || [];
+    if (incoming.length === 0 && outgoing.length === 0 && nodes.length > 1) {
+      critiques.push({
+        id: `crit-isolated-node-${n.id}`,
+        severity: 'LOW',
+        title: 'Isolated Component',
+        reason: `Node '${n.data.label}' is disconnected from the rest of the architecture.`,
+        suggestion: 'Add connections to define how this component interacts with adjacent services.',
+        affectedNodeIds: [n.id],
+      });
+    }
+  });
+
+  // 4. Circular Service Dependencies
+  let hasCycle = false;
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+
+  function dfs(nodeId: string, path: string[]) {
+    if (inStack.has(nodeId)) {
+      hasCycle = true;
+      const cycleStart = path.indexOf(nodeId);
+      const cyclePath = path.slice(cycleStart);
+      const cycleNames = cyclePath.map((id) => nodeMap.get(id)?.data?.label || id).join(' -> ');
+      critiques.push({
+        id: `crit-cycle-${cyclePath.join('-')}`,
+        severity: 'HIGH',
+        title: 'Circular Dependency Detected',
+        reason: `Circular call chain detected: ${cycleNames} -> ${nodeMap.get(nodeId)?.data?.label || nodeId}.`,
+        suggestion: 'Break circular service calls by introducing an event bus, queue, or decoupled service interface.',
+        affectedNodeIds: cyclePath,
+      });
+      return;
+    }
+    if (visited.has(nodeId)) return;
+
+    visited.add(nodeId);
+    inStack.add(nodeId);
+    path.push(nodeId);
+
+    const outgoing = outEdges.get(nodeId) || [];
+    outgoing.forEach((e) => dfs(e.target, path));
+
+    path.pop();
+    inStack.delete(nodeId);
+  }
+
+  nodes.forEach((n) => {
+    if (!visited.has(n.id)) {
+      dfs(n.id, []);
+    }
+  });
+
+  let score = 100;
+  critiques.forEach((c) => {
+    if (c.severity === 'HIGH') score -= 15;
+    else if (c.severity === 'MEDIUM') score -= 8;
+    else if (c.severity === 'LOW') score -= 3;
+  });
+  score = Math.max(0, Math.min(100, score));
+
+  return {
+    score,
+    critiques,
+    nodeCount: nodes.length,
+    edgeCount: edges.length,
+    hasCycle,
+  };
+}
+
+export type AIIntent = 'CREATE' | 'MODIFY' | 'EXPLAIN' | 'CRITIQUE';
+
+/**
+ * Classifies user AI prompt intent into mutating (CREATE, MODIFY) vs. read-only (EXPLAIN, CRITIQUE).
+ * Read-only intents return isMutating = false to prevent accidental diagram modifications.
+ */
+export function classifyAIIntent(prompt: string): { intent: AIIntent; isMutating: boolean } {
+  const p = (prompt || '').trim().toLowerCase();
+
+  if (
+    p.startsWith('what is') ||
+    p.startsWith('explain') ||
+    p.startsWith('how does') ||
+    p.startsWith('why is') ||
+    p.includes('explain this') ||
+    p.includes('what does this do')
+  ) {
+    return { intent: 'EXPLAIN', isMutating: false };
+  }
+
+  if (
+    p.startsWith('review') ||
+    p.startsWith('critique') ||
+    p.startsWith('check security') ||
+    p.includes('find bottlenecks') ||
+    p.includes('quality score')
+  ) {
+    return { intent: 'CRITIQUE', isMutating: false };
+  }
+
+  if (
+    p.startsWith('add ') ||
+    p.startsWith('remove ') ||
+    p.startsWith('delete ') ||
+    p.startsWith('replace ') ||
+    p.startsWith('connect ') ||
+    p.startsWith('disconnect ') ||
+    p.includes('between ')
+  ) {
+    return { intent: 'MODIFY', isMutating: true };
+  }
+
+  return { intent: 'CREATE', isMutating: true };
+}
+
+export interface RepairResult {
+  repaired: boolean;
+  iterations: number;
+  syntax: string;
+  reasons: string[];
+}
+
+/**
+ * AI Syntax Repair Loop:
+ * Bounded repair algorithm with a strict cap of max 3 iterations.
+ * Repairs dangling edges, deduplicates IDs, and strips broken tokens without infinite looping.
+ */
+export function repairAISyntaxLoop(
+  rawSyntax: string,
+  maxIterations = 3
+): RepairResult {
+  let currentSyntax = rawSyntax;
+  let iterations = 0;
+  const reasons: string[] = [];
+
+  while (iterations < maxIterations) {
+    iterations++;
+    const sanitized = sanitizeAISyntax(currentSyntax);
+    const graph = parseSyntaxToGraph(sanitized);
+    const validation = validateParsedGraph(graph);
+
+    if (validation.valid && validation.errors.length === 0) {
+      return {
+        repaired: true,
+        iterations,
+        syntax: sanitized,
+        reasons,
+      };
+    }
+
+    if (validation.errors.length > 0) {
+      reasons.push(`Iteration ${iterations}: ${validation.errors.join(', ')}`);
+    }
+
+    if (validation.graph.nodes.length > 0) {
+      currentSyntax = graphToSyntax(validation.graph.nodes, validation.graph.edges);
+    } else {
+      break;
+    }
+  }
+
+  return {
+    repaired: false,
+    iterations,
+    syntax: currentSyntax,
+    reasons,
+  };
+}
+
+

@@ -1,408 +1,238 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import { billingAPI } from '@/services/api.service'
-import { useRazorpay } from '@/hooks/useRazorpay'
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus,
   FileText,
   Clock,
   Star,
-  BarChart3,
   Sparkles,
   ArrowRight,
   GitBranch,
-  Zap,
+  Search,
   Layout,
   Globe,
-  MoreHorizontal,
-  ChevronRight,
-  Activity,
-  Boxes,
-  TrendingUp,
+  RefreshCw,
+  X,
   Layers,
-} from 'lucide-react'
-import { useDiagramStore } from '@/stores/diagramStore'
-import { useWorkspaceStore } from '@/stores/workspaceStore'
-import { useAuthStore } from '@/stores/authStore'
-import { formatDistanceToNow } from 'date-fns'
-import toast from 'react-hot-toast'
-import { cn } from '@/lib/utils'
+} from 'lucide-react';
+import { useDiagramStore } from '@/stores/diagramStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useAuthStore } from '@/stores/authStore';
+import { AIComposer } from '@/components/dashboard/AIComposer';
+import { RecentDiagramCard } from '@/components/dashboard/RecentDiagramCard';
 
-/* ── Diagram type config ── */
-const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-  flowchart: { icon: GitBranch,  color: 'text-white',     bg: 'bg-white/[0.07]' },
-  sequence:  { icon: Activity,   color: 'text-zinc-300',  bg: 'bg-zinc-300/[0.07]' },
-  mindmap:   { icon: Boxes,      color: 'text-zinc-200',  bg: 'bg-zinc-200/[0.07]' },
-  erd:       { icon: Layout,     color: 'text-zinc-400',  bg: 'bg-zinc-400/[0.07]' },
-  network:   { icon: Globe,      color: 'text-zinc-200',  bg: 'bg-zinc-200/[0.07]' },
-}
-const DEFAULT_TYPE = { icon: FileText, color: 'text-zinc-400', bg: 'bg-zinc-400/[0.07]' }
+const TEMPLATES = [
+  { id: 'ecommerce', title: 'E-Commerce Microservices', type: 'flowchart', desc: 'API Gateway, Auth, Order, Payment, PostgreSQL, Redis' },
+  { id: 'chat', title: 'Real-Time Chat Engine', type: 'sequence', desc: 'WebSocket Server, Kafka Event Bus, Workers, MongoDB' },
+  { id: 'urlShortener', title: 'URL Shortener System', type: 'flowchart', desc: 'Load Balancer, Redirect Service, Redis Cache, Postgres' },
+  { id: 'payment', title: 'Payment Processing Pipeline', type: 'flowchart', desc: 'API Gateway, Payment Ingest, SQS Queue, Stripe Settlement Worker' },
+];
 
-/* ── Stagger container ── */
-const staggerContainer = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
-}
-const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
-}
+export default function DashboardPage() {
+  const { user } = useAuthStore();
+  const { currentWorkspace } = useWorkspaceStore();
+  const { diagrams, fetchDiagrams, isLoading } = useDiagramStore();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const navigate = useNavigate();
 
-/* ── Diagram Card ── */
-function DiagramCard({ diagram, index }: { diagram: any; index: number }) {
-  const cfg = TYPE_CONFIG[diagram.type] || DEFAULT_TYPE
-  const Icon = cfg.icon
+  useEffect(() => {
+    if (currentWorkspace?.id) {
+      fetchDiagrams({ workspaceId: currentWorkspace.id });
+    }
+  }, [currentWorkspace?.id, fetchDiagrams]);
+
+  const handleRefresh = async () => {
+    if (!currentWorkspace?.id || isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await fetchDiagrams({ workspaceId: currentWorkspace.id });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const activeDiagrams = diagrams.filter((d) => !d.trashed);
+
+  const queryClean = searchQuery.trim().toLowerCase();
+  const filteredDiagrams = activeDiagrams.filter((d) => {
+    if (!queryClean) return true;
+    const titleMatch = (d.title || '').toLowerCase().includes(queryClean);
+    const typeMatch = (d.type || '').toLowerCase().includes(queryClean);
+    const syntaxMatch = (d.syntax || '').toLowerCase().includes(queryClean);
+    return titleMatch || typeMatch || syntaxMatch;
+  });
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const firstName = user?.name?.split(' ')[0] || 'Engineer';
 
   return (
-    <motion.div variants={fadeUp}>
-      <Link to={`/diagram/${diagram.id}`} tabIndex={0}>
-        <div className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-[#0d0d10] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/[0.12] hover:shadow-xl hover:shadow-black/40 cursor-pointer">
-          {/* Subtle hover overlay */}
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none rounded-xl" />
+    <div className="max-w-[1200px] mx-auto px-6 py-8 space-y-10 text-white">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            {greeting}, {firstName}
+          </h1>
+          <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+            Design, explore, and refine your system architecture workspace.
+          </p>
+        </div>
 
-          {/* Top row */}
-          <div className="flex items-start justify-between mb-5">
-            <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center border border-white/[0.08] transition-transform duration-300 group-hover:scale-105', cfg.bg)}>
-              <Icon className={cn('w-5 h-5', cfg.color)} />
-            </div>
-            <div className="flex items-center gap-1.5">
-              {diagram.starred && (
-                <Star className="w-3.5 h-3.5 fill-[#fbbf24] text-[#fbbf24]" />
-              )}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-2 rounded-xl border border-white/[0.08] bg-[#0d0d10] text-zinc-400 hover:text-white transition-colors"
+            aria-label="Refresh diagrams"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-purple-400' : ''}`} />
+          </button>
+
+          <Link
+            to="/diagram/new"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-semibold text-white shadow-lg shadow-purple-600/20 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Diagram</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Prominent AI Prompt Composer */}
+      <AIComposer />
+
+      {/* Recent Diagrams Section */}
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-white">Recent Architecture Diagrams</h2>
+            <span className="text-xs font-mono text-zinc-500 bg-white/[0.04] px-2 py-0.5 rounded border border-white/[0.06]">
+              {filteredDiagrams.length}
+            </span>
+          </div>
+
+          {/* Search Filter Input */}
+          <div className="relative w-full sm:w-72">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Filter by title, type, or component..."
+              className="w-full bg-[#0d0d10] border border-white/[0.08] rounded-xl pl-9 pr-8 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50 transition-colors"
+            />
+            {searchQuery && (
               <button
                 type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
-                className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-all"
-                aria-label="More options"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                aria-label="Clear search"
               >
-                <MoreHorizontal className="w-3.5 h-3.5 text-[#71717a]" />
+                <X className="w-3 h-3" />
               </button>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="mb-4 space-y-1.5">
-            <h3 className="text-[14px] font-semibold text-white line-clamp-1 tracking-[-0.01em]">
-              {diagram.title}
-            </h3>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#52525b] px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
-                {diagram.type || 'diagram'}
-              </span>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-between pt-3.5 border-t border-white/[0.05]">
-            <div className="flex items-center gap-1.5 text-[11px] text-[#52525b]">
-              <Clock className="w-3 h-3" />
-              <span>{formatDistanceToNow(new Date(diagram.updatedAt), { addSuffix: true })}</span>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-[#52525b] opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all duration-200" />
+            )}
           </div>
         </div>
-      </Link>
-    </motion.div>
-  )
-}
 
-/* ── Skeleton Card ── */
-function DiagramCardSkeleton() {
-  return (
-    <div className="rounded-xl border border-white/[0.04] bg-[#0d0d10] p-5 space-y-5">
-      <div className="flex items-start justify-between">
-        <Skeleton className="w-10 h-10 rounded-lg" />
-        <Skeleton className="w-7 h-7 rounded-lg" />
-      </div>
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-3/4 rounded" />
-        <Skeleton className="h-3 w-1/3 rounded" />
-      </div>
-      <div className="pt-3 border-t border-white/[0.04] flex items-center justify-between">
-        <Skeleton className="h-3 w-24 rounded" />
-        <Skeleton className="h-3.5 w-3.5 rounded" />
-      </div>
-    </div>
-  )
-}
-
-/* ── Main page ── */
-export default function DashboardPage() {
-  const { user, fetchUser } = useAuthStore()
-  const { currentWorkspace } = useWorkspaceStore()
-  const { diagrams, fetchDiagrams, isLoading } = useDiagramStore()
-  const { isLoaded, openCheckout } = useRazorpay()
-  const navigate = useNavigate()
-
-  const [stats, setStats] = useState({ total: 0, thisWeek: 0, starred: 0 })
-
-  useEffect(() => {
-    if (currentWorkspace) fetchDiagrams({ workspaceId: currentWorkspace.id })
-  }, [currentWorkspace, fetchDiagrams])
-
-  useEffect(() => {
-    const active  = diagrams.filter(d => !d.trashed)
-    const week    = active.filter(d =>
-      (Date.now() - new Date(d.updatedAt).getTime()) < 7 * 86400 * 1000
-    )
-    const starred = active.filter(d => d.starred)
-    setStats({ total: active.length, thisWeek: week.length, starred: starred.length })
-  }, [diagrams])
-
-  const recentDiagrams  = diagrams.filter(d => !d.trashed)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 6)
-
-  const starredDiagrams = diagrams.filter(d => d.starred && !d.trashed).slice(0, 3)
-
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
-  const firstName = user?.name?.split(' ')[0] || 'there'
-
-  const QUICK_ACTIONS = [
-    { to: '/diagram/new',     icon: Plus,     label: 'New Diagram',      sub: 'Start from scratch' },
-    { to: '/diagram/new?ai=1', icon: Sparkles, label: 'Generate with AI', sub: 'Describe & create' },
-    { to: '/templates',       icon: Layout,   label: 'Browse Templates',  sub: 'Pre-built patterns' },
-    { to: '/projects',        icon: Layers,   label: 'All Projects',      sub: 'Organize your work' },
-  ]
-
-  const STAT_ITEMS = [
-    { label: 'Total Diagrams',   value: stats.total,   icon: BarChart3,  },
-    { label: 'Active This Week', value: stats.thisWeek, icon: TrendingUp, },
-    { label: 'Starred',          value: stats.starred,  icon: Star,       },
-  ]
-
-  return (
-    <div className="max-w-[1200px] mx-auto px-6 py-8 space-y-10">
-
-      {/* ── Header ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <p className="text-[12px] font-medium text-[#52525b] uppercase tracking-[0.1em] mb-1">
-          {greeting}
-        </p>
-        <h1 className="text-[28px] font-bold tracking-[-0.03em] text-white leading-tight mb-1.5">
-          {firstName}
-        </h1>
-        <p className="text-[14px] text-[#52525b]">
-          {stats.total > 0
-            ? `${stats.total} diagram${stats.total !== 1 ? 's' : ''} in this workspace`
-            : 'Create your first diagram to get started'}
-        </p>
-      </motion.div>
-
-      {/* ── Quick Actions ── */}
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-2 lg:grid-cols-4 gap-3"
-      >
-        {QUICK_ACTIONS.map((action) => {
-          const Icon = action.icon
-          return (
-            <motion.div key={action.to} variants={fadeUp}>
-              <Link to={action.to} tabIndex={0}>
-                <div className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-[#0d0d10] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/[0.12] hover:bg-white/[0.02] cursor-pointer h-full">
-                  <div className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center mb-3 group-hover:bg-white/[0.10] transition-colors">
-                    <Icon className="w-4 h-4 text-white" />
-                  </div>
-                  <p className="text-[13px] font-semibold text-white mb-0.5 tracking-[-0.01em]">{action.label}</p>
-                  <p className="text-[11px] text-[#52525b]">{action.sub}</p>
-                  <ArrowRight className="absolute bottom-3.5 right-3.5 w-3.5 h-3.5 text-[#52525b] opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all duration-200" />
+        {/* Loading Skeletons */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-xl border border-white/[0.06] bg-[#0d0d10] p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-7 w-20 rounded" />
+                  <Skeleton className="h-4 w-4 rounded-full" />
                 </div>
-              </Link>
-            </motion.div>
-          )
-        })}
-      </motion.div>
-
-      {/* ── Stats ── */}
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-3 gap-3"
-      >
-        {STAT_ITEMS.map((s) => {
-          const Icon = s.icon
-          return (
-            <motion.div key={s.label} variants={fadeUp}>
-              <div className="rounded-xl border border-white/[0.06] bg-[#0d0d10] px-5 py-4 flex items-center gap-4">
-                <div className="w-9 h-9 rounded-lg bg-white/[0.05] border border-white/[0.07] flex items-center justify-center shrink-0">
-                  <Icon className="w-4 h-4 text-[#a1a1aa]" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[22px] font-bold text-white tracking-tight leading-none mb-0.5">
-                    {s.value}
-                  </p>
-                  <p className="text-[11px] text-[#52525b] truncate">{s.label}</p>
-                </div>
+                <Skeleton className="h-24 w-full rounded-lg" />
+                <Skeleton className="h-4 w-3/4 rounded" />
               </div>
-            </motion.div>
-          )
-        })}
-      </motion.div>
-
-      {/* ── Starred ── */}
-      {starredDiagrams.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Star className="w-4 h-4 text-[#fbbf24]" />
-              <h2 className="text-[14px] font-semibold text-white tracking-[-0.01em]">Starred</h2>
-            </div>
-            <Link to="/projects" className="flex items-center gap-1 text-[11px] font-medium text-[#52525b] hover:text-white transition-colors">
-              View all <ChevronRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
-            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3"
-          >
-            {starredDiagrams.map((d, i) => (
-              <DiagramCard key={d.id} diagram={d} index={i} />
             ))}
-          </motion.div>
-        </section>
-      )}
-
-      {/* ── Recent Diagrams ── */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-[#52525b]" />
-            <h2 className="text-[14px] font-semibold text-white tracking-[-0.01em]">Recent</h2>
           </div>
-          <Link to="/projects" className="flex items-center gap-1 text-[11px] font-medium text-[#52525b] hover:text-white transition-colors">
-            View all <ChevronRight className="w-3 h-3" />
+        ) : filteredDiagrams.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredDiagrams.map((d) => (
+              <RecentDiagramCard key={d.id} diagram={d} />
+            ))}
+          </div>
+        ) : searchQuery ? (
+          /* Search Empty State */
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0d0d10] p-10 text-center space-y-3">
+            <p className="text-sm text-zinc-400">
+              No diagrams found matching <span className="text-white font-medium">"{searchQuery}"</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-zinc-300 hover:text-white transition-colors"
+            >
+              Clear Search
+            </button>
+          </div>
+        ) : (
+          /* Workspace Empty State */
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0d0d10] p-12 text-center space-y-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto text-purple-400">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-white">Your Architecture Workspace is Empty</h3>
+            <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+              Start by typing an architecture prompt above or choose a pre-validated system pattern below.
+            </p>
+            <div className="pt-2">
+              <Link
+                to="/diagram/new"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-semibold text-white shadow-lg shadow-purple-600/20 transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Create Blank Diagram</span>
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Templates Section */}
+      <div className="space-y-4 border-t border-white/[0.08] pt-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-white">Architecture Templates</h2>
+            <p className="text-xs text-zinc-400">Pre-validated system design patterns to kickstart your work</p>
+          </div>
+          <Link
+            to="/templates"
+            className="text-xs font-medium text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
+          >
+            <span>View All Templates</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
-        {isLoading && diagrams.length === 0 ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {[...Array(6)].map((_, i) => <DiagramCardSkeleton key={i} />)}
-          </div>
-        ) : recentDiagrams.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/[0.08] bg-[#0d0d10] p-12 text-center">
-            <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto mb-4">
-              <GitBranch className="w-5 h-5 text-[#52525b]" />
-            </div>
-            <h3 className="text-[14px] font-semibold text-white mb-1.5">No diagrams yet</h3>
-            <p className="text-[13px] text-[#52525b] mb-5 max-w-[280px] mx-auto leading-relaxed">
-              Create your first diagram or generate one using AI
-            </p>
-            <div className="flex items-center justify-center gap-2">
-              <Link to="/diagram/new">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-[#09090b] text-[12px] font-semibold hover:bg-[#e4e4e7] transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  New Diagram
-                </button>
-              </Link>
-              <Link to="/diagram/new?ai=1">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/[0.08] bg-white/[0.04] text-white text-[12px] font-semibold hover:bg-white/[0.08] transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Generate with AI
-                </button>
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
-            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3"
-          >
-            {recentDiagrams.map((d, i) => (
-              <DiagramCard key={d.id} diagram={d} index={i} />
-            ))}
-          </motion.div>
-        )}
-      </section>
-
-      {/* ── Upgrade Banner ── */}
-      {user?.plan === 'free' && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#0d0d10] p-5"
-        >
-          {/* Decorative background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] via-transparent to-transparent pointer-events-none" />
-
-          <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-white text-[#09090b]">
-                  <Zap className="w-2.5 h-2.5" />
-                  Pro
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {TEMPLATES.map((t) => (
+            <div key={t.id} className="rounded-xl border border-white/[0.08] bg-[#0d0d10] p-4 space-y-2.5 hover:border-white/[0.18] transition-all flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] font-mono uppercase tracking-wider text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">
+                  {t.type}
                 </span>
+                <h3 className="text-sm font-bold text-white mt-2">{t.title}</h3>
+                <p className="text-xs text-zinc-400 line-clamp-2 mt-1">{t.desc}</p>
               </div>
-              <h3 className="text-[15px] font-semibold text-white mb-1 tracking-[-0.01em]">
-                Unlock the full power of Schemely AI
-              </h3>
-              <p className="text-[12px] text-[#52525b] leading-relaxed">
-                Unlimited diagrams, advanced AI generation, real-time collaboration, and more.
-              </p>
+              <button
+                type="button"
+                onClick={() => navigate(`/diagram/new?template=${t.id}`)}
+                className="w-full mt-2 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-xs font-semibold text-zinc-300 hover:text-white transition-all text-center"
+              >
+                Use Template
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={async () => {
-                if (!isLoaded) { toast.error('Payment system loading...'); return }
-                toast.loading('Connecting to payment…', { id: 'billing' })
-                try {
-                  const res = await billingAPI.subscribe({ planId: 'pro' })
-                  const { subscriptionId, shortUrl } = res.data?.data || {}
-                  if (!subscriptionId) { toast.error('Failed to create subscription', { id: 'billing' }); return }
-                  const KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SFzdvgFWIJjzUx'
-                  const checkout = openCheckout({
-                    key: KEY,
-                    subscription_id: subscriptionId,
-                    name: 'Schemely AI',
-                    description: 'Pro Plan',
-                    handler: async (response: any) => {
-                      try {
-                        await billingAPI.verifyPayment({
-                          razorpayPaymentId: response.razorpay_payment_id,
-                          razorpaySubscriptionId: response.razorpay_subscription_id,
-                          razorpaySignature: response.razorpay_signature,
-                        })
-                        await fetchUser()
-                        toast.success('Payment successful! Welcome to Pro.', { id: 'billing' })
-                        navigate('/payment/success')
-                      } catch { toast.error('Payment verification failed', { id: 'billing' }) }
-                    },
-                    modal: { ondismiss: () => toast.dismiss('billing') },
-                  })
-                  if (!checkout && shortUrl) window.location.href = shortUrl
-                } catch (e: any) {
-                  toast.error(e?.response?.data?.error?.message || 'Upgrade failed', { id: 'billing' })
-                }
-              }}
-              className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white text-[#09090b] text-[12px] font-bold hover:bg-[#e4e4e7] transition-colors"
-            >
-              Upgrade to Pro
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </motion.div>
-      )}
+          ))}
+        </div>
+      </div>
     </div>
-  )
+  );
 }

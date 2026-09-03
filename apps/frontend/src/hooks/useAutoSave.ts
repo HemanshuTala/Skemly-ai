@@ -122,11 +122,28 @@ export function useAutoSave({
   );
 
   useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (diagramId && pendingDataRef.current) {
+        try {
+          saveOfflineDraft({
+            diagramId,
+            updatedAt: new Date().toISOString(),
+            syntax: pendingDataRef.current.syntax || '',
+            nodes: pendingDataRef.current.nodes || [],
+            edges: pendingDataRef.current.edges || [],
+          });
+        } catch { /* ignore */ }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (maxWaitRef.current) clearTimeout(maxWaitRef.current);
     };
-  }, []);
+  }, [diagramId]);
 
   return { save, saveNow, isSaving };
 }

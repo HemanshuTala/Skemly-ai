@@ -50,7 +50,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       >
         <Command className="flex flex-col">
           {/* Input block */}
-          <div className="flex items-center gap-2.5 px-4 border-b border-white/[0.05] bg-[#0a0a0d]">
+          <div 
+            className="flex items-center gap-2.5 px-4 border-b border-white/[0.05] bg-[#0a0a0d]"
+            onKeyDown={(e) => e.stopPropagation()}
+          >
             <Search className="w-4 h-4 text-[#52525b] shrink-0" />
             <Command.Input
               autoFocus
