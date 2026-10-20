@@ -96,7 +96,7 @@ export const subscribe = async (req: AuthRequest, res: Response, next: NextFunct
     console.log('[Billing] Subscribe request for user:', req.userId!, 'plan:', planId);
     
     // Valid paid plans: starter (₹20), basic (₹40)
-    if (!['starter', 'basic'].includes(planId)) {
+    if (!['starter', 'basic', 'pro', 'team'].includes(planId)) {
       throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid plan ID');
     }
 

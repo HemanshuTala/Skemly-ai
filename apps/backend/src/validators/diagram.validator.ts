@@ -18,27 +18,28 @@ export const createDiagramSchema = z.object({
       'state',
       'network',
       'orgchart',
-    ]),
-    workspaceId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid workspace ID'),
+    ]).optional(),
+    workspaceId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid workspace ID').optional(),
     projectId: z
       .string()
       .regex(/^[0-9a-fA-F]{24}$/, 'Invalid project ID')
       .optional()
       .nullable(),
-  }),
+    syntax: z.string().max(200000).optional(),
+  }).passthrough(),
 });
 
 export const updateDiagramSchema = z.object({
   body: z.object({
     title: z.string().min(1).max(200).optional(),
-    syntax: z.string().max(100000).optional(), // 100KB max
+    syntax: z.string().max(200000).optional(),
     nodes: z.array(z.any()).optional(),
     edges: z.array(z.any()).optional(),
     viewport: z
       .object({
-        x: z.number(),
-        y: z.number(),
-        zoom: z.number().min(0.1).max(10),
+        x: z.number().optional(),
+        y: z.number().optional(),
+        zoom: z.number().min(0.01).max(20).optional(),
       })
       .optional(),
     projectId: z
@@ -47,20 +48,25 @@ export const updateDiagramSchema = z.object({
       .optional()
       .nullable(),
     createVersion: z.boolean().optional(),
-  }),
+    isPublic: z.boolean().optional(),
+    theme: z.string().optional(),
+    backgroundColor: z.string().optional(),
+    description: z.string().max(1000).optional(),
+  }).passthrough(),
 });
 
 export const createShareLinkSchema = z.object({
   body: z.object({
-    expiresAt: z.string().datetime().optional(),
-    password: z.string().min(4).max(50).optional(),
-  }),
+    expiresAt: z.string().datetime().optional().nullable(),
+    password: z.string().min(4).max(50).optional().nullable(),
+  }).passthrough(),
 });
 
 export const saveVersionSchema = z.object({
   body: z.object({
     name: z.string().min(1).max(100).optional(),
-  }),
+    description: z.string().max(500).optional(),
+  }).passthrough(),
 });
 
 export const listDiagramsSchema = z.object({
@@ -70,5 +76,5 @@ export const listDiagramsSchema = z.object({
     search: z.string().max(200).optional(),
     page: z.string().regex(/^\d+$/).optional(),
     limit: z.string().regex(/^\d+$/).optional(),
-  }),
+  }).passthrough(),
 });

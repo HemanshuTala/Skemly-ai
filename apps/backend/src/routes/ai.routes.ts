@@ -7,6 +7,7 @@ const router = Router();
 
 router.post('/generate', authenticateToken, aiRateLimiter, AIController.generateDiagram);
 router.post('/generate/stream', authenticateToken, aiRateLimiter, AIController.streamGenerateDiagram);
+router.post('/stream-generate', authenticateToken, aiRateLimiter, AIController.streamGenerateDiagram);
 router.post('/code-to-diagram', authenticateToken, aiRateLimiter, AIController.codeToDiagram);
 router.post('/explain', authenticateToken, aiRateLimiter, AIController.explainDiagram);
 router.post('/improve', authenticateToken, aiRateLimiter, AIController.improveDiagram);

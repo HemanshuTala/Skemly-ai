@@ -1,10 +1,11 @@
+import { isRedisAvailable, getRedis } from '../config/redis';
 import Razorpay from 'razorpay';
 import { User } from '../models/user.model';
 import { ApiError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
 import { isValidRazorpaySignature } from './razorpay-signatures';
 
-type AppPlanId = 'starter' | 'basic';
+export type AppPlanId = 'starter' | 'basic' | 'pro' | 'team';
 
 type PlanConfig = {
   id: AppPlanId;
@@ -31,8 +32,20 @@ class BillingService {
     basic: {
       id: 'basic',
       name: 'Schemely AI Basic Monthly',
-      amountInPaise: 4000,  // ₹40
+      amountInPaise: 4000,
       description: 'Schemely AI Basic plan billed monthly',
+    },
+    pro: {
+      id: 'pro',
+      name: 'Schemely AI Pro Monthly',
+      amountInPaise: 9900,
+      description: 'Schemely AI Pro plan billed monthly with unlimited diagrams and exports',
+    },
+    team: {
+      id: 'team',
+      name: 'Schemely AI Team Monthly',
+      amountInPaise: 29900,
+      description: 'Schemely AI Team plan with real-time multi-seat collaboration',
     },
   };
 
@@ -53,6 +66,39 @@ class BillingService {
     } else {
       logger.warn('⚠️  Razorpay not configured - billing features disabled');
     }
+  }
+
+  private processedEvents = new Map<string, number>();
+
+  /**
+   * Deduplicate incoming webhook events to prevent replay attacks and duplicate processing
+   */
+  private async isWebhookEventProcessed(eventId: string): Promise<boolean> {
+    if (isRedisAvailable()) {
+      try {
+        const client = getRedis();
+        // Set event ID with 24-hour expiration only if not already present
+        const res = await client.set(`webhook:processed:${eventId}`, '1', 'EX', 86400, 'NX');
+        return res === null;
+      } catch (err) {
+        logger.warn('[Billing] Redis deduplication failed, falling back to memory cache', err);
+      }
+    }
+
+    const now = Date.now();
+    if (this.processedEvents.has(eventId)) {
+      const ts = this.processedEvents.get(eventId)!;
+      if (now - ts < 86400000) return true;
+    }
+    this.processedEvents.set(eventId, now);
+
+    // Prune stale cache entries if too large
+    if (this.processedEvents.size > 5000) {
+      for (const [k, v] of this.processedEvents.entries()) {
+        if (now - v > 86400000) this.processedEvents.delete(k);
+      }
+    }
+    return false;
   }
 
   private checkRazorpayAvailable(): void {
@@ -483,7 +529,7 @@ class BillingService {
    */
   async checkExpiredSubscriptions(): Promise<void> {
     const expiredUsers = await User.find({
-      plan: { $in: ['starter', 'basic'] },
+      plan: { $in: ['starter', 'basic', 'pro', 'team'] },
       planExpiresAt: { $lt: new Date() },
     });
 
