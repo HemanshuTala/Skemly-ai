@@ -143,10 +143,11 @@ export const getPortalLink = async (req: AuthRequest, res: Response, next: NextF
 
 export const handleWebhook = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const signature = req.headers['x-razorpay-signature'] as string;
+    const signatureHeader = req.headers['x-razorpay-signature'];
+    const signature = typeof signatureHeader === 'string' ? signatureHeader : undefined;
     const payload = req.body;
 
-    await billingService.handleWebhook(payload, signature);
+    await billingService.handleWebhook(payload, signature, req.rawBody);
     
     res.json({ success: true });
   } catch (err) {
@@ -169,8 +170,15 @@ export const verifyPayment = async (req: AuthRequest, res: Response, next: NextF
       hasSignature: !!razorpaySignature
     });
     
-    if (!razorpayPaymentId || !razorpaySubscriptionId) {
-      throw new ApiError(400, 'VALIDATION_ERROR', 'Missing payment or subscription ID');
+    if (
+      typeof razorpayPaymentId !== 'string' ||
+      typeof razorpaySubscriptionId !== 'string' ||
+      typeof razorpaySignature !== 'string' ||
+      !razorpayPaymentId ||
+      !razorpaySubscriptionId ||
+      !razorpaySignature
+    ) {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'Missing payment, subscription, or signature');
     }
 
     const result = await billingService.verifyAndActivateSubscription(

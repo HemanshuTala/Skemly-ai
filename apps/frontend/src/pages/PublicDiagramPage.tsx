@@ -154,6 +154,7 @@ export default function PublicDiagramPage() {
 
           <div className="space-y-4">
             <input
+              aria-label="Shared diagram access password"
               autoFocus
               type="password"
               value={password}
@@ -166,7 +167,7 @@ export default function PublicDiagramPage() {
                 }
               }}
               placeholder="Enter access password"
-              className="w-full h-10 px-3 rounded-lg border border-white/[0.06] bg-white/[0.02] text-xs text-white placeholder:text-[#3f3f46] outline-none focus:border-white/[0.15] transition-all"
+              className="w-full h-10 px-3 rounded-lg border border-white/[0.08] bg-white/[0.03] text-sm text-white placeholder:text-[#71717a] outline-none focus:border-violet-300/40 focus:ring-2 focus:ring-violet-300/10 transition-all"
             />
             {error && <p className="text-[11px] text-[#f87171] text-center font-medium">{error}</p>}
             
@@ -213,7 +214,7 @@ export default function PublicDiagramPage() {
             to="/"
             className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-white text-[#09090b] text-[11px] font-bold uppercase tracking-wider hover:bg-[#e4e4e7] transition-colors"
           >
-            Go to Schemely
+            Go to Schemely AI
           </Link>
         </div>
       </div>
@@ -223,20 +224,20 @@ export default function PublicDiagramPage() {
   return (
     <div className="h-screen flex flex-col bg-[#09090b] overflow-hidden">
       {/* Header */}
-      <header className="shrink-0 h-[52px] border-b border-white/[0.06] bg-[#0a0a0d]/80 backdrop-blur-xl px-4 flex items-center justify-between gap-3">
+      <header className="shrink-0 h-14 border-b border-white/[0.06] bg-[#0a0a0d]/90 backdrop-blur-xl px-3 sm:px-4 flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
           {/* Logo */}
           <Link
             to="/"
             className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"
-            title="Schemely"
+            title="Schemely AI"
           >
             <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
               <svg viewBox="0 0 24 24" className="w-4 h-4 text-white fill-current">
                 <path d="M12 2 L22 8 L22 16 L12 22 L2 16 L2 8 Z" />
               </svg>
             </div>
-            <span className="text-[13px] font-bold tracking-tight text-white hidden sm:block">Schemely</span>
+            <span className="text-[13px] font-bold tracking-tight text-white hidden sm:block">Schemely AI</span>
           </Link>
 
           <div className="w-px h-4 bg-white/[0.06] shrink-0" />
@@ -248,9 +249,9 @@ export default function PublicDiagramPage() {
         {/* Action / indicators group */}
         <div className="flex items-center gap-3 shrink-0">
           {/* Live indicator */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {collaborators.length > 0 && (
-              <div className="flex items-center -space-x-1.5 mr-1">
+              <div className="hidden items-center -space-x-1.5 mr-1 sm:flex">
                 <TooltipProvider>
                   {collaborators.map((c) => (
                     <Tooltip key={c.userId}>
@@ -282,23 +283,23 @@ export default function PublicDiagramPage() {
             {isLive ? (
               <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#4ade80]/10 border border-[#4ade80]/20 text-[#4ade80] text-[10px] font-bold uppercase tracking-wider">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-pulse" />
-                Live
+                <span className="hidden sm:inline">Live</span>
                 {liveUpdates > 0 && <span className="opacity-70">· {liveUpdates}</span>}
               </span>
             ) : (
               <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.04] border border-white/[0.06] text-[#52525b] text-[10px] font-bold uppercase tracking-wider animate-pulse">
                 <Wifi className="w-3 h-3" />
-                Connecting…
+                <span className="hidden sm:inline">Connecting…</span>
               </span>
             )}
             
             <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/[0.04] border border-white/[0.06] text-[#52525b] text-[10px] font-bold uppercase tracking-wider">
               <Eye className="w-3 h-3" />
-              Read-only
+              <span className="hidden sm:inline">Read-only</span>
             </span>
           </div>
 
-          <div className="w-px h-4 bg-white/[0.06]" />
+          <div className="hidden sm:block w-px h-4 bg-white/[0.06]" />
 
           {/* Refresh & open in editor */}
           <div className="flex items-center gap-1.5">
@@ -309,14 +310,15 @@ export default function PublicDiagramPage() {
               }}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.06] text-[#52525b] hover:text-white transition-colors"
               title="Refresh diagram"
+              aria-label="Refresh diagram"
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
             <Link
               to="/"
-              className="flex items-center gap-1.5 px-3 h-8 rounded-lg bg-white text-[#09090b] text-[11px] font-bold uppercase tracking-wider hover:bg-[#e4e4e7] transition-colors"
+              className="flex items-center gap-1.5 px-2 sm:px-3 h-8 rounded-lg bg-white text-[#09090b] text-[11px] font-semibold hover:bg-[#e4e4e7] transition-colors"
             >
-              <span>Open App</span>
+              <span className="hidden sm:inline">Open App</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
           </div>

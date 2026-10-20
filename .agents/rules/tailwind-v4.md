@@ -1,7 +1,7 @@
 # Tailwind v4 — No Numeric Primary Color Scale
 
 ## Context
-This project (Skemly) uses **Tailwind CSS v4** with a custom `@theme` block in `apps/frontend/src/index.css`.
+This project (Schemely AI) uses **Tailwind CSS v4** with a custom `@theme` block in `apps/frontend/src/index.css`.
 
 ## Rule
 The `@theme` defines ONLY flat tokens:

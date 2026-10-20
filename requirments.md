@@ -1,4 +1,4 @@
-# Skemly SaaS — Full Product Requirements Document (PRD)
+# Schemely AI SaaS — Full Product Requirements Document (PRD)
 **Version:** 1.0  
 **Stack:** MERN (MongoDB, Express, React, Node.js) + Supporting Services  
 **Type:** AI-Powered Visual Workspace for Developers & Teams
@@ -33,7 +33,7 @@
 ## 1. Product Overview
 
 ### 1.1 Product Name
-**Skemly**
+**Schemely AI**
 
 ### 1.2 One-Liner
 > "AI-powered visual workspace: write code, get diagrams, collaborate in real-time."
@@ -1115,7 +1115,7 @@ conflict:detected  { message }
 ### 12.3 Watermark Logic
 ```
 if (user.plan === 'free') {
-  addWatermark(export, "Made with Skemly — skemly.com")
+  addWatermark(export, "Made with Schemely AI — skemly.com")
 }
 ```
 

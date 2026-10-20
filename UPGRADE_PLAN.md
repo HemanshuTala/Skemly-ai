@@ -1,10 +1,10 @@
-# Skemly AI — Production-Grade Upgrade Plan
+# Schemely AI ï¿½ Production-Grade Upgrade Plan
 
 > Saved: 2026-08-28. Master implementation specification.
 
 ## Priority Order
 
-### P0 — Reliability (START HERE)
+### P0 ï¿½ Reliability (START HERE)
 1. repository inspection + baseline
 2. test harness setup
 3. Diagram IR (canonical typed model)
@@ -16,7 +16,7 @@
 9. Preview/patch architecture
 10. Save/conflict safety (optimistic concurrency)
 
-### P1 — Architecture
+### P1 ï¿½ Architecture
 11. Split DiagramCanvas.tsx (104KB -> modular)
 12. Split PropertiesPanel.tsx (54KB)
 13. Split ShapePalette.tsx (67KB)
@@ -28,7 +28,7 @@
 19. Background jobs (export, AI heavy ops)
 20. Export service refactor (43KB)
 
-### P2 — Product Intelligence
+### P2 ï¿½ Product Intelligence
 21. System design review (SPOF, missing cache, etc.)
 22. Requirements traceability
 23. Architecture health dashboard
@@ -38,7 +38,7 @@
 27. Contextual AI (selection-aware)
 28. 20+ professional templates
 
-### P3 — Scale / Polish
+### P3 ï¿½ Scale / Polish
 29. Collaboration (patch-based Socket.IO)
 30. Offline drafts (IndexedDB)
 31. Observability (OpenTelemetry)
@@ -72,6 +72,17 @@
 - [x] P2-24: Tradeoff analysis (TradeoffAnalysisModal & tradeoffAnalysis endpoints wired)
 - [x] P2-27: Contextual AI (selection-aware explain passing focus nodes)
 - [x] P2-28: 20+ professional templates (built-in automatic database template seeder)
+- [x] Billing reliability: remove frontend test-key fallback and enforce checkout/webhook signature verification
+- [x] UI polish: restore Tailwind `max-w-*` sizing by moving app spacing tokens outside the `--spacing-*` namespace
+- [x] UI polish: use native SVG motion for the landing architecture preview without invalid DOM-property warnings
+- [x] UI polish: establish consistent responsive spacing, accessible focus states, reduced-motion behavior, and violet-accented shared controls
+- [x] UI polish: refresh navigation, auth, dashboard, projects, templates, workspace, and settings page hierarchy
+- [x] UI polish: keep dashboard/account routes usable on mobile while preserving the compact-screen editor guidance
+- [x] UI polish: add a responsive diagram-start chooser with blank, prompt-led AI, and canonical-template paths while retaining query-driven creation links
+- [x] UI polish: refresh the editor toolbar, canvas controls, palette, and panel framing without changing React Flow state/performance boundaries
+- [x] AI safety UX: stage generated and improved syntax for review, and only mutate the diagram after an explicit apply action
+- [x] Documentation UX: make the docs navigation responsive and align code examples/AI guidance with the editor's actual syntax and review flow
+- [x] Shared diagram UX: keep the live/read-only status and controls usable at narrow viewport widths
 
 ## Core Principle
 > The LLM is a planner/generator, not the source of truth.
@@ -97,11 +108,6 @@ User intent -> Intent extraction -> Diagram type selection
 8. No silent destructive AI operations
 9. No secrets in source
 10. No tests depending on execution order
-
-
-
-
-
 
 
 

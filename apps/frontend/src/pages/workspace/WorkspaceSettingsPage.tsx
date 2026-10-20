@@ -14,7 +14,7 @@ export default function WorkspaceSettingsPage() {
 
   if (!currentWorkspace) {
     return (
-      <div className="max-w-[900px] mx-auto px-6 py-20 flex flex-col items-center justify-center text-center">
+      <div className="mx-auto flex max-w-[900px] flex-col items-center justify-center px-4 py-20 text-center sm:px-6">
         <div className="w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto mb-5">
           <Users className="w-6 h-6 text-[#52525b]" />
         </div>
@@ -25,7 +25,7 @@ export default function WorkspaceSettingsPage() {
   }
 
   return (
-    <div className="max-w-[900px] mx-auto px-6 py-8 space-y-6">
+    <div className="mx-auto max-w-[960px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       {/* Header Section */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -33,14 +33,14 @@ export default function WorkspaceSettingsPage() {
         transition={{ duration: 0.35 }}
         className="space-y-1.5"
       >
-        <div className="flex items-center gap-1.5 text-[#52525b] font-bold uppercase tracking-wider text-[10px]">
-          <Settings className="w-3.5 h-3.5" />
-          <span>Workspace Settings</span>
+        <div className="flex items-center gap-1.5 text-violet-300/80 font-semibold uppercase tracking-[0.16em] text-[11px]">
+          <Settings className="h-3.5 w-3.5" />
+          <span>Workspace settings</span>
         </div>
-        <h1 className="text-[22px] font-bold text-white tracking-[-0.02em]">
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
           {currentWorkspace.name}
         </h1>
-        <p className="text-[12px] text-[#52525b] flex items-center gap-1.5">
+        <p className="flex items-center gap-1.5 text-sm text-zinc-400">
           <Calendar className="w-3.5 h-3.5" />
           Created {format(new Date(currentWorkspace.createdAt || Date.now()), 'MMMM d, yyyy')}
         </p>

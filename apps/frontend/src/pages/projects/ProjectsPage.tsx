@@ -87,7 +87,7 @@ export default function ProjectsPage() {
   /* ── Loading skeleton ── */
   if (isLoading && projects.length === 0) {
     return (
-      <div className="max-w-[1200px] mx-auto px-6 py-8 space-y-8">
+      <div className="mx-auto max-w-[1280px] space-y-8 px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <Skeleton className="h-6 w-28 rounded" />
@@ -115,17 +115,18 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-8 space-y-6">
+    <div className="mx-auto max-w-[1280px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       {/* ── Header ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="flex items-center justify-between gap-4"
+        className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center"
       >
         <div>
-          <h1 className="text-[22px] font-bold text-white tracking-[-0.02em]">Projects</h1>
-          <p className="text-[13px] text-[#52525b] mt-0.5">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-300/80">Workspace</p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-white">Projects</h1>
+          <p className="mt-1 text-sm text-zinc-400">
             {filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''} in{' '}
             <span className="text-[#a1a1aa]">{currentWorkspace?.name || 'workspace'}</span>
           </p>
@@ -133,7 +134,7 @@ export default function ProjectsPage() {
         <button
           onClick={() => setShowCreateModal(true)}
           disabled={!currentWorkspace}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-[#09090b] text-[12px] font-bold hover:bg-[#e4e4e7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Plus className="w-3.5 h-3.5" />
           New Project

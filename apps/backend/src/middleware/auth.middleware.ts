@@ -5,6 +5,7 @@ import { IUser } from '../models/user.model';
 
 export interface AuthRequest extends Request {
   userId?: string;
+  rawBody?: Buffer;
 }
 
 export function authenticateToken(req: AuthRequest, _res: Response, next: NextFunction): void {

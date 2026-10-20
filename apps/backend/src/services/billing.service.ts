@@ -1,8 +1,8 @@
 import Razorpay from 'razorpay';
-import crypto from 'crypto';
 import { User } from '../models/user.model';
 import { ApiError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
+import { isValidRazorpaySignature } from './razorpay-signatures';
 
 type AppPlanId = 'starter' | 'basic';
 
@@ -19,25 +19,27 @@ type PlanConfig = {
  */
 class BillingService {
   private razorpay: Razorpay | null = null;
+  private keySecret: string;
   private webhookSecret: string;
   private readonly planConfigs: Record<AppPlanId, PlanConfig> = {
     starter: {
       id: 'starter',
-      name: 'Skemly Starter Monthly',
+      name: 'Schemely AI Starter Monthly',
       amountInPaise: 2000,  // ₹20
-      description: 'Skemly Starter plan billed monthly',
+      description: 'Schemely AI Starter plan billed monthly',
     },
     basic: {
       id: 'basic',
-      name: 'Skemly Basic Monthly',
+      name: 'Schemely AI Basic Monthly',
       amountInPaise: 4000,  // ₹40
-      description: 'Skemly Basic plan billed monthly',
+      description: 'Schemely AI Basic plan billed monthly',
     },
   };
 
   constructor() {
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    this.keySecret = keySecret || '';
     this.webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 
     if (keyId && keySecret && 
@@ -82,7 +84,7 @@ class BillingService {
     if (!customerId) {
       try {
         const customer = await this.razorpay!.customers.create({
-          name: user.name || 'Skemly User', // Provide a fallback if name is empty
+          name: user.name || 'Schemely AI User', // Provide a fallback if name is empty
           email: user.email,
           fail_existing: '0',
         } as any);
@@ -243,17 +245,21 @@ class BillingService {
   /**
    * §BILL-03 Handle Razorpay webhooks
    */
-  async handleWebhook(payload: any, signature: string): Promise<void> {
-    // Verify webhook signature
-    if (this.webhookSecret) {
-      const expectedSignature = crypto
-        .createHmac('sha256', this.webhookSecret)
-        .update(JSON.stringify(payload))
-        .digest('hex');
+  async handleWebhook(
+    payload: any,
+    signature: string | undefined,
+    rawBody: Buffer | undefined
+  ): Promise<void> {
+    if (!this.webhookSecret) {
+      throw new ApiError(503, 'WEBHOOK_UNAVAILABLE', 'Webhook signature verification is not configured');
+    }
 
-      if (signature !== expectedSignature) {
-        throw new ApiError(401, 'INVALID_SIGNATURE', 'Invalid webhook signature');
-      }
+    if (!rawBody) {
+      throw new ApiError(400, 'INVALID_WEBHOOK', 'Webhook request body is unavailable for signature verification');
+    }
+
+    if (!isValidRazorpaySignature(rawBody, signature, this.webhookSecret)) {
+      throw new ApiError(401, 'INVALID_SIGNATURE', 'Invalid webhook signature');
     }
 
     const event = payload.event;
@@ -395,7 +401,7 @@ class BillingService {
     userId: string,
     razorpayPaymentId: string,
     razorpaySubscriptionId: string,
-    razorpaySignature?: string
+    razorpaySignature: string
   ): Promise<{ success: boolean; plan: string; message: string }> {
     this.checkRazorpayAvailable();
 
@@ -407,6 +413,11 @@ class BillingService {
     // Verify the payment belongs to this user
     if (user.razorpaySubscriptionId !== razorpaySubscriptionId) {
       throw new ApiError(403, 'FORBIDDEN', 'Subscription does not belong to user');
+    }
+
+    const signaturePayload = `${razorpayPaymentId}|${razorpaySubscriptionId}`;
+    if (!isValidRazorpaySignature(signaturePayload, razorpaySignature, this.keySecret)) {
+      throw new ApiError(401, 'INVALID_SIGNATURE', 'Invalid payment signature');
     }
 
     try {
@@ -426,21 +437,6 @@ class BillingService {
       const subscription = await this.razorpay!.subscriptions.fetch(razorpaySubscriptionId);
       logger.info(`[Billing] Subscription status: ${subscription.status}, notes:`, subscription.notes);
       
-      // Verify signature if provided (for inline checkout)
-      if (razorpaySignature && this.webhookSecret) {
-        const body = razorpayPaymentId + '|' + razorpaySubscriptionId;
-        const expectedSignature = crypto
-          .createHmac('sha256', this.webhookSecret)
-          .update(body)
-          .digest('hex');
-        
-        if (razorpaySignature !== expectedSignature) {
-          logger.warn(`[Billing] Invalid payment signature for user ${userId}`);
-        } else {
-          logger.info(`[Billing] Payment signature verified for user ${userId}`);
-        }
-      }
-
       // Extract plan from subscription notes
       let planId = subscription.notes?.planId as AppPlanId;
       logger.info(`[Billing] Plan ID from subscription notes: ${planId}`);

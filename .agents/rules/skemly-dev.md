@@ -1,4 +1,4 @@
-# Skemly Dev Environment
+# Schemely AI Dev Environment
 
 ## Server Startup
 

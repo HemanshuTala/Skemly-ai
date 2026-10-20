@@ -3,14 +3,13 @@ import { useRazorpay, RazorpaySuccessResponse } from '@/hooks/useRazorpay';
 import { billingAPI } from '@/services/api.service';
 import toast from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
+import { getRazorpayKeyId, RAZORPAY_KEY_CONFIG_ERROR } from '@/lib/razorpayConfig';
 
 interface RazorpayCheckoutProps {
   planId: 'starter' | 'basic' | 'pro' | 'team';
   onSuccess?: () => void;
   onCancel?: () => void;
 }
-
-const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SFzdvgFWIJjzUx';
 
 export function RazorpayCheckoutButton({ 
   planId, 
@@ -21,6 +20,12 @@ export function RazorpayCheckoutButton({
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleSubscribe = async () => {
+    const keyId = getRazorpayKeyId();
+    if (!keyId) {
+      toast.error(RAZORPAY_KEY_CONFIG_ERROR);
+      return;
+    }
+
     if (!isLoaded) {
       toast.error('Payment system not ready. Please try again.');
       return;
@@ -45,9 +50,9 @@ export function RazorpayCheckoutButton({
 
       // Option 2: Open inline Razorpay checkout (fallback)
       const checkout = openCheckout({
-        key: RAZORPAY_KEY_ID,
+        key: keyId,
         subscription_id: subscriptionId,
-        name: 'Schemely',
+        name: 'Schemely AI',
         description: `Subscribe to ${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan`,
         handler: async (response: RazorpaySuccessResponse) => {
           try {
@@ -117,6 +122,12 @@ export function useRazorpayCheckout() {
   const { isLoaded, openCheckout } = useRazorpay();
 
   const initiateCheckout = async (planId: 'starter' | 'basic' | 'pro' | 'team') => {
+    const keyId = getRazorpayKeyId();
+    if (!keyId) {
+      toast.error(RAZORPAY_KEY_CONFIG_ERROR);
+      return null;
+    }
+
     if (!isLoaded) {
       toast.error('Payment system not ready');
       return null;
@@ -134,9 +145,9 @@ export function useRazorpayCheckout() {
       if (subscriptionId) {
         return new Promise((resolve, reject) => {
           const checkout = openCheckout({
-            key: RAZORPAY_KEY_ID,
+            key: keyId,
             subscription_id: subscriptionId,
-            name: 'Schemely',
+            name: 'Schemely AI',
             description: `Subscribe to ${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan`,
             handler: async (response: RazorpaySuccessResponse) => {
               try {

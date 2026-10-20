@@ -8,7 +8,7 @@
  * - Use semantic node kinds, not React Flow internals
  */
 
-export const DIAGRAM_GENERATION_PROMPT_V1 = `You are Skemly's AI diagram architect. Generate architecture diagrams from natural language descriptions.
+export const DIAGRAM_GENERATION_PROMPT_V1 = `You are Schemely AI's diagram architect. Generate architecture diagrams from natural language descriptions.
 
 CRITICAL: Return ONLY valid JSON. No markdown, no explanation, no preamble.
 

@@ -103,14 +103,6 @@
   --color-border-subtle:     #3f3f46;
   --color-border-strong:     #52525b;
 
-  /* ── Spacing Scale ────────────────────────────────────────────────────────── */
-  --spacing-xs:              4px;
-  --spacing-sm:              8px;
-  --spacing-md:              12px;
-  --spacing-lg:              16px;
-  --spacing-xl:              24px;
-  --spacing-2xl:             32px;
-
   /* ── Border Radius ───────────────────────────────────────────────────────── */
   --radius-sm:               5px;
   --radius-md:               7px;
@@ -123,6 +115,14 @@
    ROOT VARIABLES (GLOBAL)
    ═══════════════════════════════════════════════════════════════════════════════ */
 :root {
+  /* Keep app spacing tokens outside Tailwind's --spacing namespace. */
+  --space-xs:                4px;
+  --space-sm:                8px;
+  --space-md:                12px;
+  --space-lg:                16px;
+  --space-xl:                24px;
+  --space-2xl:               32px;
+
   /* Canvas */
   --canvas-bg:               #09090b;
   --canvas-dot-color:        #27272a;
@@ -188,7 +188,10 @@ body {
   margin: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  background: var(--color-canvas);
+  background:
+    radial-gradient(ellipse at 50% -18%, rgba(124, 58, 237, 0.12), transparent 45rem),
+    var(--color-canvas);
+  background-attachment: fixed;
   color: var(--color-foreground);
   font-family: var(--font-sans);
   min-height: 100vh;
@@ -199,8 +202,45 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+button,
+a,
+input,
+textarea,
+select,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid rgba(167, 139, 250, 0.8);
+  outline-offset: 3px;
+}
+
+input,
+textarea,
+select {
+  color-scheme: dark;
+  font: inherit;
+}
+
 ::selection {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(167, 139, 250, 0.3);
   color: #ffffff;
 }
 
@@ -378,6 +418,25 @@ body {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #52525b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════

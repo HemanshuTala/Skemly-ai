@@ -74,7 +74,7 @@ class AIService {
    * §10.1 System prompt for diagram generation
    */
   private getSystemPrompt(diagramType: string): string {
-    return `You are a diagram generation assistant. Convert user descriptions into valid Skemly diagram syntax.
+    return `You are a diagram generation assistant. Convert user descriptions into valid Schemely AI diagram syntax.
 
 Output ONLY the raw syntax, no explanation, no markdown code blocks, no preamble.
 

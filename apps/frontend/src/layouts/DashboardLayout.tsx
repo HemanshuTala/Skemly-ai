@@ -60,19 +60,19 @@ function NavItem({
       className={cn(
         'relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 group select-none',
         active
-          ? 'bg-white/[0.07] text-white'
+          ? 'bg-violet-400/[0.09] text-white ring-1 ring-inset ring-violet-300/[0.10]'
           : 'text-[#71717a] hover:text-[#d4d4d8] hover:bg-white/[0.04]'
       )}
     >
       {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-white rounded-r-full" />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-violet-400" />
       )}
       <Icon
         size={15}
         strokeWidth={active ? 2 : 1.5}
         className={cn(
           'shrink-0 transition-colors',
-          active ? 'text-white' : 'text-[#52525b] group-hover:text-[#a1a1aa]'
+          active ? 'text-violet-200' : 'text-[#52525b] group-hover:text-[#a1a1aa]'
         )}
       />
       <span className="flex-1 tracking-[-0.01em]">{item.name}</span>
@@ -141,7 +141,7 @@ function Sidebar({
       )}
     >
       {/* Logo + close */}
-      <div className="flex items-center gap-2.5 h-[52px] px-4 border-b border-white/[0.05] shrink-0">
+      <div className="flex items-center gap-2.5 h-[60px] px-4 border-b border-white/[0.06] shrink-0">
         <Link
           to="/dashboard"
           onClick={onClose}
@@ -149,7 +149,7 @@ function Sidebar({
         >
           <img
             src={skemlyLogo}
-            alt="Schemely"
+            alt="Schemely AI"
             className="w-6 h-6 object-contain shrink-0"
           />
           <span className="text-[14px] font-semibold text-white tracking-[-0.02em] truncate">
@@ -252,7 +252,7 @@ function Sidebar({
         <Link
           to="/diagram/new"
           onClick={onClose}
-          className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-white text-[#0a0a0d] text-[12px] font-semibold hover:bg-[#e4e4e7] transition-colors group"
+          className="flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-gradient-to-r from-violet-600 to-indigo-600 px-3 py-2 text-[12px] font-semibold text-white shadow-lg shadow-violet-950/30 transition-all hover:-translate-y-0.5 hover:from-violet-500 hover:to-indigo-500 group"
         >
           <Plus size={13} strokeWidth={2.5} />
           New Diagram
@@ -261,7 +261,7 @@ function Sidebar({
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-3 overflow-y-auto custom-scrollbar min-h-0" aria-label="Main navigation">
-        <div className="space-y-0.5 mb-5">
+        <div className="space-y-1 mb-6">
           <p className="text-[10px] font-semibold text-[#3f3f46] uppercase tracking-[0.1em] px-3 mb-2">
             Workspace
           </p>
@@ -275,7 +275,7 @@ function Sidebar({
           ))}
         </div>
 
-        <div className="space-y-0.5">
+        <div className="space-y-1">
           <p className="text-[10px] font-semibold text-[#3f3f46] uppercase tracking-[0.1em] px-3 mb-2">
             Account
           </p>
@@ -314,7 +314,7 @@ function Sidebar({
             className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-white/[0.04] transition-colors text-left"
             aria-expanded={userMenuOpen}
           >
-            <div className="w-7 h-7 rounded-lg bg-white/[0.08] border border-white/[0.10] flex items-center justify-center text-[11px] font-bold text-white shrink-0">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-violet-300/15 bg-violet-400/10 text-[11px] font-bold text-violet-100">
               {initials}
             </div>
             <div className="flex-1 min-w-0">
@@ -387,21 +387,20 @@ function Topbar({
     '/workspace/settings': 'Workspace Settings',
     '/settings':           'Settings',
   }
-  const title = pageLabel[pathname] ?? 'Schemely'
+  const title = pageLabel[pathname] ?? 'Schemely AI'
 
   return (
-    <header className="sticky top-0 z-30 flex items-center h-[52px] bg-[#0a0a0d]/80 backdrop-blur-xl border-b border-white/[0.05] px-4 gap-3 shrink-0">
+    <header className="sticky top-0 z-30 flex items-center h-[56px] sm:h-[60px] bg-[#0b0b0f]/85 backdrop-blur-xl border-b border-white/[0.06] px-3 sm:px-5 gap-2.5 sm:gap-3 shrink-0">
       {/* Mobile menu */}
       <button
         onClick={onMenuOpen}
-        className="lg:hidden p-1.5 rounded-md text-[#71717a] hover:text-white hover:bg-white/[0.06] transition-colors"
+        className="lg:hidden p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors"
         aria-label="Open navigation"
       >
         <Menu size={17} />
       </button>
 
-      {/* Page title — hidden on mobile (sidebar covers it) */}
-      <span className="hidden lg:block text-[13px] font-semibold text-white tracking-[-0.01em]">
+      <span className="min-w-0 max-w-[7rem] truncate text-[13px] font-semibold text-white tracking-[-0.01em] lg:max-w-none">
         {title}
       </span>
 
@@ -410,12 +409,12 @@ function Topbar({
       {/* Search */}
       <button
         onClick={onSearchClick}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.05] transition-colors text-[#52525b] hover:text-[#a1a1aa] min-w-[180px] max-w-[240px]"
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2 text-zinc-500 transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-zinc-300 lg:flex-none lg:px-3 lg:max-w-[240px]"
         aria-label="Search (Ctrl+K)"
       >
         <Search size={13} />
         <span className="text-[12px] flex-1 text-left">Search…</span>
-        <kbd className="text-[10px] font-mono bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.08] leading-none">
+        <kbd className="hidden sm:block text-[10px] font-mono bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.08] leading-none">
           ⌘K
         </kbd>
       </button>
@@ -425,7 +424,7 @@ function Topbar({
         {user?.plan === 'free' && (
           <button
             onClick={onUpgrade}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-[#09090b] text-[11px] font-bold hover:bg-[#e4e4e7] transition-colors"
+            className="hidden min-h-9 items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-violet-500 sm:flex"
           >
             <Zap size={11} strokeWidth={2.5} />
             Upgrade
@@ -519,7 +518,7 @@ export default function DashboardLayout() {
       />
 
       {/* Content */}
-      <div className="lg:pl-[232px] h-full flex flex-col">
+      <div className="lg:pl-[232px] h-full min-w-0 flex flex-col">
         <Topbar
           onMenuOpen={() => setSidebarOpen(true)}
           user={user}
@@ -528,7 +527,7 @@ export default function DashboardLayout() {
           pathname={location.pathname}
         />
 
-        <div data-lenis-prevent className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]">
+        <div data-lenis-prevent className="relative flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

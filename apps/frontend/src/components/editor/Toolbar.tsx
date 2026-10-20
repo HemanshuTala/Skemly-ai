@@ -117,8 +117,8 @@ export function Toolbar({
   };
 
   return (
-    <div className="shrink-0 border-b border-white/[0.05] bg-[#0a0a0d]/80 backdrop-blur-xl z-20">
-      <div className="h-[52px] flex items-center justify-between px-4 gap-2">
+    <div className="relative z-20 shrink-0 border-b border-white/[0.07] bg-[#0b0b0f]/95 shadow-[0_8px_30px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+      <div className="h-14 flex items-center justify-between px-3 sm:px-4 gap-2">
 
         {/* ── LEFT ── */}
         <div className="flex items-center gap-2.5 min-w-0">
@@ -129,7 +129,7 @@ export function Toolbar({
                 <Link to="/dashboard">
                   <button
                     type="button"
-                    className="flex items-center justify-center h-8 w-8 rounded-lg text-[#52525b] hover:text-white hover:bg-white/[0.06] transition-all active:scale-95 shrink-0"
+                    className="flex items-center justify-center h-8 w-8 rounded-lg text-[#71717a] hover:text-white hover:bg-white/[0.07] transition-all active:scale-95 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </button>
@@ -145,7 +145,7 @@ export function Toolbar({
 
           {/* Logo mark */}
           <div className="w-6 h-6 flex items-center justify-center shrink-0">
-            <img src={skemlyLogo} alt="Skemly" className="w-full h-full object-contain" />
+            <img src={skemlyLogo} alt="Schemely AI" className="w-full h-full object-contain" />
           </div>
 
           <ChevronRight className="w-3.5 h-3.5 text-white/[0.08] shrink-0" />
@@ -321,7 +321,7 @@ export function Toolbar({
                     e.stopPropagation();
                     onAIAssist();
                   }}
-                  className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 transition-all text-[11px] font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(124,58,237,0.3)] hover:shadow-[0_0_16px_rgba(124,58,237,0.5)] border border-violet-500/20 active:scale-95 duration-200 cursor-pointer"
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 transition-all text-[11px] font-semibold shadow-[0_0_18px_rgba(124,58,237,0.18)] border border-violet-300/20 active:scale-95 duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>AI Copilot</span>

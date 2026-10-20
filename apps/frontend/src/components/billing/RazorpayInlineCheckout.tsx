@@ -1,5 +1,6 @@
 import { billingAPI } from '@/services/api.service';
 import toast from 'react-hot-toast';
+import { getRazorpayKeyId, RAZORPAY_KEY_CONFIG_ERROR } from '@/lib/razorpayConfig';
 
 interface RazorpayInlineCheckoutOptions {
   planId: string;
@@ -33,6 +34,11 @@ export async function openRazorpayCheckout({
   onError,
 }: RazorpayInlineCheckoutOptions) {
   try {
+    const keyId = getRazorpayKeyId();
+    if (!keyId) {
+      throw new Error(RAZORPAY_KEY_CONFIG_ERROR);
+    }
+
     toast.loading('Setting up payment...', { id: 'razorpay-setup' });
     
     await loadRazorpayScript();
@@ -47,12 +53,10 @@ export async function openRazorpayCheckout({
     toast.dismiss('razorpay-setup');
     toast.loading('Opening payment window...', { id: 'razorpay-open' });
 
-    const KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SFzdvgFWIJjzUx';
-
     checkoutInstance = new window.Razorpay({
-      key: KEY,
+      key: keyId,
       subscription_id: subscriptionId,
-      name: 'Schemely',
+      name: 'Schemely AI',
       description: `${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan Subscription`,
       handler: async (response: any) => {
         toast.loading('Verifying payment...', { id: 'razorpay-verify' });

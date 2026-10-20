@@ -268,7 +268,7 @@ class ExportRendererService {
     const nodeSvg = nodes.map((n: any, i: number) => this.renderNodeToSVG(n, i, 'drop-shadow')).join('');
 
     const watermarkHTML = withWatermark
-      ? '<div style="position: absolute; bottom: 10px; right: 10px; opacity: 0.5; font-size: 12px; color: #a1a1aa">Made with Skemly â€” skemly.com</div>'
+      ? '<div style="position: absolute; bottom: 10px; right: 10px; opacity: 0.5; font-size: 12px; color: #a1a1aa">Made with Schemely AI AI â€” skemly.com</div>'
       : '';
 
     return `
@@ -385,7 +385,7 @@ class ExportRendererService {
     const nodeSvg = nodes.map((n: any, i: number) => this.renderNodeToSVG(n, i, 'svg-shadow')).join('');
 
     const watermarkSvg = withWatermark
-      ? `<text x="${width - 12}" y="${height - 12}" fill="#52525b" font-size="12" text-anchor="end" opacity="0.8">Made with Skemly</text>`
+      ? `<text x="${width - 12}" y="${height - 12}" fill="#52525b" font-size="12" text-anchor="end" opacity="0.8">Made with Schemely AI AI</text>`
       : '';
 
     return `<?xml version="1.0" encoding="UTF-8"?>

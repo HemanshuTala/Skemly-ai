@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { 
   BookOpen, Code, Terminal, Zap, Layers, Share2, Download, 
   Palette, Keyboard, HelpCircle, ChevronRight, ArrowLeft,
-  Sparkles, Globe, Database, GitBranch, Shield
+  Sparkles, Globe, Database, GitBranch, Shield, Menu, X
 } from 'lucide-react'
 import SkemlyLogo from '../assets/Skemly.png'
 import DocsCanvas from '../assets/docs.png'
@@ -41,53 +41,42 @@ const SECTIONS = [
 const DIAGRAM_EXAMPLES = [
   {
     title: 'Flowchart',
-    code: `graph TD
-    A[Start] --> B{Decision}
-    B -->|Yes| C[Action 1]
-    B -->|No| D[Action 2]
-    C --> E[End]
-    D --> E`,
+    code: `(Start) --> [Validate Input]
+[Validate Input] --> {Input Valid?}
+{Input Valid?} -- Yes --> [Process Data]
+{Input Valid?} -- No --> [Show Error]
+[Show Error] --> [Validate Input]
+[Process Data] --> (End)`,
     description: 'Visualize processes and decision trees'
   },
   {
     title: 'System Architecture',
-    code: `graph LR
-    Client -->|HTTPS| LB[Load Balancer]
-    LB --> API1[API Server 1]
-    LB --> API2[API Server 2]
-    API1 --> Cache[(Redis)]
-    API2 --> Cache
-    API1 --> DB[(Postgres)]
-    API2 --> DB`,
+    code: `[Client App] -- HTTPS --> [Load Balancer]
+[Load Balancer] --> [API Server 1]
+[Load Balancer] --> [API Server 2]
+[API Server 1] --> [[Redis Cache]]
+[API Server 2] --> [[Redis Cache]]
+[API Server 1] --> [[PostgreSQL]]`,
     description: 'Document your infrastructure'
   },
   {
-    title: 'Class Diagram',
-    code: `classDiagram
-    class User {
-      +String email
-      +String name
-      +login()
-      +logout()
-    }
-    class Order {
-      +Int id
-      +Date date
-      +placeOrder()
-    }
-    User "1" --> "*" Order : places`,
-    description: 'Model object-oriented systems'
+    title: 'Event Pipeline',
+    code: `[Application] --> [Event Ingest]
+[Event Ingest] --> [[Kafka Stream]]
+[[Kafka Stream]] --> [Notification Worker]
+[[Kafka Stream]] --> [Analytics Worker]
+[Notification Worker] --> [Email Provider]
+[Analytics Worker] --> [[Warehouse]]`,
+    description: 'Map event producers, streams, and consumers'
   },
   {
-    title: 'Sequence Diagram',
-    code: `sequenceDiagram
-    User->>+API: POST /login
-    API->>+DB: Validate credentials
-    DB-->>-API: User data
-    API->>+Cache: Store session
-    Cache-->>-API: OK
-    API-->>-User: JWT Token`,
-    description: 'Show interaction between components'
+    title: 'Authentication Flow',
+    code: `[User] -- Sign in --> [Web App]
+[Web App] --> [Auth Service]
+[Auth Service] --> [[User Database]]
+[Auth Service] -- Valid token --> [API]
+[API] --> [Web App]`,
+    description: 'Show authentication services and their connections'
   },
 ]
 
@@ -114,9 +103,9 @@ const USE_CASES = [
 ]
 
 const FAQS = [
-  { q: 'Is Skemly free to use?', a: 'Yes! Schemely has a generous free tier with 10 diagrams, 5 AI generations, and basic features. Upgrade to Starter (₹20/mo) or Basic (₹40/mo) for more power.' },
+  { q: 'Is Schemely AI free to use?', a: 'Yes! Schemely has a generous free tier with 10 diagrams, 5 AI generations, and basic features. Upgrade to Starter (₹20/mo) or Basic (₹40/mo) for more power.' },
   { q: 'What file formats can I export to?', a: 'You can export diagrams as PNG, SVG, or PDF. Pro plans include high-resolution exports without watermarks.' },
-  { q: 'Can I use Skemly offline?', a: 'Currently, Schemely requires an internet connection. We\'re working on offline support for the future.' },
+  { q: 'Can I use Schemely AI offline?', a: 'Currently, Schemely requires an internet connection. We\'re working on offline support for the future.' },
   { q: 'How does AI generation work?', a: 'Describe your system in plain English, and our AI will generate a complete diagram. Edit it visually or in code as needed.' },
   { q: 'Is my data secure?', a: 'Absolutely. All diagrams are encrypted at rest and in transit. We never train AI on your private diagrams.' },
   { q: 'Can I collaborate with my team?', a: 'Team collaboration is available on Basic and higher plans. Share diagrams, leave comments, and work together in real-time.' },
@@ -136,34 +125,61 @@ export default function DocsPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.font }}>
+    <div className="min-h-screen overflow-x-hidden" style={{ background: T.bg, color: T.text, fontFamily: T.font }}>
       {/* ── NAV ── */}
       <nav style={{ position: 'sticky', top: 0, zIndex: 100, height: 64, background: `rgba(9,9,11,0.95)`, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${T.border}` }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="mx-auto flex h-full max-w-[1200px] items-center justify-between px-4 sm:px-6" style={{ margin: '0 auto' }}>
           <motion.div whileHover={{ scale: 1.02 }} transition={SP_BOUNCY} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => window.location.href = '/'}>
-            <img src={SkemlyLogo} alt="Skemly" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
-            <span style={{ fontSize: 18, fontWeight: 700, color: T.text, letterSpacing: '-0.02em' }}>Schemely</span>
+            <img src={SkemlyLogo} alt="Schemely AI" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
+            <span style={{ fontSize: 18, fontWeight: 700, color: T.text, letterSpacing: '-0.02em' }}>Schemely AI</span>
           </motion.div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <motion.a href="/" whileHover={{ color: T.text }} style={{ padding: '8px 16px', fontSize: 14, color: T.textMuted, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <motion.a href="/" whileHover={{ color: T.text }} className="hidden items-center gap-1.5 px-3 py-2 text-sm no-underline sm:flex" style={{ fontSize: 14, color: T.textMuted }}>
               <ArrowLeft size={16} /> Back to Home
             </motion.a>
-            <motion.a href="/editor" whileHover={{ scale: 1.02 }} style={{ padding: '10px 20px', fontSize: 14, fontWeight: 500, background: T.text, color: T.bg, borderRadius: 6, textDecoration: 'none' }}>
+            <motion.a href="/diagram/new" whileHover={{ scale: 1.02 }} className="rounded-lg px-3 py-2.5 text-sm font-medium no-underline transition hover:opacity-90 sm:px-5" style={{ fontSize: 14, background: T.text, color: T.bg }}>
               Open Editor
             </motion.a>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              aria-expanded={mobileMenuOpen}
+              aria-label={mobileMenuOpen ? 'Close documentation navigation' : 'Open documentation navigation'}
+              className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-zinc-300 transition hover:bg-white/[0.06] md:hidden"
+            >
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </div>
+        {mobileMenuOpen && (
+          <div className="absolute left-0 right-0 top-16 z-50 grid gap-1 border-b border-white/[0.08] bg-[#0e0e11] p-3 shadow-2xl md:hidden">
+            {SECTIONS.map((section) => {
+              const Icon = section.icon
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => scrollToSection(section.id)}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${activeSection === section.id ? 'bg-white/[0.07] text-white' : 'text-zinc-400 hover:bg-white/[0.04] hover:text-white'}`}
+                >
+                  <Icon size={16} />
+                  {section.title}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </nav>
 
       {/* ── MAIN LAYOUT ── */}
       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start' }}>
         {/* ── SIDEBAR ── */}
-        <aside style={{ width: 280, flexShrink: 0, flexGrow: 0, borderRight: `1px solid ${T.border}`, background: T.surface, position: 'sticky', top: 64, alignSelf: 'flex-start', height: 'calc(100vh - 64px)', overflowY: 'auto' }}>
+        <aside className="hidden w-[260px] shrink-0 border-r border-white/[0.06] bg-[#0e0e11] md:sticky md:top-16 md:block md:h-[calc(100vh-64px)] md:overflow-y-auto" style={{ flexGrow: 0, alignSelf: 'flex-start' }}>
             {/* Logo */}
             <div style={{ padding: '24px 20px', borderBottom: `1px solid ${T.border}` }}>
               <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
-                <img src={SkemlyLogo} alt="Skemly" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
-                <span style={{ fontSize: 18, fontWeight: 700, color: T.text }}>Schemely</span>
+                <img src={SkemlyLogo} alt="Schemely AI" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
+                <span style={{ fontSize: 18, fontWeight: 700, color: T.text }}>Schemely AI</span>
               </a>
             </div>
 
@@ -206,18 +222,18 @@ export default function DocsPage() {
           </aside>
 
         {/* ── CONTENT ── */}
-        <main style={{ flex: 1, padding: '48px 64px', minHeight: 'calc(100vh - 64px)' }}>
+        <main className="min-w-0 flex-1 px-5 py-8 sm:px-8 sm:py-10 lg:px-16 lg:py-12" style={{ minHeight: 'calc(100vh - 64px)' }}>
           {/* Getting Started */}
           <section id="getting-started" style={{ marginBottom: 80 }}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={SP_SOFT}>
               <div style={{ fontSize: 11, color: T.accent, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 12, fontWeight: 600 }}>Documentation</div>
-              <h1 style={{ fontSize: 42, fontWeight: 600, marginBottom: 20, fontFamily: T.fontSerif, fontStyle: 'italic' }}>Getting Started with Schemely</h1>
+              <h1 className="text-3xl sm:text-4xl" style={{ fontWeight: 600, marginBottom: 20, fontFamily: T.fontSerif, fontStyle: 'italic' }}>Getting Started with Schemely AI</h1>
               <p style={{ fontSize: 18, color: T.textSub, lineHeight: 1.7, marginBottom: 32 }}>
-                Schemely is the fastest way to create professional system diagrams. Write code or use AI — 
+                Schemely AI is the fastest way to create professional system diagrams. Write code or use AI — 
                 your diagrams update in real-time.
               </p>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 48 }}>
+              <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {[
                   { step: '1', title: 'Create', desc: 'Start from scratch or use AI to generate a diagram' },
                   { step: '2', title: 'Edit', desc: 'Refine visually or in code — changes sync both ways' },
@@ -261,12 +277,12 @@ export default function DocsPage() {
                     {['#ff5f57', '#febc2e', '#28c840'].map((c, i) => (
                       <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />
                     ))}
-                    <span style={{ marginLeft: 12, fontSize: 12, color: T.textMuted, fontFamily: T.fontMono }}>Schemely Editor</span>
+                    <span style={{ marginLeft: 12, fontSize: 12, color: T.textMuted, fontFamily: T.fontMono }}>Schemely AI Editor</span>
                   </div>
                   {/* Canvas Image */}
                   <img 
                     src={DocsCanvas} 
-                    alt="Schemely Editor Canvas" 
+                    alt="Schemely AI Editor Canvas" 
                     style={{ 
                       width: '100%', 
                       height: 'auto', 
@@ -282,7 +298,7 @@ export default function DocsPage() {
                   }} />
                 </motion.div>
                 <p style={{ fontSize: 14, color: T.textSub, marginTop: 16, textAlign: 'center' }}>
-                  The Schemely canvas — where code meets visual design. Write on the left, see diagrams on the right.
+                  The Schemely AI canvas — where code meets visual design. Write on the left, see diagrams on the right.
                 </p>
               </div>
 
@@ -296,7 +312,7 @@ export default function DocsPage() {
           <section id="syntax" style={{ marginBottom: 80 }}>
             <h2 style={{ fontSize: 32, fontWeight: 600, marginBottom: 24, fontFamily: T.fontSerif, fontStyle: 'italic' }}>Diagram Syntax</h2>
             <p style={{ fontSize: 16, color: T.textSub, lineHeight: 1.7, marginBottom: 32 }}>
-              Schemely uses a clean, intuitive syntax inspired by Mermaid. Write text, see diagrams instantly.
+              Use bracketed nodes, arrows, and optional edge labels to describe a diagram. Your canvas updates as you edit.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
@@ -339,7 +355,7 @@ export default function DocsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
                   { title: 'Describe', desc: 'Type a description like "E-commerce system with React frontend, Node.js API, and PostgreSQL database"' },
-                  { title: 'Generate', desc: 'Press Ctrl/Cmd + / or click the AI button to generate your diagram' },
+                  { title: 'Generate', desc: 'Describe the architecture, then review the AI proposal before applying it to your diagram.' },
                   { title: 'Refine', desc: 'Edit the generated code or use the visual editor to make adjustments' },
                 ].map((step, i) => (
                   <div key={i} style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
@@ -375,10 +391,10 @@ export default function DocsPage() {
               Drag, drop, and connect. The visual editor gives you pixel-perfect control over your diagrams.
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {[
                 { title: 'Drag & Drop', desc: 'Move nodes anywhere on the infinite canvas' },
-                { title: 'Auto Layout', desc: 'Let Schemely arrange your diagram beautifully' },
+                { title: 'Auto Layout', desc: 'Let Schemely AI arrange your diagram beautifully' },
                 { title: 'Custom Styling', desc: 'Change colors, fonts, and shapes' },
                 { title: 'Zoom & Pan', desc: 'Navigate large diagrams with ease' },
                 { title: 'Snap to Grid', desc: 'Align elements perfectly' },
@@ -450,7 +466,7 @@ export default function DocsPage() {
           <section id="use-cases" style={{ marginBottom: 80 }}>
             <h2 style={{ fontSize: 32, fontWeight: 600, marginBottom: 24, fontFamily: T.fontSerif, fontStyle: 'italic' }}>Use Cases</h2>
             <p style={{ fontSize: 16, color: T.textSub, lineHeight: 1.7, marginBottom: 32 }}>
-              Schemely is built for every type of technical documentation. Here's how teams use it.
+              Schemely AI is built for every type of technical documentation. Here's how teams use it.
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>

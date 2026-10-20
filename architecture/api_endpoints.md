@@ -1,6 +1,6 @@
-# Skemly API Endpoints Catalog & Frontend Connection Map
+# Schemely AI API Endpoints Catalog & Frontend Connection Map
 
-This catalog acts as the single source of truth for all REST API endpoints exposed by the Skemly backend (`/api/v1`) and how the frontend maps to them.
+This catalog acts as the single source of truth for all REST API endpoints exposed by the Schemely AI backend (`/api/v1`) and how the frontend maps to them.
 
 ---
 

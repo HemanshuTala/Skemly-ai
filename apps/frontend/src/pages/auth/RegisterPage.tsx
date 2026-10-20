@@ -41,7 +41,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#09090b] relative overflow-hidden">
       {/* Ambient glow */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-white/[0.015] rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/2 h-[400px] w-[600px] -translate-x-1/2 rounded-full bg-violet-500/[0.08] blur-3xl" />
       </div>
 
       <motion.div
@@ -55,17 +55,17 @@ export default function RegisterPage() {
           <Link to="/" className="inline-flex flex-col items-center gap-3 mb-5 group">
             <img
               src={skemlyLogo}
-              alt="Schemely"
+              alt="Schemely AI"
               className="w-10 h-10 object-contain group-hover:scale-105 transition-transform duration-200"
             />
             <span className="text-[15px] font-semibold text-white tracking-[-0.01em]">Schemely AI</span>
           </Link>
-          <h1 className="text-[24px] font-bold text-white tracking-[-0.03em] mb-1.5">Create your account</h1>
-          <p className="text-[13px] text-[#52525b]">Start designing smarter with AI assistance</p>
+          <h1 className="font-display mb-1.5 text-2xl font-semibold tracking-tight text-white">Create your account</h1>
+          <p className="text-sm text-zinc-400">Start designing smarter with AI assistance.</p>
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl border border-white/[0.07] bg-[#0d0d10] p-7 shadow-2xl shadow-black/50">
+        <div className="rounded-2xl border border-white/[0.09] bg-[#101014]/95 p-6 shadow-2xl shadow-black/50 sm:p-7">
           <form onSubmit={handleSubmit} className="space-y-4">
 
             {/* Error */}
@@ -82,11 +82,11 @@ export default function RegisterPage() {
 
             {/* Name */}
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-semibold text-[#52525b] uppercase tracking-[0.08em]">
+              <label className="block text-xs font-medium text-zinc-300">
                 Full Name
               </label>
               <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#3f3f46]" />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                 <input
                   type="text"
                   placeholder="Your full name"
@@ -101,11 +101,11 @@ export default function RegisterPage() {
 
             {/* Email */}
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-semibold text-[#52525b] uppercase tracking-[0.08em]">
+              <label className="block text-xs font-medium text-zinc-300">
                 Email address
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#3f3f46]" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                 <input
                   type="email"
                   placeholder="you@company.com"
@@ -120,11 +120,11 @@ export default function RegisterPage() {
 
             {/* Password */}
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-semibold text-[#52525b] uppercase tracking-[0.08em]">
+              <label className="block text-xs font-medium text-zinc-300">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#3f3f46]" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                 <input
                   type={showPw ? 'text' : 'password'}
                   placeholder="At least 8 characters"
@@ -138,7 +138,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPw((v) => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#3f3f46] hover:text-[#71717a] transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-500 transition-colors hover:text-zinc-200"
                   aria-label={showPw ? 'Hide password' : 'Show password'}
                 >
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -177,7 +177,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-white text-[#09090b] text-[13px] font-bold hover:bg-[#e4e4e7] transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+              className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/40 transition-all hover:-translate-y-0.5 hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <>
@@ -192,18 +192,18 @@ export default function RegisterPage() {
               )}
             </button>
 
-            <p className="text-[11px] text-[#52525b] text-center leading-relaxed">
+            <p className="text-center text-xs leading-relaxed text-zinc-400">
               By creating an account you agree to our{' '}
-              <span className="text-[#71717a]">Terms of Service</span> and{' '}
-              <span className="text-[#71717a]">Privacy Policy</span>
+              <span className="text-zinc-300">Terms of Service</span> and{' '}
+              <span className="text-zinc-300">Privacy Policy</span>
             </p>
           </form>
         </div>
 
         {/* Footer */}
-        <p className="text-center mt-5 text-[13px] text-[#52525b]">
+        <p className="mt-5 text-center text-sm text-zinc-400">
           Already have an account?{' '}
-          <Link to="/login" className="text-[#a1a1aa] hover:text-white font-medium transition-colors">
+          <Link to="/login" className="font-medium text-violet-300 transition-colors hover:text-violet-200">
             Sign in
           </Link>
         </p>

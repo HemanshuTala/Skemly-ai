@@ -94,7 +94,7 @@ export default function TemplatesPage() {
   )
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-8 space-y-6">
+    <div className="mx-auto max-w-[1280px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
 
       {/* ── Header ── */}
       <motion.div
@@ -102,9 +102,10 @@ export default function TemplatesPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
       >
-        <h1 className="text-[22px] font-bold text-white tracking-[-0.02em]">Templates</h1>
-        <p className="text-[13px] text-[#52525b] mt-0.5">
-          Start from a curated template instead of a blank canvas
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-300/80">Get started</p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-white">Templates</h1>
+        <p className="mt-1 text-sm text-zinc-400">
+          Start from a curated template instead of a blank canvas.
         </p>
       </motion.div>
 
@@ -134,7 +135,7 @@ export default function TemplatesPage() {
                 className={cn(
                   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all border',
                   active
-                    ? 'bg-white/[0.10] text-white border-white/[0.15]'
+                    ? 'bg-violet-500/15 text-violet-100 border-violet-300/20'
                     : 'text-[#71717a] border-white/[0.06] hover:text-[#a1a1aa] hover:bg-white/[0.04] hover:border-white/[0.10]'
                 )}
               >

@@ -54,8 +54,7 @@ export function TabsList({ children, className }: TabsListProps) {
     <div
       role="tablist"
       className={cn(
-        'inline-flex items-center gap-0.5 p-1 rounded-lg',
-        'bg-white/[0.03] border border-white/[0.06]',
+        'inline-flex items-center gap-1 rounded-xl border border-white/[0.07] bg-white/[0.025] p-1',
         className
       )}
     >
@@ -82,12 +81,12 @@ export function TabsTrigger({ value, children, className, disabled }: TabsTrigge
       disabled={disabled}
       onClick={() => !disabled && setActiveTab(value)}
       className={cn(
-        'relative px-3 py-1.5 text-[13px] font-medium rounded-md transition-all duration-200',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30',
+        'relative rounded-lg px-3.5 py-2 text-[13px] font-medium transition-all duration-200',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60',
         'disabled:opacity-40 disabled:cursor-not-allowed',
         isActive
-          ? 'bg-white/[0.08] text-white shadow-sm'
-          : 'text-[#71717a] hover:text-[#a1a1aa] hover:bg-white/[0.04]',
+          ? 'bg-violet-500/15 text-violet-100 shadow-sm ring-1 ring-violet-300/15'
+          : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100',
         className
       )}
     >
@@ -95,7 +94,7 @@ export function TabsTrigger({ value, children, className, disabled }: TabsTrigge
       {isActive && (
         <motion.div
           layoutId="tab-indicator"
-          className="absolute inset-0 bg-white/[0.08] rounded-md -z-10"
+          className="absolute inset-0 -z-10 rounded-lg bg-violet-500/10"
           transition={{ type: 'spring', stiffness: 500, damping: 35 }}
         />
       )}

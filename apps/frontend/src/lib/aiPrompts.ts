@@ -14,7 +14,7 @@ export interface AIPromptTemplate {
   icon: string;
 }
 
-export const DIAGRAM_SYSTEM_BASE = `You are an expert diagram generator specializing in Skemly's text-based diagram syntax. Your task is to convert natural language descriptions into precise, well-structured diagram code.
+export const DIAGRAM_SYSTEM_BASE = `You are an expert diagram generator specializing in Schemely AI's text-based diagram syntax. Your task is to convert natural language descriptions into precise, well-structured diagram code.
 
 RULES:
 1. Use clear, descriptive node labels

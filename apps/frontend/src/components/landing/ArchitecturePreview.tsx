@@ -37,13 +37,13 @@ export const SAMPLE_ARCHITECTURES: Record<string, ArchitectureData> = {
   ecommerce: {
     title: 'E-Commerce Microservices',
     nodes: [
-      { id: 'web', label: 'Web / Mobile Client', type: 'client', x: 40, y: 110, width: 140, height: 44 },
-      { id: 'gw', label: 'API Gateway', type: 'gateway', x: 220, y: 110, width: 130, height: 44 },
-      { id: 'auth', label: 'Auth Service', type: 'service', x: 400, y: 40, width: 130, height: 44 },
-      { id: 'order', label: 'Order Service', type: 'service', x: 400, y: 110, width: 130, height: 44 },
-      { id: 'pay', label: 'Payment Service', type: 'service', x: 400, y: 180, width: 130, height: 44 },
-      { id: 'db', label: 'PostgreSQL DB', type: 'database', x: 580, y: 75, width: 130, height: 44 },
-      { id: 'redis', label: 'Redis Cache', type: 'cache', x: 580, y: 145, width: 130, height: 44 },
+      { id: 'web', label: 'Web / Mobile Client', type: 'client', x: 12, y: 110, width: 136, height: 46 },
+      { id: 'gw', label: 'API Gateway', type: 'gateway', x: 166, y: 110, width: 128, height: 46 },
+      { id: 'auth', label: 'Auth Service', type: 'service', x: 326, y: 40, width: 128, height: 46 },
+      { id: 'order', label: 'Order Service', type: 'service', x: 326, y: 110, width: 128, height: 46 },
+      { id: 'pay', label: 'Payment Service', type: 'service', x: 326, y: 180, width: 128, height: 46 },
+      { id: 'db', label: 'PostgreSQL DB', type: 'database', x: 490, y: 75, width: 128, height: 46 },
+      { id: 'redis', label: 'Redis Cache', type: 'cache', x: 490, y: 145, width: 128, height: 46 },
     ],
     edges: [
       { from: 'web', to: 'gw', label: 'HTTPS', animated: true },
@@ -57,11 +57,11 @@ export const SAMPLE_ARCHITECTURES: Record<string, ArchitectureData> = {
   chat: {
     title: 'Real-Time Chat System',
     nodes: [
-      { id: 'client', label: 'Mobile Client', type: 'client', x: 40, y: 100, width: 130, height: 44 },
-      { id: 'ws', label: 'WebSocket Server', type: 'gateway', x: 220, y: 100, width: 140, height: 44 },
-      { id: 'kafka', label: 'Kafka Event Bus', type: 'queue', x: 410, y: 100, width: 140, height: 44 },
-      { id: 'worker', label: 'Message Worker', type: 'service', x: 590, y: 50, width: 130, height: 44 },
-      { id: 'mongo', label: 'MongoDB Store', type: 'database', x: 590, y: 140, width: 130, height: 44 },
+      { id: 'client', label: 'Mobile Client', type: 'client', x: 12, y: 100, width: 128, height: 46 },
+      { id: 'ws', label: 'WebSocket Server', type: 'gateway', x: 164, y: 100, width: 136, height: 46 },
+      { id: 'kafka', label: 'Kafka Event Bus', type: 'queue', x: 324, y: 100, width: 136, height: 46 },
+      { id: 'worker', label: 'Message Worker', type: 'service', x: 488, y: 48, width: 130, height: 46 },
+      { id: 'mongo', label: 'MongoDB Store', type: 'database', x: 488, y: 152, width: 130, height: 46 },
     ],
     edges: [
       { from: 'client', to: 'ws', label: 'WSS', animated: true },
@@ -73,11 +73,11 @@ export const SAMPLE_ARCHITECTURES: Record<string, ArchitectureData> = {
   urlShortener: {
     title: 'URL Shortener Architecture',
     nodes: [
-      { id: 'user', label: 'User Browser', type: 'client', x: 40, y: 90, width: 130, height: 44 },
-      { id: 'lb', label: 'Load Balancer', type: 'gateway', x: 210, y: 90, width: 130, height: 44 },
-      { id: 'app', label: 'Redirect Service', type: 'service', x: 380, y: 90, width: 140, height: 44 },
-      { id: 'cache', label: 'Redis Key Store', type: 'cache', x: 560, y: 40, width: 130, height: 44 },
-      { id: 'db', label: 'Postgres DB', type: 'database', x: 560, y: 140, width: 130, height: 44 },
+      { id: 'user', label: 'User Browser', type: 'client', x: 12, y: 90, width: 128, height: 46 },
+      { id: 'lb', label: 'Load Balancer', type: 'gateway', x: 164, y: 90, width: 128, height: 46 },
+      { id: 'app', label: 'Redirect Service', type: 'service', x: 316, y: 90, width: 136, height: 46 },
+      { id: 'cache', label: 'Redis Key Store', type: 'cache', x: 480, y: 40, width: 138, height: 46 },
+      { id: 'db', label: 'Postgres DB', type: 'database', x: 480, y: 140, width: 138, height: 46 },
     ],
     edges: [
       { from: 'user', to: 'lb', label: 'GET /:hash', animated: true },
@@ -96,29 +96,42 @@ export function ArchitecturePreview({
   className?: string;
 }) {
   const nodeMap = new Map(data.nodes.map((n) => [n.id, n]));
+  const markerId = `arrow-${React.useId().replace(/:/g, '')}`;
 
   return (
-    <div className={`relative overflow-hidden rounded-xl border border-white/[0.08] bg-[#09090b] p-6 shadow-2xl ${className}`}>
+    <div className={`relative overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0c0c10] p-4 shadow-2xl shadow-black/40 sm:p-5 ${className}`}>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(124,58,237,0.12),transparent_58%)]" />
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] pb-4 mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-mono font-medium text-zinc-300">{data.title}</span>
+      <div className="relative mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] pb-3 sm:mb-4 sm:pb-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-violet-400/15 bg-violet-400/10">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.7)]" />
+          </div>
+          <span className="truncate text-xs font-medium text-zinc-200 sm:text-sm">{data.title}</span>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-mono">
-          <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">VALIDATED</span>
-          <span className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-purple-400">98% QUALITY</span>
+        <div className="flex items-center gap-1.5 text-[9px] font-medium tracking-wide sm:text-[10px]">
+          <span className="rounded-md border border-emerald-400/15 bg-emerald-400/[0.07] px-2 py-1 text-emerald-300">VALIDATED</span>
+          <span className="rounded-md border border-violet-400/15 bg-violet-400/[0.07] px-2 py-1 text-violet-300">98% QUALITY</span>
         </div>
       </div>
 
       {/* SVG Connections & Nodes */}
-      <div className="relative w-full h-[220px] overflow-hidden">
-        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+      <div className="relative w-full overflow-hidden rounded-xl border border-white/[0.04] bg-[#09090c]">
+        <svg
+          className="relative block h-auto w-full"
+          viewBox="0 0 630 260"
+          role="img"
+          aria-label={`${data.title} architecture diagram`}
+        >
           <defs>
-            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#52525b" />
+            <pattern id={`${markerId}-grid`} width="24" height="24" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="1" fill="#27272a" />
+            </pattern>
+            <marker id={markerId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#71717a" />
             </marker>
           </defs>
+          <rect width="630" height="260" fill={`url(#${markerId}-grid)`} />
           {data.edges.map((edge, idx) => {
             const src = nodeMap.get(edge.from);
             const tgt = nodeMap.get(edge.to);
@@ -134,52 +147,49 @@ export function ArchitecturePreview({
 
             return (
               <g key={idx}>
-                <path d={pathD} fill="none" stroke="#27272a" strokeWidth="2" markerEnd="url(#arrow)" />
+                <path d={pathD} fill="none" stroke="#3f3f46" strokeWidth="1.5" markerEnd={`url(#${markerId})`} />
                 {edge.animated && (
-                  <motion.circle
-                    r="3.5"
-                    fill="#38bdf8"
-                    initial={{ offsetDistance: '0%' }}
-                    animate={{ offsetDistance: '100%' }}
-                    transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
-                    style={{ offsetPath: `path("${pathD}")` }}
-                  />
-                )}
-                {edge.label && (
-                  <text x={midX} y={(y1 + y2) / 2 - 6} textAnchor="middle" fill="#71717a" fontSize="9" fontFamily="monospace">
-                    {edge.label}
-                  </text>
+                  <circle r="3" fill="#a78bfa">
+                    <animateMotion
+                      dur="2.5s"
+                      repeatCount="indefinite"
+                      path={pathD}
+                    />
+                  </circle>
                 )}
               </g>
             );
           })}
+          {data.nodes.map((node, index) => {
+            const cfg = TYPE_STYLES[node.type] || TYPE_STYLES.service;
+            const width = node.width || 130;
+            const height = node.height || 46;
+            return (
+              <motion.g
+                key={node.id}
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.25, delay: index * 0.035 }}
+                style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+              >
+                <rect x={node.x} y={node.y} width={width} height={height} rx="9" fill="#15151b" stroke={cfg.border} strokeWidth="1.2" />
+                <text x={node.x + 12} y={node.y + height / 2 + 5} fontSize="13" textAnchor="start">
+                  {cfg.icon}
+                </text>
+                <text
+                  x={node.x + 33}
+                  y={node.y + height / 2 + 4}
+                  fill="#e4e4e7"
+                  fontSize="11"
+                  fontWeight="500"
+                  fontFamily="Inter, sans-serif"
+                >
+                  {node.label}
+                </text>
+              </motion.g>
+            );
+          })}
         </svg>
-
-        {/* Nodes Layer */}
-        {data.nodes.map((node) => {
-          const cfg = TYPE_STYLES[node.type] || TYPE_STYLES.service;
-          return (
-            <motion.div
-              key={node.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              style={{
-                position: 'absolute',
-                left: `${node.x}px`,
-                top: `${node.y}px`,
-                width: `${node.width || 130}px`,
-                height: `${node.height || 44}px`,
-                backgroundColor: cfg.fill,
-                borderColor: cfg.border,
-              }}
-              className="flex items-center gap-2 px-3 rounded-lg border shadow-lg cursor-pointer hover:border-zinc-400 transition-colors"
-            >
-              <span className="text-sm">{cfg.icon}</span>
-              <span className="text-xs font-medium text-zinc-200 truncate">{node.label}</span>
-            </motion.div>
-          );
-        })}
       </div>
     </div>
   );

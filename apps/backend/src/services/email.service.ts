@@ -49,7 +49,7 @@ class EmailService {
 
   async sendMail(to: string, subject: string, html: string): Promise<boolean> {
     try {
-      const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'Skemly <noreply@skemly.com>';
+      const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'Schemely AI <noreply@schemely.com>';
       const info = await this.transporter.sendMail({
         from,
         to,
@@ -98,7 +98,7 @@ class EmailService {
                 <h1>Verify your email</h1>
               </div>
               <div class="content">
-                <p>Welcome to <strong>Skemly</strong>!</p>
+                <p>Welcome to <strong>Schemely AI</strong>!</p>
                 <p>To start creating professional diagrams with AI, please verify your email address by clicking the button below.</p>
                 <div style="text-align: center;">
                   <a href="${link}" class="button">Verify Email Address</a>
@@ -107,14 +107,14 @@ class EmailService {
                 <div class="link-box">${link}</div>
               </div>
               <div class="footer">
-                <p>Â© ${new Date().getFullYear()} Skemly. Premium Diagramming for Professionals.</p>
+                <p>Â© ${new Date().getFullYear()} Schemely AI. Premium Diagramming for Professionals.</p>
               </div>
             </div>
           </div>
         </body>
       </html>
     `;
-    return this.sendMail(to, 'Verify your email - Skemly', html);
+    return this.sendMail(to, 'Verify your email - Schemely AI', html);
   }
 
   // Â§4.1 AUTH-05 Password reset
@@ -145,7 +145,7 @@ class EmailService {
                 <h1>Reset your password</h1>
               </div>
               <div class="content">
-                <p>We received a request to reset the password for your <strong>Skemly</strong> account.</p>
+                <p>We received a request to reset the password for your <strong>Schemely AI</strong> account.</p>
                 <div style="text-align: center;">
                   <a href="${link}" class="button">Reset Password</a>
                 </div>
@@ -163,7 +163,7 @@ class EmailService {
         </body>
       </html>
     `;
-    return this.sendMail(to, 'Reset your password - Skemly', html);
+    return this.sendMail(to, 'Reset your password - Schemely AI', html);
   }
 
   // Â§4.10 NOTIF-02 Workspace invitation
@@ -197,7 +197,7 @@ class EmailService {
               </div>
               <div class="content">
                 <p>Hi there,</p>
-                <p><span class="inviter">${inviterName}</span> has invited you to collaborate on a workspace in <strong>Skemly</strong>:</p>
+                <p><span class="inviter">${inviterName}</span> has invited you to collaborate on a workspace in <strong>Schemely AI</strong>:</p>
                 
                 <div class="workspace-card">
                   <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; color: #9ca3af; margin-bottom: 8px;">Workspace Name</p>
@@ -221,7 +221,7 @@ class EmailService {
         </body>
       </html>
     `;
-    return this.sendMail(to, `Invite to join ${workspaceName} - Skemly`, html);
+    return this.sendMail(to, `Invite to join ${workspaceName} - Schemely AI`, html);
   }
 
   // Â§4.10 NOTIF-03 Digest notifications
@@ -250,7 +250,7 @@ class EmailService {
         <body>
           <div class="container">
             <div class="header">
-              <h1>Your Skemly Updates</h1>
+              <h1>Your Schemely AI Updates</h1>
             </div>
             <div class="content">
               <p>Hi there,</p>

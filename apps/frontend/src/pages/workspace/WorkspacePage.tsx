@@ -77,7 +77,7 @@ export default function WorkspacePage() {
   /* ── No workspace ── */
   if (!currentWorkspace) {
     return (
-      <div className="max-w-[900px] mx-auto px-6 py-20 flex flex-col items-center justify-center text-center">
+      <div className="mx-auto flex max-w-[900px] flex-col items-center justify-center px-4 py-20 text-center sm:px-6">
         <div className="w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto mb-5">
           <Building2 className="w-6 h-6 text-[#52525b]" />
         </div>
@@ -90,7 +90,7 @@ export default function WorkspacePage() {
   /* ── Loading ── */
   if (isLoading && members.length === 0) {
     return (
-      <div className="max-w-[900px] mx-auto px-6 py-8 space-y-6">
+      <div className="mx-auto max-w-[960px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
         <div className="space-y-2">
           <Skeleton className="h-6 w-32 rounded" />
           <Skeleton className="h-3.5 w-48 rounded" />
@@ -113,7 +113,7 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div className="max-w-[900px] mx-auto px-6 py-8 space-y-6">
+    <div className="mx-auto max-w-[960px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
 
       {/* ── Header ── */}
       <motion.div
@@ -121,8 +121,9 @@ export default function WorkspacePage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
       >
-        <h1 className="text-[22px] font-bold text-white tracking-[-0.02em]">Members</h1>
-        <p className="text-[13px] text-[#52525b] mt-0.5">
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-300/80">Workspace</p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-white">Members</h1>
+        <p className="mt-1 text-sm text-zinc-400">
           {members.length} member{members.length !== 1 ? 's' : ''} in{' '}
           <span className="text-[#a1a1aa]">{currentWorkspace.name}</span>
         </p>

@@ -71,7 +71,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-[900px] mx-auto px-6 py-8 space-y-6">
+    <div className="mx-auto max-w-[960px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
 
       {/* ── Page header ── */}
       <motion.div
@@ -79,8 +79,9 @@ export default function SettingsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
       >
-        <h1 className="text-[22px] font-bold text-white tracking-[-0.02em]">Settings</h1>
-        <p className="text-[13px] text-[#52525b] mt-0.5">Manage your account and subscription</p>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-300/80">Account</p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-white">Settings</h1>
+        <p className="mt-1 text-sm text-zinc-400">Manage your account and subscription.</p>
       </motion.div>
 
       {/* ── Tabs ── */}
@@ -98,7 +99,7 @@ export default function SettingsPage() {
 
         {/* ── Profile Tab ── */}
         <TabsContent value="profile">
-          <div className="rounded-xl border border-white/[0.06] bg-[#0d0d10] overflow-hidden">
+          <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0d0d10] shadow-[0_20px_80px_rgba(0,0,0,0.18)]">
 
             {/* Profile header */}
             <div className="flex items-center gap-4 p-6 border-b border-white/[0.05]">

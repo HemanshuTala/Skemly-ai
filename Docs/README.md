@@ -1,10 +1,10 @@
-# Schemely Documentation
+# Schemely AI Documentation
 
 This folder contains the engineering/interview knowledge base for the Schemely AI system-design platform.
 
 ## Documents
 
-- `SKEMLY_ENGINEERING_INTERVIEW_GUIDE.md` — architecture, frontend, backend, database, AI, parser, graph operations, performance, reliability, security, edge cases, and interview discussion map.
+- `SCHEMELY_ENGINEERING_INTERVIEW_GUIDE.md` — architecture, frontend, backend, database, AI, parser, graph operations, performance, reliability, security, edge cases, and interview discussion map.
 
 ## Current repository baseline
 
@@ -48,23 +48,4 @@ Then verify:
 - drag/drop and connections work
 - AI modification preserves manual positions
 - undo/redo works
-- autosave/reload works
-- offline draft recovery works
-- stale-version conflict works
-- export works
-- collaboration presence does not corrupt graph state
-
-## Important remaining engineering checks
-
-The latest commit materially improves the core, but the following should be treated as verification/hardening work rather than assumed complete:
-
-1. Frontend and backend parser/operation implementations are mirrored and can drift; establish a deliberate shared-contract strategy.
-2. Graph diffing currently relies heavily on node identity/label slug and endpoint-based edge identity; explicitly define semantics for ambiguous labels and parallel edges.
-3. Validate operation batches before mutation and provide transactional/rollback behavior where an operation batch cannot be safely applied.
-4. Add end-to-end prompt → AI → parse → diff → apply → save tests.
-5. Run browser-level interaction tests for the real editor.
-6. Run large-graph performance benchmarks.
-7. Verify every API response type against the frontend service normalization/types.
-8. Re-audit authorization on every diagram/workspace/project mutation route.
-9. Confirm Docker startup does not rely on unnecessary repeated `npm install` work in production-oriented workflows.
-10. Keep architecture documentation synchronized with implementation changes.
+- offline recovery and persistence work

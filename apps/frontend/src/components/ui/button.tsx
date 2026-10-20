@@ -34,17 +34,17 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const baseStyles = 'inline-flex items-center justify-center gap-2 font-bold rounded-xl transition-all duration-300 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 relative overflow-hidden';
+    const baseStyles = 'inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-200 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 relative overflow-hidden';
     
     const variants = {
-      primary: 'bg-white text-[#18181b] shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:shadow-[0_0_25px_rgba(255,255,255,0.25)] hover:bg-[#e4e4e7] hover:-translate-y-0.5 transition-all',
-      secondary: 'bg-white/[0.04] text-white hover:bg-white/[0.08] shadow-sm border border-white/[0.06] transition-colors',
-      ghost: 'text-[#a1a1aa] hover:bg-white/[0.04] hover:text-white transition-colors',
-      danger: 'bg-[#f87171] text-white shadow-md hover:opacity-90 hover:-translate-y-0.5',
-      success: 'bg-[#4ade80] text-[#14532d] shadow-md hover:opacity-90 hover:-translate-y-0.5',
-      outline: 'border border-white/[0.08] bg-transparent text-white hover:bg-white/[0.04] hover:border-white/20 transition-all',
-      gradient: 'bg-gradient-to-r from-zinc-900 to-zinc-800 text-white border border-white/[0.06] shadow-lg hover:border-white/20 transition-all',
-      glow: 'bg-white text-[#18181b] shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:bg-[#e4e4e7] hover:-translate-y-1 transition-all duration-500',
+      primary: 'bg-violet-600 text-white shadow-[0_6px_20px_rgba(124,58,237,0.2)] hover:bg-violet-500 hover:shadow-[0_8px_24px_rgba(124,58,237,0.28)]',
+      secondary: 'border border-white/[0.08] bg-white/[0.04] text-zinc-100 hover:border-white/[0.14] hover:bg-white/[0.08]',
+      ghost: 'text-zinc-400 hover:bg-white/[0.05] hover:text-white',
+      danger: 'bg-rose-500 text-white shadow-sm hover:bg-rose-400',
+      success: 'bg-emerald-400 text-emerald-950 shadow-sm hover:bg-emerald-300',
+      outline: 'border border-white/[0.1] bg-transparent text-zinc-200 hover:border-white/[0.2] hover:bg-white/[0.04]',
+      gradient: 'border border-violet-400/20 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-950/30 hover:from-violet-500 hover:to-indigo-500',
+      glow: 'bg-violet-500 text-white shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:bg-violet-400 hover:shadow-[0_0_28px_rgba(139,92,246,0.42)]',
     };
     
     const sizes = {

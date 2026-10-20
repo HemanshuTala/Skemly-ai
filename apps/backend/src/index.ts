@@ -147,8 +147,17 @@ app.use(cors({
   credentials: true,
 
 }));
+const API = '/api/v1';
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, _res, buf) => {
+    const request = req as typeof req & { originalUrl?: string; rawBody?: Buffer };
+    if (request.originalUrl?.split('?')[0] === `${API}/billing/webhook`) {
+      request.rawBody = Buffer.from(buf);
+    }
+  },
+}));
 
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -172,8 +181,6 @@ app.get('/health', (_req, res) => {
 
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
-
-const API = '/api/v1';
 
 app.use(`${API}/auth`, authRoutes);
 
@@ -244,4 +251,3 @@ bootstrap();
 
 
 export { io };
-

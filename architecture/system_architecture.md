@@ -1,12 +1,12 @@
-# Skemly System Architecture & Design Decisions
+# Schemely AI System Architecture & Design Decisions
 
-This document details the architecture, data models, integration layers, and critical design decisions of the Skemly platform.
+This document details the architecture, data models, integration layers, and critical design decisions of the Schemely AI platform.
 
 ---
 
 ## 1. System Overview & Architecture Topology
 
-Skemly is a collaborative, AI-assisted diagramming platform that translates architectural concepts into visual system topologies (flowcharts, sequence diagrams, mindmaps, ERDs, and network diagrams). It features real-time cursor presence, automated diagram correction/repair, and a node-based editor canvas.
+Schemely AI is a collaborative, AI-assisted diagramming platform that translates architectural concepts into visual system topologies (flowcharts, sequence diagrams, mindmaps, ERDs, and network diagrams). It features real-time cursor presence, automated diagram correction/repair, and a node-based editor canvas.
 
 ```mermaid
 graph TD

@@ -7,13 +7,13 @@ import toast from 'react-hot-toast'
 
 const T = {
   bg: '#09090b',
-  surface: '#0e0e11',
+  surface: '#101014',
   surfaceHi: '#18181b',
-  border: 'rgba(255,255,255,0.06)',
+  border: 'rgba(255,255,255,0.09)',
   text: '#ffffff',
   textSub: '#a1a1aa',
   textMuted: '#71717a',
-  accent: '#ffffff',
+  accent: '#a78bfa',
   font: '"Inter", -apple-system, sans-serif',
 }
 
@@ -69,7 +69,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.font, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 50% 15%, rgba(124,58,237,0.12), transparent 36rem), ${T.bg}`, color: T.text, fontFamily: T.font, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={SP_SOFT} style={{ width: '100%', maxWidth: 400 }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
@@ -77,12 +77,12 @@ export default function ResetPasswordPage() {
             <div style={{ width: 36, height: 36, borderRadius: 8, background: T.surface, border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: 18, color: T.accent, fontWeight: 700 }}>S</span>
             </div>
-            <span style={{ fontSize: 20, fontWeight: 700, color: T.text }}>Schemely</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: T.text }}>Schemely AI</span>
           </motion.div>
         </div>
 
         {/* Card */}
-        <div style={{ background: T.surface, borderRadius: 16, border: `1px solid ${T.border}`, padding: 32 }}>
+        <div style={{ background: T.surface, borderRadius: 20, border: `1px solid ${T.border}`, padding: 32, boxShadow: '0 24px 80px rgba(0,0,0,0.35)' }}>
           {!reset ? (
             <>
               <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, textAlign: 'center' }}>Reset Password</h1>
@@ -162,8 +162,8 @@ export default function ResetPasswordPage() {
                   disabled={loading || !token}
                   style={{
                     padding: '12px 24px',
-                    background: T.text,
-                    color: T.bg,
+                    background: '#7c3aed',
+                    color: '#ffffff',
                     border: 'none',
                     borderRadius: 8,
                     fontSize: 14,

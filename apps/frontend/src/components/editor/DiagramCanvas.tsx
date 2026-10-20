@@ -1503,7 +1503,7 @@ function DiagramCanvasInner({
               <select
                 value={currentView}
                 onChange={(e) => onViewChange(e.target.value)}
-                className="h-7 rounded-lg border border-border/60 bg-background/50 px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground outline-none focus:border-primary/50 transition-all cursor-pointer"
+                className="h-8 rounded-lg border border-white/10 bg-[#111115] px-2.5 text-[10px] font-semibold uppercase tracking-wider text-foreground/80 outline-none transition-all hover:border-white/20 focus:border-violet-400/50 focus:ring-2 focus:ring-violet-400/10 cursor-pointer"
               >
                 <option value="all">Logical View (All)</option>
                 <option value="infrastructure">Infrastructure View</option>
@@ -1517,7 +1517,7 @@ function DiagramCanvasInner({
 
       <div
         onMouseMove={handleMouseMove}
-        className="flex-1 relative w-full h-full overflow-hidden group/canvas"
+        className="flex-1 relative w-full h-full overflow-hidden bg-[#09090b] group/canvas"
       >
         <CollaborativeCursors cursors={cursors} />
         <ReactFlow
@@ -1587,11 +1587,11 @@ function DiagramCanvasInner({
           )}
           {nodes.length === 0 && edges.length === 0 && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10 p-6">
-              <div className="max-w-[320px] w-full rounded-2xl border border-border/50 bg-card/90 backdrop-blur-md p-6 text-center shadow-xl">
+              <div className="max-w-[340px] w-full rounded-2xl border border-white/10 bg-[#111115]/95 backdrop-blur-md p-6 text-center shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
                 <div className="relative mx-auto w-12 h-12 mb-4">
-                  <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse" />
-                  <div className="relative w-full h-full rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center">
-                    <svg viewBox="0 0 24 24" className="w-6 h-6 text-primary" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <div className="absolute inset-0 rounded-full bg-violet-400/10" />
+                  <div className="relative w-full h-full rounded-full bg-violet-400/10 border border-violet-300/20 flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" className="w-6 h-6 text-violet-200" fill="none" stroke="currentColor" strokeWidth="1.5">
                       <rect x="3" y="8" width="7" height="5" rx="1" />
                       <rect x="14" y="3" width="7" height="5" rx="1" />
                       <rect x="14" y="14" width="7" height="5" rx="1" />
@@ -1604,8 +1604,8 @@ function DiagramCanvasInner({
                 <p className="text-xs text-muted-foreground mb-4">
                   Start typing in the code editor, or right-click to add elements
                 </p>
-                <div className="text-left bg-muted/50 border border-border/30 rounded-lg p-2.5 font-mono text-[10px] text-muted-foreground">
-                  <div className="text-primary">[Start]</div>
+                <div className="text-left bg-black/20 border border-white/[0.07] rounded-lg p-2.5 font-mono text-[10px] text-muted-foreground">
+                  <div className="text-violet-200">[Start]</div>
                   <div>{'--> [Process]'}</div>
                   <div>{'[Process] --> {Decision}'}</div>
                 </div>
@@ -1643,8 +1643,8 @@ function DiagramCanvasInner({
               bottom: 24,
               right: 24,
               boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-              width: 130,
-              height: 90
+              width: 124,
+              height: 84
             }}
             maskColor="rgba(0,0,0,0.6)"
             nodeColor={(n: Node) => (n.data as any)?.style?.fillColor || '#3f3f46'}

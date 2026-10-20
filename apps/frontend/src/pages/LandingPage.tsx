@@ -9,7 +9,7 @@ import { ExampleArchitecture } from '../components/landing/ExampleArchitecture';
 import { useAuthStore } from '@/stores/authStore';
 
 const FEATURES = [
-  { icon: Sparkles, title: 'AI Generation', desc: 'Describe your system architecture in plain English. Schemely compiles it into structured Diagram IR.' },
+  { icon: Sparkles, title: 'AI Generation', desc: 'Describe your system architecture in plain English. Schemely AI compiles it into structured Diagram IR.' },
   { icon: Cpu, title: 'Architecture Critic', desc: 'Automated evaluation engine detects direct Client-to-DB connections, unconsumed queues, and circular call loops.' },
   { icon: Layers, title: 'Incremental AI Refinement', desc: 'Modify existing architectures incrementally without losing manual node positions or custom styling.' },
   { icon: Layout, title: 'Deterministic Layouts', desc: 'Cycle-safe symmetric auto-layout engine reduces edge crossings and maintains collision-free spacing.' },
@@ -33,7 +33,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-white/[0.08] bg-[#09090b]/90 backdrop-blur-md">
         <div className="max-w-[1200px] mx-auto px-6 h-full flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <img src={SkemlyLogo} alt="Schemely" className="w-8 h-8 rounded-lg" />
+            <img src={SkemlyLogo} alt="Schemely AI" className="w-8 h-8 rounded-lg" />
             <span className="text-lg font-bold tracking-tight text-white">Schemely AI</span>
           </Link>
 
@@ -62,7 +62,7 @@ export default function LandingPage() {
                   to="/register"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-semibold text-white shadow-lg shadow-purple-600/20 transition-all"
                 >
-                  <span>Try Schemely</span>
+                  <span>Try Schemely AI</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </>
@@ -85,7 +85,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="text-base text-zinc-400 leading-relaxed max-w-xl">
-              Describe cloud architectures, microservices, or data flows in natural language. Schemely compiles it into deterministic Diagram IR, validates connections, and lets you refine visually without losing manual edits.
+              Describe cloud architectures, microservices, or data flows in natural language. Schemely AI compiles it into deterministic Diagram IR, validates connections, and lets you refine visually without losing manual edits.
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-2">
@@ -193,7 +193,7 @@ export default function LandingPage() {
       <footer className="border-t border-white/[0.08] py-12 px-6 text-xs text-zinc-500 font-mono">
         <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <img src={SkemlyLogo} alt="Schemely" className="w-6 h-6 rounded-md" />
+            <img src={SkemlyLogo} alt="Schemely AI" className="w-6 h-6 rounded-md" />
             <span className="font-sans font-bold text-zinc-300 text-sm">Schemely AI</span>
           </div>
           <div>© {new Date().getFullYear()} Schemely AI. All rights reserved.</div>

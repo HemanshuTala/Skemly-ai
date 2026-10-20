@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo, lazy, Suspense } from 'react';
 import gsap from 'gsap';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Link as RouterLink } from 'react-router-dom';
@@ -135,6 +135,7 @@ export default function DiagramEditorPage() {
     aiPrompt, setAIPrompt: setAiPrompt,
     aiOutput, setAIOutput: setAiOutput,
   } = useAIState();
+  const [aiOutputMode, setAiOutputMode] = useState<'syntax' | 'text'>('syntax');
 
   const {
     canvasPaper, setCanvasPaper,
@@ -1213,23 +1214,8 @@ export default function DiagramEditorPage() {
         diagramId,
       });
       setAiOutput(nextSyntax);
-
-      // Incremental position & structure preservation for AI modifications
-      const currentGraph = localGraph?.nodes && localGraph.nodes.length > 0 ? localGraph : latestGraphRef.current;
-      if (currentGraph?.nodes && currentGraph.nodes.length > 0) {
-        const mergedGraph = mergeAIGraphUpdate(currentGraph, nextSyntax);
-        latestGraphRef.current = mergedGraph;
-        setLocalGraph(mergedGraph);
-        setVisualOverride(true);
-      } else {
-        const parsedGraph = parseSyntaxToGraph(nextSyntax);
-        latestGraphRef.current = parsedGraph;
-        setLocalGraph(parsedGraph);
-        setVisualOverride(true);
-      }
-
-      handleSyntaxChange(nextSyntax, 'code');
-      toast.success('AI generated diagram');
+      setAiOutputMode('syntax');
+      toast.success('AI proposal ready. Review it before applying.');
     } catch (error: any) {
       if (error?.name !== 'AbortError') {
         toast.error(error?.response?.data?.error?.message || 'AI generation failed');
@@ -1237,7 +1223,7 @@ export default function DiagramEditorPage() {
     } finally {
       setIsAIBusy(false);
     }
-  }, [aiPrompt, currentDiagram?.type, diagramId, handleSyntaxChange, aiGenerate, localGraph]);
+  }, [aiPrompt, currentDiagram?.type, diagramId, aiGenerate, setAiOutput]);
 
   const runAIExplain = useCallback(async () => {
     if (!diagramId) return;
@@ -1251,6 +1237,7 @@ export default function DiagramEditorPage() {
 
       const res = await aiAPI.explain({ diagramId, nodeIds });
       setAiOutput(res.data?.data?.explanation || 'No explanation returned');
+      setAiOutputMode('text');
       toast.success('Explanation ready');
     } catch (error: any) {
       toast.error(error?.response?.data?.error?.message || 'AI explain failed');
@@ -1318,11 +1305,18 @@ export default function DiagramEditorPage() {
   const applyAiOutputToCode = useCallback(
     (mode: 'replace' | 'append') => {
       const text = aiOutput.trim();
-      if (!text) {
-        toast.error('No AI output to apply yet');
+      if (!text || aiOutputMode !== 'syntax') {
+        toast.error('There is no diagram syntax to apply');
         return;
       }
       if (mode === 'replace') {
+        const currentGraph = localGraph?.nodes?.length ? localGraph : latestGraphRef.current;
+        const nextGraph = currentGraph?.nodes?.length
+          ? mergeAIGraphUpdate(currentGraph, text)
+          : parseSyntaxToGraph(text);
+        latestGraphRef.current = nextGraph;
+        setLocalGraph(nextGraph);
+        setVisualOverride(true);
         handleSyntaxChange(text, 'code');
       } else {
         const cur = syntaxRef.current.trim();
@@ -1333,7 +1327,7 @@ export default function DiagramEditorPage() {
       // Close AI modal after applying code
       setIsAIOpen(false);
     },
-    [aiOutput, handleSyntaxChange]
+    [aiOutput, aiOutputMode, handleSyntaxChange, localGraph, setIsAIOpen, setLocalGraph, setVisualOverride]
   );
 
   const runAIImprove = useCallback(async () => {
@@ -1343,20 +1337,34 @@ export default function DiagramEditorPage() {
       const res = await aiAPI.improve(diagramId);
       const improved = res.data?.data?.improvedSyntax || res.data?.data?.syntax || '';
       const suggestions = res.data?.data?.suggestions || [];
-      if (improved) {
-        handleSyntaxChange(improved, 'code');
-      }
       const textSuggestions = Array.isArray(suggestions)
         ? suggestions.map((s: any) => (typeof s === 'string' ? s : JSON.stringify(s))).join('\n')
         : '';
-      setAiOutput(improved || textSuggestions || 'No improvements returned');
-      toast.success('Improvement completed');
+      if (improved) {
+        setAiOutput(improved);
+        setAiOutputMode('syntax');
+        toast.success('Improved proposal ready to review.');
+      } else if (textSuggestions) {
+        setAiOutput(textSuggestions);
+        setAiOutputMode('text');
+        toast.success('Improvement suggestions are ready.');
+      } else {
+        setAiOutput('No improvements were returned. Try again with a more specific request.');
+        setAiOutputMode('text');
+        toast.error('No improvements were returned.');
+      }
     } catch (error: any) {
       toast.error(error?.response?.data?.error?.message || 'AI improve failed');
     } finally {
       setIsAIBusy(false);
     }
-  }, [diagramId, handleSyntaxChange]);
+  }, [diagramId, setAiOutput]);
+
+  const aiProposalStats = useMemo(() => {
+    if (aiOutputMode !== 'syntax' || !aiOutput.trim()) return null;
+    const graph = parseSyntaxToGraph(aiOutput);
+    return { nodes: graph.nodes.length, edges: graph.edges.length };
+  }, [aiOutput, aiOutputMode]);
 
   const submitNewComment = useCallback(async () => {
     if (!diagramId || !newComment.trim() || isCommentsBusy) return;
@@ -1625,7 +1633,7 @@ export default function DiagramEditorPage() {
   }
 
   return (
-    <div ref={editorChromeRef} className="h-screen flex flex-col bg-background">
+    <div ref={editorChromeRef} className="h-screen flex flex-col overflow-hidden bg-[#09090b] text-foreground">
       <div ref={toolbarShellRef} className="shrink-0 relative z-30">
         <Toolbar
           title={title}
@@ -1649,7 +1657,7 @@ export default function DiagramEditorPage() {
 
       {/* Offline sync / local drafts banner */}
       {!isOnline && (
-        <div className="bg-amber-500/20 border-b border-amber-500/30 px-4 py-2.5 text-xs flex items-center justify-between text-amber-200 backdrop-blur-md animate-pulse">
+        <div role="status" className="bg-amber-500/[0.08] border-b border-amber-500/20 px-4 py-2.5 text-xs flex items-center justify-between text-amber-200 backdrop-blur-md">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping shrink-0" />
             <span>You are offline. Diagram edits are being automatically saved locally to your browser database.</span>
@@ -1658,7 +1666,7 @@ export default function DiagramEditorPage() {
       )}
 
       {hasOfflineDraft && (
-        <div className="bg-primary/20 border-b border-primary/30 px-4 py-2 text-xs flex items-center justify-between text-primary backdrop-blur-md">
+        <div role="status" className="bg-primary/[0.08] border-b border-primary/20 px-4 py-2 text-xs flex items-center justify-between text-primary backdrop-blur-md">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
             <span>Unsynced local changes found from an offline session.</span>
@@ -1685,7 +1693,7 @@ export default function DiagramEditorPage() {
         <div
           ref={codeShellRef}
           style={{ width: `${leftPaneWidth}%` }}
-          className="min-w-[260px] max-w-[680px] min-h-0 flex flex-col overflow-visible"
+          className="min-w-[260px] max-w-[680px] min-h-0 flex flex-col overflow-visible border-r border-white/[0.04] bg-[#0d0d10]"
         >
           <Suspense fallback={<div className="h-full w-full bg-[#09090b] flex items-center justify-center text-xs font-mono text-muted-foreground/60">Loading Code Editor…</div>}>
             <CodeEditor
@@ -1698,22 +1706,23 @@ export default function DiagramEditorPage() {
         <div
           role="separator"
           aria-label="Resize code panel"
-          className={`w-[4px] cursor-col-resize hover:bg-white/40 transition-colors ${isResizing === 'left' ? 'bg-white/60' : 'bg-white/[0.06]'}`}
+          aria-orientation="vertical"
+          className={`w-1 shrink-0 cursor-col-resize transition-colors hover:bg-violet-400/60 ${isResizing === 'left' ? 'bg-violet-400/70' : 'bg-white/[0.06]'}`}
           onMouseDown={() => setIsResizing('left')}
         />
 
         {/* Canvas + Notes - Center */}
-        <div ref={centerColumnRef} className="flex-1 flex flex-col min-w-[280px] min-h-0">
+        <div ref={centerColumnRef} className="flex-1 flex flex-col min-w-[280px] min-h-0 bg-[#09090b]">
           {/* Canvas toolbar strip */}
-          <div className="shrink-0 h-9 border-b border-border/40 bg-card/60 backdrop-blur flex items-center px-3 gap-2">
+          <div className="shrink-0 h-10 border-b border-white/[0.06] bg-[#101014]/90 backdrop-blur flex items-center px-3 gap-2">
             {/* Palette toggle */}
             <button
               type="button"
               onClick={() => setIsPaletteVisible(!isPaletteVisible)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
                 isPaletteVisible
-                  ? 'bg-primary/12 text-primary border border-primary/30'
-                  : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 border border-transparent'
+                  ? 'bg-violet-400/10 text-violet-200 border border-violet-300/20'
+                  : 'text-muted-foreground/70 hover:text-foreground hover:bg-white/[0.05] border border-transparent'
               }`}
               title="Toggle shape palette (P)"
             >
@@ -1722,11 +1731,11 @@ export default function DiagramEditorPage() {
             </button>
 
             {/* Divider */}
-            <div className="h-4 w-px bg-border/40" />
+            <div className="h-4 w-px bg-white/[0.08]" />
 
             {/* Stats */}
             {canvasStats.nodes > 0 && (
-              <span className="text-[10px] text-muted-foreground/40 font-mono tabular-nums">
+              <span className="rounded-md border border-white/[0.06] bg-white/[0.025] px-2 py-1 text-[10px] text-muted-foreground/70 font-mono tabular-nums">
                 {canvasStats.nodes} nodes · {canvasStats.edges} edges
               </span>
             )}
@@ -1737,7 +1746,7 @@ export default function DiagramEditorPage() {
           <div className="flex-1 flex overflow-hidden">
             {/* inline palette when visible */}
             {isPaletteVisible && (
-              <div className="w-[190px] min-w-[160px] max-w-[220px] shrink-0 h-full border-r border-border/50">
+              <div className="w-[200px] min-w-[170px] max-w-[230px] shrink-0 h-full border-r border-white/[0.06] bg-[#0d0d10]">
                 <ShapePalette onInsert={handlePaletteInsert} />
               </div>
             )}
@@ -1767,7 +1776,8 @@ export default function DiagramEditorPage() {
         <div
           role="separator"
           aria-label="Resize properties panel"
-          className={`w-[4px] cursor-col-resize hover:bg-white/40 transition-colors ${isResizing === 'right' ? 'bg-white/60' : 'bg-white/[0.06]'}`}
+          aria-orientation="vertical"
+          className={`w-1 shrink-0 cursor-col-resize transition-colors hover:bg-violet-400/60 ${isResizing === 'right' ? 'bg-violet-400/70' : 'bg-white/[0.06]'}`}
           onMouseDown={() => setIsResizing('right')}
         />
 
@@ -1775,7 +1785,7 @@ export default function DiagramEditorPage() {
         <div
           ref={inspectorShellRef}
           style={{ width: `${rightPaneWidth}%` }}
-          className="min-w-[240px] max-w-[440px] min-h-0 flex flex-col"
+          className="min-w-[240px] max-w-[440px] min-h-0 flex flex-col border-l border-white/[0.04] bg-[#0d0d10]"
         >
           <PropertiesPanel
             selectedNode={selectedNode}
@@ -1988,13 +1998,13 @@ export default function DiagramEditorPage() {
       <Modal
         isOpen={isAIOpen}
         onClose={() => setIsAIOpen(false)}
-        title="AI assistant"
-        description="Generate diagram syntax from a prompt. Matches the code panel: nodes, arrows, labeled edges."
+        title="AI architecture assistant"
+        description="Generate, improve, or explain this architecture. Diagram changes are only applied when you confirm them."
         size="xl"
       >
         <div className="space-y-4">
-          <div className="rounded-xl border border-border/40 bg-muted/20 px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
-            <span className="font-semibold text-foreground">Syntax:</span>{' '}
+          <div className="rounded-xl border border-violet-300/15 bg-violet-300/[0.04] px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-foreground">How syntax works:</span>{' '}
             <code className="rounded bg-background/80 px-1 py-0.5 text-[10px]">--&gt;</code>,{' '}
             <code className="rounded bg-background/80 px-1 py-0.5 text-[10px]">-&gt;</code>, or{' '}
             <code className="rounded bg-background/80 px-1 py-0.5 text-[10px]">=&gt;</code>{' '}
@@ -2002,12 +2012,16 @@ export default function DiagramEditorPage() {
           </div>
 
           <div className="relative">
+            <label htmlFor="editor-ai-prompt" className="mb-2 block text-xs font-semibold text-foreground/80">
+              Describe the change or system
+            </label>
             <textarea
+              id="editor-ai-prompt"
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               placeholder="E.g. Create a microservices architecture for an e-commerce platform with Redis cache and PostgreSQL..."
-              rows={5}
-              className="w-full rounded-2xl border border-border/60 bg-background/50 px-5 py-4 text-sm focus:bg-background focus:ring-4 focus:ring-primary/10 outline-none transition-all placeholder:text-muted-foreground/30 leading-relaxed scrollbar-hide"
+              rows={4}
+              className="w-full rounded-xl border border-border/60 bg-background/50 px-4 py-3.5 text-sm focus:bg-background focus:ring-2 focus:ring-violet-400/15 focus:border-violet-400/40 outline-none transition-all placeholder:text-muted-foreground/50 leading-relaxed scrollbar-hide"
             />
             <div className="absolute right-3 bottom-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/5 text-primary/40">
               <Sparkles className="w-4 h-4" />
@@ -2020,7 +2034,7 @@ export default function DiagramEditorPage() {
                 onClick={isAIStreaming ? cancelAIGenerate : runAIGenerate}
                 disabled={isAIBusy && !isAIStreaming}
                 className={cn(
-                  "flex items-center gap-2 rounded-[14px] px-5 py-2.5 text-[11px] font-black uppercase tracking-widest shadow-lg transition-all hover:translate-y-[-1px] active:scale-95 disabled:opacity-50",
+                  "flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold shadow-lg transition-all hover:translate-y-[-1px] active:scale-95 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400",
                   isAIStreaming
                     ? "bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 shadow-none"
                     : "bg-primary text-primary-foreground shadow-primary/20 hover:opacity-90"
@@ -2047,7 +2061,7 @@ export default function DiagramEditorPage() {
               <button
                 onClick={runAIImprove}
                 disabled={isAIBusy}
-                className="flex items-center gap-2 rounded-[14px] border border-border/60 bg-background/50 px-5 py-2.5 text-[11px] font-black uppercase tracking-widest text-foreground/70 transition-all hover:bg-background hover:border-primary/40 hover:text-primary active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-4 py-2.5 text-xs font-semibold text-foreground/80 transition-all hover:bg-background hover:border-violet-400/40 hover:text-violet-200 active:scale-95 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
               >
                 <Zap className="w-3.5 h-3.5" />
                 Improve
@@ -2055,7 +2069,7 @@ export default function DiagramEditorPage() {
               <button
                 onClick={runAIExplain}
                 disabled={isAIBusy}
-                className="flex items-center gap-2 rounded-[14px] border border-border/60 bg-background/50 px-5 py-2.5 text-[11px] font-black uppercase tracking-widest text-foreground/70 transition-all hover:bg-background hover:border-primary/40 hover:text-primary active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-4 py-2.5 text-xs font-semibold text-foreground/80 transition-all hover:bg-background hover:border-violet-400/40 hover:text-violet-200 active:scale-95 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
               >
                 <HelpCircle className="w-3.5 h-3.5" />
                 Explain
@@ -2071,36 +2085,48 @@ export default function DiagramEditorPage() {
 
           {aiOutput && (
             <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1 flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-primary" /> Output
-              </label>
-              <div className="relative group overflow-hidden rounded-2xl border border-border/40 bg-muted/30">
-                <pre className="max-h-72 overflow-auto p-5 text-xs font-mono leading-relaxed text-foreground/80 scrollbar-hide whitespace-pre-wrap">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                  <Sparkles className="h-3.5 w-3.5 text-violet-300" />
+                  {aiOutputMode === 'syntax' ? 'Proposed diagram' : 'AI response'}
+                </div>
+                {aiProposalStats && (
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                    {aiProposalStats.nodes} nodes <span className="px-1 text-muted-foreground/40">·</span> {aiProposalStats.edges} connections
+                    <span className="ml-2 text-violet-200">Not applied</span>
+                  </span>
+                )}
+              </div>
+              <div className="relative group overflow-hidden rounded-xl border border-border/50 bg-[#101014]">
+                <pre id="editor-ai-output" className="max-h-72 overflow-auto p-4 text-xs font-mono leading-relaxed text-foreground/85 scrollbar-hide whitespace-pre-wrap">
                   {aiOutput}
                 </pre>
-                <div className="absolute inset-0 pointer-events-none border border-inset border-white/5 rounded-2xl" />
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="rounded-xl text-xs font-bold"
-                  onClick={() => applyAiOutputToCode('replace')}
-                >
-                  Replace diagram code
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl text-xs font-bold"
-                  onClick={() => applyAiOutputToCode('append')}
-                >
-                  Append to code
-                </Button>
+              {aiOutputMode === 'syntax' && (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="rounded-lg text-xs font-semibold"
+                    onClick={() => applyAiOutputToCode('replace')}
+                  >
+                    Apply proposal
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-lg text-xs font-semibold"
+                    onClick={() => applyAiOutputToCode('append')}
+                  >
+                    Append to diagram
+                  </Button>
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   variant="ghost"
-                  className="rounded-xl text-xs font-bold gap-2"
+                  className="rounded-lg text-xs font-semibold gap-2"
                   onClick={() => {
                     void navigator.clipboard.writeText(aiOutput).then(() => toast.success('Copied'));
                   }}
@@ -2109,8 +2135,10 @@ export default function DiagramEditorPage() {
                   Copy
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground/70">
-                Generate already updates the diagram when the model returns syntax. Use the buttons above if you edited the output or used Explain.
+              <p className="text-[11px] leading-relaxed text-muted-foreground/70">
+                {aiOutputMode === 'syntax'
+                  ? 'Your canvas is unchanged until you choose an apply action. Review the proposed syntax first.'
+                  : 'This response is informational and will not change the diagram.'}
               </p>
             </div>
           )}

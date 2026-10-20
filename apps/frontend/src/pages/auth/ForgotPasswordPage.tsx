@@ -7,13 +7,13 @@ import SkemlyLogo from '../../assets/Skemly.png'
 
 const T = {
   bg: '#09090b',
-  surface: '#0e0e11',
+  surface: '#101014',
   surfaceHi: '#18181b',
-  border: 'rgba(255,255,255,0.06)',
+  border: 'rgba(255,255,255,0.09)',
   text: '#ffffff',
   textSub: '#a1a1aa',
   textMuted: '#71717a',
-  accent: '#ffffff',
+  accent: '#a78bfa',
   font: '"Inter", -apple-system, sans-serif',
   fontSerif: '"Outfit", "Inter", sans-serif',
 }
@@ -46,18 +46,18 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.font, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 50% 15%, rgba(124,58,237,0.12), transparent 36rem), ${T.bg}`, color: T.text, fontFamily: T.font, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={SP_SOFT} style={{ width: '100%', maxWidth: 400 }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <motion.div whileHover={{ scale: 1.02 }} style={{ display: 'inline-flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => window.location.href = '/'}>
-            <img src={SkemlyLogo} alt="Skemly" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
-            <span style={{ fontSize: 22, fontWeight: 700, color: T.text }}>Schemely</span>
+            <img src={SkemlyLogo} alt="Schemely AI" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+            <span style={{ fontSize: 22, fontWeight: 700, color: T.text }}>Schemely AI</span>
           </motion.div>
         </div>
 
         {/* Card */}
-        <div style={{ background: T.surface, borderRadius: 16, border: `1px solid ${T.border}`, padding: 32 }}>
+        <div style={{ background: T.surface, borderRadius: 20, border: `1px solid ${T.border}`, padding: 32, boxShadow: '0 24px 80px rgba(0,0,0,0.35)' }}>
           {!sent ? (
             <>
               <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, textAlign: 'center' }}>Forgot Password?</h1>
@@ -97,8 +97,8 @@ export default function ForgotPasswordPage() {
                   disabled={loading}
                   style={{
                     padding: '12px 24px',
-                    background: T.text,
-                    color: T.bg,
+                    background: '#7c3aed',
+                    color: '#ffffff',
                     border: 'none',
                     borderRadius: 8,
                     fontSize: 14,
@@ -127,10 +127,10 @@ export default function ForgotPasswordPage() {
                 onClick={() => setSent(false)}
                 style={{
                   padding: '10px 20px',
-                  background: 'transparent',
-                  color: T.textSub,
+                  background: 'rgba(124,58,237,0.12)',
+                  color: '#c4b5fd',
                   border: `1px solid ${T.border}`,
-                  borderRadius: 8,
+                  borderRadius: 10,
                   fontSize: 13,
                   cursor: 'pointer',
                 }}

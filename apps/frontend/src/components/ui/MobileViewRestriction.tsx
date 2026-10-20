@@ -1,73 +1,47 @@
 import React from 'react';
-import { Monitor, Smartphone, ArrowRight } from 'lucide-react';
+import { ArrowRight, Monitor, Smartphone } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export const MobileViewRestriction: React.FC = () => {
   const location = useLocation();
-  
-  // Only restrict the core authenticated app pages (editor, dashboard, projects, settings)
-  const isAppPage = 
-    location.pathname.startsWith('/diagram') || 
-    location.pathname.startsWith('/dashboard') || 
-    location.pathname.startsWith('/projects') || 
-    location.pathname.startsWith('/settings') ||
-    location.pathname.startsWith('/workspace');
-    
-  if (!isAppPage) {
+
+  if (!location.pathname.startsWith('/diagram')) {
     return null;
   }
 
   return (
-    <div 
-      className="fixed inset-0 z-[9999] bg-[#09090b] text-white flex items-center justify-center lg:hidden"
-    >
-      <div style={{ width: '100%', maxWidth: '400px', padding: '0 16px' }}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#09090b]/95 px-4 py-6 text-white backdrop-blur-xl md:hidden">
+      <div className="w-full max-w-sm">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{
-            borderRadius: '24px',
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: '#0d0d10',
-            padding: '32px 24px',
-            textAlign: 'center',
-          }}
+          className="rounded-3xl border border-white/[0.09] bg-[#111116] p-6 text-center shadow-2xl shadow-black/50 sm:p-8"
         >
-          {/* Icons */}
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <Smartphone size={24} color="#71717a" />
+          <div className="mb-6 flex items-center justify-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04]">
+              <Smartphone size={20} className="text-zinc-400" />
             </div>
-            <ArrowRight size={20} color="#52525b" />
-            <div className="bg-gradient-to-br from-violet-600 to-indigo-600" style={{ width: '56px', height: '56px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <Monitor size={24} color="#ffffff" />
+            <ArrowRight size={16} className="text-zinc-600" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-600 to-indigo-600 shadow-lg shadow-violet-950/40">
+              <Monitor size={20} className="text-white" />
             </div>
           </div>
 
-          {/* Title */}
-          <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '12px', letterSpacing: '-0.02em', color: '#fafafa' }}>
-            Desktop Only
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">Designed for a large canvas</p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
+            Open the editor on desktop
           </h1>
-
-          {/* Description */}
-          <p style={{ fontSize: '14px', color: '#a1a1aa', lineHeight: 1.6, marginBottom: '24px' }}>
-            Schemely is a professional system design tool built for large screens. 
-            Please switch to a <span style={{ color: '#d4d4d8', fontWeight: 600 }}>PC or Tablet</span> for the best experience.
+          <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-zinc-400">
+            The diagram editor needs more room for precise canvas controls. Your dashboard, projects, and settings are still available here.
           </p>
-
-          {/* Info Box */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)', padding: '16px', textAlign: 'left' }}>
-            <Monitor size={20} color="#a1a1aa" />
-            <div>
-              <p style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#71717a', marginBottom: '4px' }}>
-                Recommended View
-              </p>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: '#e4e4e7' }}>
-                Full Screen Desktop (1280px+)
-              </p>
-            </div>
-          </div>
+          <Link
+            to="/dashboard"
+            className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+          >
+            Back to dashboard
+            <ArrowRight size={15} />
+          </Link>
         </motion.div>
       </div>
     </div>
